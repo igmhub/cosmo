@@ -76,7 +76,8 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" \
 	"$(DESTDIR)$(includedir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libcosmo_la_LIBADD =
-am_libcosmo_la_OBJECTS = AbsHomogeneousUniverse.lo
+am_libcosmo_la_OBJECTS = AbsHomogeneousUniverse.lo \
+	HomogeneousUniverseCalculator.lo LambdaCdmUniverse.lo
 libcosmo_la_OBJECTS = $(am_libcosmo_la_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS)
 am_cosmocalc_OBJECTS = cosmocalc.$(OBJEXT)
@@ -244,7 +245,9 @@ lib_LTLIBRARIES = libcosmo.la
 
 # instructions for building the library
 libcosmo_la_SOURCES = \
-	cosmo/AbsHomogeneousUniverse.cc
+	cosmo/AbsHomogeneousUniverse.cc \
+	cosmo/HomogeneousUniverseCalculator.cc \
+	cosmo/LambdaCdmUniverse.cc
 
 
 # library headers to install (nobase prefix preserves any subdirectories)
@@ -254,7 +257,9 @@ nobase_include_HEADERS = \
 	cosmo/cosmo.h \
 	cosmo/types.h \
 	cosmo/RuntimeError.h \
-	cosmo/AbsHomogeneousUniverse.h
+	cosmo/AbsHomogeneousUniverse.h \
+	cosmo/HomogeneousUniverseCalculator.h \
+	cosmo/LambdaCdmUniverse.h
 
 
 # instructions for building each program
@@ -386,6 +391,8 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AbsHomogeneousUniverse.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HomogeneousUniverseCalculator.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/LambdaCdmUniverse.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmocalc.Po@am__quote@
 
 .cc.o:
@@ -415,6 +422,20 @@ AbsHomogeneousUniverse.lo: cosmo/AbsHomogeneousUniverse.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/AbsHomogeneousUniverse.cc' object='AbsHomogeneousUniverse.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o AbsHomogeneousUniverse.lo `test -f 'cosmo/AbsHomogeneousUniverse.cc' || echo '$(srcdir)/'`cosmo/AbsHomogeneousUniverse.cc
+
+HomogeneousUniverseCalculator.lo: cosmo/HomogeneousUniverseCalculator.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT HomogeneousUniverseCalculator.lo -MD -MP -MF $(DEPDIR)/HomogeneousUniverseCalculator.Tpo -c -o HomogeneousUniverseCalculator.lo `test -f 'cosmo/HomogeneousUniverseCalculator.cc' || echo '$(srcdir)/'`cosmo/HomogeneousUniverseCalculator.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/HomogeneousUniverseCalculator.Tpo $(DEPDIR)/HomogeneousUniverseCalculator.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/HomogeneousUniverseCalculator.cc' object='HomogeneousUniverseCalculator.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o HomogeneousUniverseCalculator.lo `test -f 'cosmo/HomogeneousUniverseCalculator.cc' || echo '$(srcdir)/'`cosmo/HomogeneousUniverseCalculator.cc
+
+LambdaCdmUniverse.lo: cosmo/LambdaCdmUniverse.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT LambdaCdmUniverse.lo -MD -MP -MF $(DEPDIR)/LambdaCdmUniverse.Tpo -c -o LambdaCdmUniverse.lo `test -f 'cosmo/LambdaCdmUniverse.cc' || echo '$(srcdir)/'`cosmo/LambdaCdmUniverse.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/LambdaCdmUniverse.Tpo $(DEPDIR)/LambdaCdmUniverse.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/LambdaCdmUniverse.cc' object='LambdaCdmUniverse.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o LambdaCdmUniverse.lo `test -f 'cosmo/LambdaCdmUniverse.cc' || echo '$(srcdir)/'`cosmo/LambdaCdmUniverse.cc
 
 cosmocalc.o: src/cosmocalc.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmocalc.o -MD -MP -MF $(DEPDIR)/cosmocalc.Tpo -c -o cosmocalc.o `test -f 'src/cosmocalc.cc' || echo '$(srcdir)/'`src/cosmocalc.cc

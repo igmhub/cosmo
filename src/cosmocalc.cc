@@ -12,9 +12,14 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology calculator");
+    double OmegaLambda, OmegaMatter,zval;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
+        ("omega-lambda", po::value<double>(&OmegaLambda)->default_value(0.728),
+            "Present-day value of OmegaLambda.")
+        ("redshift,z", po::value<double>(&zval)->default_value(1),
+            "Emitter redshift.")
         ;
 
     // do the command line parsing now
@@ -32,6 +37,14 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose"));
- 
+
+    OmegaMatter = 1 - OmegaLambda;
+    cosmo::LambdaCdmUniverse cosmology(OmegaLambda,OmegaMatter);
+    
+    std::cout << "z = " << zval << std::endl;
+    std::cout << "D(z) = " << cosmology.getLineOfSightComovingDistance(zval) << " Mpc/h"
+        << std::endl;
+    std::cout << "D1(z) = " << 2.5*OmegaMatter*cosmology.getGrowthFunction(zval) << std::endl;
+
     return 0;
 }
