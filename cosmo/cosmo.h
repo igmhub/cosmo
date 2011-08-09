@@ -7,3 +7,5 @@
 #include "cosmo/AbsHomogeneousUniverse.h"
 #include "cosmo/HomogeneousUniverseCalculator.h"
 #include "cosmo/LambdaCdmUniverse.h"
+
+#include "cosmo/BaryonPerturbations.h"

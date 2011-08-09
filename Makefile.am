@@ -13,7 +13,8 @@ bin_PROGRAMS = cosmocalc
 libcosmo_la_SOURCES = \
 	cosmo/AbsHomogeneousUniverse.cc \
 	cosmo/HomogeneousUniverseCalculator.cc \
-	cosmo/LambdaCdmUniverse.cc
+	cosmo/LambdaCdmUniverse.cc \
+	cosmo/BaryonPerturbations.cc
 
 # library headers to install (nobase prefix preserves any subdirectories)
 # Anything that includes config.h should *not* be listed here.
@@ -24,7 +25,8 @@ nobase_include_HEADERS = \
 	cosmo/RuntimeError.h \
 	cosmo/AbsHomogeneousUniverse.h \
 	cosmo/HomogeneousUniverseCalculator.h \
-	cosmo/LambdaCdmUniverse.h
+	cosmo/LambdaCdmUniverse.h \
+	cosmo/BaryonPerturbations.h
 
 # instructions for building each program
 
