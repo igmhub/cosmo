@@ -78,6 +78,30 @@ _hubbleConstant(hubbleConstant), _cmbTemperature(cmbTemperature)
 
 local::BaryonPerturbations::~BaryonPerturbations() { }
 
+double local::BaryonPerturbations::getCdmTransfer(double kMpch) const {
+    if(kMpch != _kSave) {
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full);
+        _kSave = kMpch;
+    }
+    return _Tf_cdm;
+}
+
+double local::BaryonPerturbations::getBaryonTransfer(double kMpch) const {
+    if(kMpch != _kSave) {
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full);
+        _kSave = kMpch;
+    }
+    return _Tf_baryon;
+}
+
+double local::BaryonPerturbations::getMatterTransfer(double kMpch) const {
+    if(kMpch != _kSave) {
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full);
+        _kSave = kMpch;
+    }
+    return _Tf_full;
+}
+
 void local::BaryonPerturbations::calculateTransferFunctions(double kMpch,
 double &Tf_baryon, double &Tf_cdm, double &Tf_full) const {
 
@@ -86,7 +110,7 @@ double &Tf_baryon, double &Tf_cdm, double &Tf_full) const {
         return;
     }
 
-    double k(kMpch/_hubbleConstant);
+    double k(kMpch*_hubbleConstant);
     double q(k/13.41/_k_equality);
     double qSq(q*q);
     double xx(k*_sound_horizon);

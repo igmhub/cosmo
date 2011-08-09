@@ -1,10 +1,16 @@
 // Created 08-Aug-2011 by David Kirkby (University of California, Irvine) <dkirkby@uci.edu>
 
+// Reproduce bottom-left plot of Fig.3 in astro-ph/9709112 using:
+// cosmocalc --omega-matter 0.2 --omega-baryon 0.1 --hubble-constant 0.5 --cmb-temp 2.728 \
+//   --kmin 0.001 --kmax 1 --nk 500 --save-transfer fig3.dat
+
 #include "cosmo/cosmo.h"
 
 #include "boost/program_options.hpp"
 
+#include <fstream>
 #include <iostream>
+#include <cmath>
 
 namespace po = boost::program_options;
 
@@ -12,7 +18,9 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology calculator");
-    double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,zval,kval;
+    double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,zval,kval,kmin,kmax;
+    int nk;
+    std::string saveTransferFile;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -30,6 +38,14 @@ int main(int argc, char **argv) {
             "Emitter redshift.")
         ("wavenumber,k", po::value<double>(&kval)->default_value(0.1),
             "Perturbation wavenumber in 1/(Mpc/h).")
+        ("save-transfer", po::value<std::string>(&saveTransferFile)->default_value(""),
+            "Saves the matter transfer function to the specified filename.")
+        ("kmin", po::value<double>(&kmin)->default_value(0.001),
+            "Minimum wavenumber in 1/(Mpc/h) for tabulating transfer function.")
+        ("kmax", po::value<double>(&kmax)->default_value(100.),
+            "Maximum wavenumber in 1/(Mpc/h) for tabulating transfer function.")
+        ("nk", po::value<int>(&nk)->default_value(100),
+            "Number of logarithmic steps to use for tabulating transfer function.")
         ;
 
     // do the command line parsing now
@@ -74,6 +90,17 @@ int main(int argc, char **argv) {
     std::cout << "Tf(cmb,k) = " << Tfc << std::endl;
     std::cout << "Tf(baryon,k) = " << Tfb << std::endl;
     std::cout << "Tf(full,k) = " << Tf << std::endl;
+    
+    if(0 < saveTransferFile.length()) {
+        std::ofstream out(saveTransferFile.c_str());
+        double kratio(std::pow(kmax/kmin,1/(nk-1.)));
+        for(int i = 0; i < nk; ++i) {
+            double k(kmin*std::pow(kratio,i));
+            double Tf(baryons.getMatterTransfer(k));
+            out << k << ' ' << Tf << std::endl;
+        }
+        out.close();
+    }
 
     return 0;
 }

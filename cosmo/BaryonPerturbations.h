@@ -25,6 +25,14 @@ namespace cosmo {
         double getSoundHorizon() const;
         // Returns the wavenumber in 1/(Mpc/h) characterizing baryon-photon diffusion.
         double getSilkDampingScale() const;
+        // Returns the CDM transfer function value at the specified wavenumber in 1/(Mpc/h).
+        double getCdmTransfer(double kMpch) const;
+        // Returns the baryon transfer function value at the specified wavenumber
+        // in 1/(Mpc/h).
+        double getBaryonTransfer(double kMpch) const;
+        // Returns the CDM + baryon transfer function value at the specified wavenumber
+        // in 1/(Mpc/h).
+        double getMatterTransfer(double kMpch) const;
 		// Calculates and stores the baryon, CDM, and full (baryon+CDM) transfer functions
 		// for the specified input wavenumber k in 1/(Mpc/h).
         void calculateTransferFunctions(double kMpch,
@@ -50,6 +58,7 @@ namespace cosmo {
         	_k_peak,		/* Fit to wavenumber of first peak, in Mpc^-1 */
         	_sound_horizon_fit,	/* Fit to sound horizon, in Mpc */
         	_alpha_gamma;	/* Gamma suppression in approximate TF */
+        mutable double _Tf_baryon, _Tf_cdm, _Tf_full, _kSave;
 	}; // BaryonPerturbations
 	
 	inline double BaryonPerturbations::getMatterRadiationEqualityRedshift() const {
