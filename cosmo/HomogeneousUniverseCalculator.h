@@ -10,6 +10,7 @@
 namespace cosmo {
     // Calculates the properties of a homogeneous and isotropic universe numerically
     // based on its Hubble function H(z)/H(0) and present-day curvature 1 - Omega(0).
+    // See astro-ph/9905116 for the relevant formulas that are implemented here.
 	class HomogeneousUniverseCalculator : public AbsHomogeneousUniverse {
 	public:
 	    // Creates a new universe calculator that is valid for redshifts [0,zmax].
@@ -29,6 +30,10 @@ namespace cosmo {
         // emitters at the same specified redshift z >= 0. Multiply this value by
         // the observed separation angle (rad) to obtain a physical distance in Mpc/h.
         virtual double getTransverseComovingScale(double z) const;
+        // Returns the lookback time for an emitter at the specified redshift, defined as
+        // the difference between the ages of the universe now and when a photon at
+        // cosmological redshift z was emitted. Units are secs/h.
+        virtual double getLookbackTime(double z) const;
         // Returns the growth function D1(z) for small-scale perturbations in the absence
         // of neutrino free streaming. The result does not include the usual normalization
         // factor of 5/2*OmegaMatter (since we are not requiring that subclasses specify
@@ -38,9 +43,11 @@ namespace cosmo {
         double _zmax, _epsAbs;
         int _nz;
         mutable double _curvatureScale;
-        mutable likely::InterpolatorPtr _lineOfSightInterpolator, _growthInterpolator;
+        mutable likely::InterpolatorPtr _lineOfSightInterpolator, _growthInterpolator,
+            _lookbackInterpolator;
         double _lineOfSightIntegrand(double z) const;
         double _growthIntegrand(double z) const;
+        double _lookbackIntegrand(double z) const;
 	}; // HomogeneousUniverseCalculator
 } // cosmo
 

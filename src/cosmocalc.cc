@@ -71,6 +71,12 @@ int main(int argc, char **argv) {
     std::cout << "z = " << zval << std::endl;
     std::cout << "D(z) = " << cosmology->getLineOfSightComovingDistance(zval) << " Mpc/h"
         << std::endl;
+    std::cout << "DM(z) = " << cosmology->getTransverseComovingScale(zval) << " Mpc/h/rad"
+        << std::endl;
+    double tL(cosmology->getLookbackTime(zval));
+    double conv(1e9*86400*365.25);
+    std::cout << "t(lookback,z) = " << tL << " secs/h = " << tL/conv*hubbleConstant
+        << " Gyr" << std::endl;
     std::cout << "D1(z) = " << 2.5*OmegaMatter*cosmology->getGrowthFunction(zval)
         << std::endl;
     

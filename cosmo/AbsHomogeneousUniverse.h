@@ -26,6 +26,10 @@ namespace cosmo {
         double getAngularDiameterDistance(double z) const;
         // Returns the luminosity distance of an emitter with the specified redshift z >= 0.
         double getLuminosityDistance(double z) const;
+        // Returns the lookback time for an emitter at the specified redshift, defined as
+        // the difference between the ages of the universe now and when a photon at
+        // cosmological redshift z was emitted. Units are secs/h.
+        virtual double getLookbackTime(double z) const = 0;
         // Returns the growth function D1(z) for small-scale perturbations in the absence
         // of neutrino free streaming.
         virtual double getGrowthFunction(double z) const = 0;
@@ -43,6 +47,11 @@ namespace cosmo {
 	// Returns the present-day Hubble length c/H0 in Mpc/h
 	inline double hubbleLength() {
         return 299792458e-5;
+	}
+	
+	// Returns the present-day Hubble time 1/H0 in secs/h
+	inline double hubbleTime() {
+        return 3.08568025e17;
 	}
 	
 } // cosmo

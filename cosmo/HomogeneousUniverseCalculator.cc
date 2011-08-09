@@ -43,7 +43,7 @@ double local::HomogeneousUniverseCalculator::getLineOfSightComovingDistance(doub
         zValues[0] = 0;
         fValues[0] = 0;
         zValues[1] = dz;
-        fValues[1] = integrator.integrateSingular(0,dz);
+        fValues[1] = integrator.integrateSmooth(0,dz);
         for(int i = 2; i < _nz; ++i) {
             zValues[i] = i*dz;
             fValues[i] = fValues[i-1] + integrator.integrateSmooth((i-1)*dz,i*dz);
@@ -107,4 +107,35 @@ double local::HomogeneousUniverseCalculator::getGrowthFunction(double z) const {
 double local::HomogeneousUniverseCalculator::_growthIntegrand(double z) const {
     double hz(getHubbleFunction(z));
     return (1+z)/(hz*hz*hz);
+}
+
+double local::HomogeneousUniverseCalculator::getLookbackTime(double z) const {
+    if(z > _zmax) {
+        throw RuntimeError("BasicCosmology::getLookbackTime: z > zmax.");
+    }
+    if(z < 0) {
+        throw RuntimeError("BasicCosmology::getLookbackTime: z < 0.");        
+    }
+    if(!_lookbackInterpolator) {
+        // Create the interpolator the first time we are called.
+        likely::Integrator::IntegrandPtr integrand(new likely::Integrator::Integrand(
+            boost::bind(&HomogeneousUniverseCalculator::_lookbackIntegrand,this,_1)));
+        likely::Integrator integrator(integrand,_epsAbs,1e-8); // needs epsRel > 0
+        likely::Interpolator::CoordinateValues zValues(_nz), fValues(_nz);
+        double dz = _zmax/(_nz-1);
+        zValues[0] = 0;
+        fValues[0] = 0;
+        zValues[1] = dz;
+        fValues[1] = integrator.integrateSmooth(0,dz);
+        for(int i = 2; i < _nz; ++i) {
+            zValues[i] = i*dz;
+            fValues[i] = fValues[i-1] + integrator.integrateSmooth((i-1)*dz,i*dz);
+        }
+        _lookbackInterpolator.reset(new likely::Interpolator(zValues,fValues,"cspline"));
+    }
+    return (*_lookbackInterpolator)(z);    
+}
+
+double local::HomogeneousUniverseCalculator::_lookbackIntegrand(double z) const {
+    return hubbleTime()/(1+z)/getHubbleFunction(z);
 }
