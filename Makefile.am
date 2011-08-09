@@ -14,7 +14,8 @@ libcosmo_la_SOURCES = \
 	cosmo/AbsHomogeneousUniverse.cc \
 	cosmo/HomogeneousUniverseCalculator.cc \
 	cosmo/LambdaCdmUniverse.cc \
-	cosmo/BaryonPerturbations.cc
+	cosmo/BaryonPerturbations.cc \
+	cosmo/TransferFunctionPowerSpectrum.cc
 
 # library headers to install (nobase prefix preserves any subdirectories)
 # Anything that includes config.h should *not* be listed here.
@@ -26,7 +27,8 @@ nobase_include_HEADERS = \
 	cosmo/AbsHomogeneousUniverse.h \
 	cosmo/HomogeneousUniverseCalculator.h \
 	cosmo/LambdaCdmUniverse.h \
-	cosmo/BaryonPerturbations.h
+	cosmo/BaryonPerturbations.h \
+	cosmo/TransferFunctionPowerSpectrum.h
 
 # instructions for building each program
 

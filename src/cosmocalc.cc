@@ -7,6 +7,8 @@
 #include "cosmo/cosmo.h"
 
 #include "boost/program_options.hpp"
+#include "boost/bind.hpp"
+#include "boost/ref.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -18,7 +20,8 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology calculator");
-    double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,zval,kval,kmin,kmax;
+    double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,
+        zval,kval,kmin,kmax;
     int nk;
     std::string saveTransferFile;
     cli.add_options()
@@ -34,6 +37,8 @@ int main(int argc, char **argv) {
             "Present-day value of the Hubble parameter h = H0/(100 km/s/Mpc).")
         ("cmb-temp", po::value<double>(&cmbTemp)->default_value(2.725),
             "Present-day temperature of the cosmic microwave background in Kelvin.")
+        ("spectral-index", po::value<double>(&spectralIndex)->default_value(1),
+            "Power exponent of primordial fluctuations.")
         ("redshift,z", po::value<double>(&zval)->default_value(1),
             "Emitter redshift.")
         ("wavenumber,k", po::value<double>(&kval)->default_value(0.1),
@@ -107,6 +112,19 @@ int main(int argc, char **argv) {
         }
         out.close();
     }
+
+    cosmo::TransferFunctionPtr transfer(new cosmo::TransferFunction(boost::bind(
+        &cosmo::BaryonPerturbations::getMatterTransfer,&baryons,_1)));
+
+    double deltaH(1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter)));
+    std::cout << "deltaH = " << deltaH << std::endl;
+
+    cosmo::TransferFunctionPowerSpectrum transferPower(transfer,spectralIndex,deltaH);
+    cosmo::PowerSpectrumPtr power(new cosmo::PowerSpectrum(boost::ref(transferPower)));
+    double sig8pred(0.5*std::pow(OmegaMatter,-0.65));
+    
+    std::cout << "sigma(8 Mpc) = " << cosmo::getRmsAmplitude(power,8*hubbleConstant)
+        << " (pred = " << sig8pred << ")" << std::endl;
 
     return 0;
 }

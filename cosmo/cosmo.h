@@ -9,3 +9,5 @@
 #include "cosmo/LambdaCdmUniverse.h"
 
 #include "cosmo/BaryonPerturbations.h"
+
+#include "cosmo/TransferFunctionPowerSpectrum.h"
