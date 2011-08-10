@@ -21,9 +21,9 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology calculator");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,
-        zval,kval,kmin,kmax;
-    int nk;
-    std::string saveTransferFile;
+        zval,kval,kmin,kmax,rmin,rmax;
+    int nk,nr;
+    std::string saveTransferFile,saveCorrelationFile;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -51,6 +51,14 @@ int main(int argc, char **argv) {
             "Maximum wavenumber in 1/(Mpc/h) for tabulating transfer function.")
         ("nk", po::value<int>(&nk)->default_value(100),
             "Number of logarithmic steps to use for tabulating transfer function.")
+        ("save-correlation", po::value<std::string>(&saveCorrelationFile)->default_value(""),
+            "Saves the matter correlation function to the specified filename.")
+        ("rmin", po::value<double>(&rmin)->default_value(0.01),
+            "Minimum radius in (Mpc/h) for tabulating correlation function.")
+        ("rmax", po::value<double>(&rmax)->default_value(1000.),
+            "Maximum radius in (Mpc/h) for tabulating correlation function.")
+        ("nr", po::value<int>(&nr)->default_value(100),
+            "Number of logarithmic steps to use for tabulating correlation function.")
         ;
 
     // do the command line parsing now
@@ -101,32 +109,22 @@ int main(int argc, char **argv) {
     std::cout << "Tf(cmb,k) = " << Tfc << std::endl;
     std::cout << "Tf(baryon,k) = " << Tfb << std::endl;
     std::cout << "Tf(full,k) = " << Tf << std::endl;
-    
-    if(0 < saveTransferFile.length()) {
-        std::ofstream out(saveTransferFile.c_str());
-        double kratio(std::pow(kmax/kmin,1/(nk-1.)));
-        for(int i = 0; i < nk; ++i) {
-            double k(kmin*std::pow(kratio,i));
-            double Tf(baryons.getMatterTransfer(k));
-            out << k << ' ' << Tf << std::endl;
-        }
-        out.close();
-    }
 
-    cosmo::TransferFunctionPtr transfer(new cosmo::TransferFunction(boost::bind(
+    // Create a sharable pointer to the matter transfer function.
+    cosmo::TransferFunctionPtr transferPtr(new cosmo::TransferFunction(boost::bind(
         &cosmo::BaryonPerturbations::getMatterTransfer,&baryons,_1)));
 
     // Use COBE normalization for n=1
     double deltaH(1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter)));
     std::cout << "deltaH = " << deltaH << std::endl;
 
-    cosmo::TransferFunctionPowerSpectrum transferPower(transfer,spectralIndex,deltaH);
+    cosmo::TransferFunctionPowerSpectrum transferPower(transferPtr,spectralIndex,deltaH);
     cosmo::PowerSpectrumPtr power(new cosmo::PowerSpectrum(boost::ref(transferPower)));
     double sig8pred(0.5*std::pow(OmegaMatter,-0.65));
     
     std::cout << "sigma(8 Mpc/h) = " << cosmo::getRmsAmplitude(power,8)
         << " (pred = " << sig8pred << ")" << std::endl;
-        
+
     // Calculate the Gaussian RMS amplitude on the Jean's length appropriate for
     // QSO spectra, evolved for z = 3.
     double rQSO(0.0416/std::sqrt(OmegaMatter)); // in Mpc/h
@@ -135,6 +133,29 @@ int main(int argc, char **argv) {
 
     std::cout << "rQSO = " << rQSO << " Mpc/h, sigmaQSO(z=0) = " << sigmaQSO
         << ", sigmaQSO(z=3) = " << sigmaQSO*evol << std::endl;
+    
+    if(0 < saveTransferFile.length()) {
+        std::ofstream out(saveTransferFile.c_str());
+        double kratio(std::pow(kmax/kmin,1/(nk-1.)));
+        for(int i = 0; i < nk; ++i) {
+            double k(kmin*std::pow(kratio,i));
+            if(k > kmax) k = kmax; // might happen with rounding
+            out << k << ' ' << (*transferPtr)(k) << ' ' << transferPower(k) << std::endl;
+        }
+        out.close();
+    }
+    
+    if(0 < saveCorrelationFile.length()) {
+        cosmo::PowerSpectrumCorrelationFunction xi(power,rmin,rmax,nr);
+        std::ofstream out(saveCorrelationFile.c_str());
+        double rratio(std::pow(rmax/rmin,1/(nr-1.)));
+        for(int i = 0; i < nr; ++i) {
+            double r(rmin*std::pow(rratio,i));
+            if(r > rmax) r = rmax; // might happen with rounding
+            out << r << ' ' << r*xi(r) << std::endl;
+        }
+        out.close();        
+    }
 
     return 0;
 }

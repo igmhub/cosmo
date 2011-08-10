@@ -35,13 +35,13 @@ double local::PowerSpectrumCorrelationFunction::operator()(double rMpch) const {
         throw RuntimeError("PowerSpectrumCorrelationFunction: r < rmin.");
     }
     if(rMpch > _rmax) {
-        throw RuntimeError("PowerSpectrumCorrelationFunction: r < rmax.");
+        throw RuntimeError("PowerSpectrumCorrelationFunction: r > rmax.");
     }
     if(!_interpolator) {
         // Create separate integrators for k <= pi/r and k > pi/r.
         likely::Integrator::IntegrandPtr integrand1(new likely::Integrator::Integrand(
             boost::bind(&PowerSpectrumCorrelationFunction::_integrand1,this,_1)));
-        likely::Integrator integrator1(integrand1,1e-8,0);        
+        likely::Integrator integrator1(integrand1,1e-8,1e-6);        
         likely::Integrator::IntegrandPtr integrand2(new likely::Integrator::Integrand(
             boost::bind(&PowerSpectrumCorrelationFunction::_integrand2,this,_1)));
         likely::Integrator integrator2(integrand2,1e-6,0);        
