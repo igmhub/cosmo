@@ -7,7 +7,7 @@ lib_LTLIBRARIES = libcosmo.la
 bin_PROGRAMS = cosmocalc
 
 # extra targets that should not be installed
-##noinst_PROGRAMS = demo1 demo2
+noinst_PROGRAMS = cosmotest
 
 # instructions for building the library
 libcosmo_la_SOURCES = \
@@ -37,3 +37,7 @@ nobase_include_HEADERS = \
 cosmocalc_SOURCES = src/cosmocalc.cc
 cosmocalc_DEPENDENCIES = $(lib_LIBRARIES)
 cosmocalc_LDADD = -lboost_program_options -L. -lcosmo
+
+cosmotest_SOURCES = src/cosmotest.cc
+cosmotest_DEPENDENCIES = $(lib_LIBRARIES)
+cosmotest_LDADD = -lboost_program_options -L. -lcosmo

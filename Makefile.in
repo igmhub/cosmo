@@ -37,6 +37,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = cosmocalc$(EXEEXT)
+noinst_PROGRAMS = cosmotest$(EXEEXT)
 subdir = .
 DIST_COMMON = $(am__configure_deps) $(nobase_include_HEADERS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
@@ -82,9 +83,11 @@ am_libcosmo_la_OBJECTS = AbsHomogeneousUniverse.lo \
 	BaryonPerturbations.lo TransferFunctionPowerSpectrum.lo \
 	PowerSpectrumCorrelationFunction.lo
 libcosmo_la_OBJECTS = $(am_libcosmo_la_OBJECTS)
-PROGRAMS = $(bin_PROGRAMS)
+PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS)
 am_cosmocalc_OBJECTS = cosmocalc.$(OBJEXT)
 cosmocalc_OBJECTS = $(am_cosmocalc_OBJECTS)
+am_cosmotest_OBJECTS = cosmotest.$(OBJEXT)
+cosmotest_OBJECTS = $(am_cosmotest_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -98,8 +101,10 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libcosmo_la_SOURCES) $(cosmocalc_SOURCES)
-DIST_SOURCES = $(libcosmo_la_SOURCES) $(cosmocalc_SOURCES)
+SOURCES = $(libcosmo_la_SOURCES) $(cosmocalc_SOURCES) \
+	$(cosmotest_SOURCES)
+DIST_SOURCES = $(libcosmo_la_SOURCES) $(cosmocalc_SOURCES) \
+	$(cosmotest_SOURCES)
 HEADERS = $(nobase_include_HEADERS)
 ETAGS = etags
 CTAGS = ctags
@@ -244,8 +249,6 @@ AM_LDFLAGS = -llikely
 # targets to build and install
 lib_LTLIBRARIES = libcosmo.la
 
-# extra targets that should not be installed
-
 # instructions for building the library
 libcosmo_la_SOURCES = \
 	cosmo/AbsHomogeneousUniverse.cc \
@@ -275,6 +278,9 @@ nobase_include_HEADERS = \
 cosmocalc_SOURCES = src/cosmocalc.cc
 cosmocalc_DEPENDENCIES = $(lib_LIBRARIES)
 cosmocalc_LDADD = -lboost_program_options -L. -lcosmo
+cosmotest_SOURCES = src/cosmotest.cc
+cosmotest_DEPENDENCIES = $(lib_LIBRARIES)
+cosmotest_LDADD = -lboost_program_options -L. -lcosmo
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -407,9 +413,21 @@ clean-binPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+
+clean-noinstPROGRAMS:
+	@list='$(noinst_PROGRAMS)'; test -n "$$list" || exit 0; \
+	echo " rm -f" $$list; \
+	rm -f $$list || exit $$?; \
+	test -n "$(EXEEXT)" || exit 0; \
+	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
+	echo " rm -f" $$list; \
+	rm -f $$list
 cosmocalc$(EXEEXT): $(cosmocalc_OBJECTS) $(cosmocalc_DEPENDENCIES) 
 	@rm -f cosmocalc$(EXEEXT)
 	$(CXXLINK) $(cosmocalc_OBJECTS) $(cosmocalc_LDADD) $(LIBS)
+cosmotest$(EXEEXT): $(cosmotest_OBJECTS) $(cosmotest_DEPENDENCIES) 
+	@rm -f cosmotest$(EXEEXT)
+	$(CXXLINK) $(cosmotest_OBJECTS) $(cosmotest_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -424,6 +442,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PowerSpectrumCorrelationFunction.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TransferFunctionPowerSpectrum.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmocalc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmotest.Po@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -501,6 +520,20 @@ cosmocalc.obj: src/cosmocalc.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmocalc.cc' object='cosmocalc.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmocalc.obj `if test -f 'src/cosmocalc.cc'; then $(CYGPATH_W) 'src/cosmocalc.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmocalc.cc'; fi`
+
+cosmotest.o: src/cosmotest.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmotest.o -MD -MP -MF $(DEPDIR)/cosmotest.Tpo -c -o cosmotest.o `test -f 'src/cosmotest.cc' || echo '$(srcdir)/'`src/cosmotest.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/cosmotest.Tpo $(DEPDIR)/cosmotest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmotest.cc' object='cosmotest.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmotest.o `test -f 'src/cosmotest.cc' || echo '$(srcdir)/'`src/cosmotest.cc
+
+cosmotest.obj: src/cosmotest.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmotest.obj -MD -MP -MF $(DEPDIR)/cosmotest.Tpo -c -o cosmotest.obj `if test -f 'src/cosmotest.cc'; then $(CYGPATH_W) 'src/cosmotest.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmotest.cc'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/cosmotest.Tpo $(DEPDIR)/cosmotest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmotest.cc' object='cosmotest.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmotest.obj `if test -f 'src/cosmotest.cc'; then $(CYGPATH_W) 'src/cosmotest.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmotest.cc'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -769,7 +802,7 @@ maintainer-clean-generic:
 clean: clean-am
 
 clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
-	clean-libtool mostlyclean-am
+	clean-libtool clean-noinstPROGRAMS mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
@@ -845,15 +878,16 @@ uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-am clean \
 	clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
-	clean-libtool ctags dist dist-all dist-bzip2 dist-gzip \
-	dist-lzma dist-shar dist-tarZ dist-xz dist-zip distcheck \
-	distclean distclean-compile distclean-generic distclean-hdr \
-	distclean-libtool distclean-tags distcleancheck distdir \
-	distuninstallcheck dvi dvi-am html html-am info info-am \
-	install install-am install-binPROGRAMS install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-libLTLIBRARIES install-man \
+	clean-libtool clean-noinstPROGRAMS ctags dist dist-all \
+	dist-bzip2 dist-gzip dist-lzma dist-shar dist-tarZ dist-xz \
+	dist-zip distcheck distclean distclean-compile \
+	distclean-generic distclean-hdr distclean-libtool \
+	distclean-tags distcleancheck distdir distuninstallcheck dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-binPROGRAMS install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am \
+	install-libLTLIBRARIES install-man \
 	install-nobase_includeHEADERS install-pdf install-pdf-am \
 	install-ps install-ps-am install-strip installcheck \
 	installcheck-am installdirs maintainer-clean \
