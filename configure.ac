@@ -21,6 +21,14 @@ LT_INIT
 AC_CHECK_LIB([m],[cos],,
 	AC_MSG_ERROR([Cannot find the math library.]))
 
+# Use 'configure --without-fftw3' if no FFTW3 library is available.
+AC_ARG_WITH([fftw3],
+	AS_HELP_STRING([--without-fftw3], [Build without the FFTW3 library.]))
+AS_IF([test "x$with_fftw3" != "xno"], [
+	AC_CHECK_LIB([fftw3],[fftw_malloc],,
+		AC_MSG_ERROR([Cannot find the FFTW3 library.]))
+])
+
 # We need a recent version of boost
 BOOST_REQUIRE([1.45])
 
@@ -36,5 +44,9 @@ AC_CONFIG_FILES([Makefile])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 # See http://www.gnu.org/s/hello/manual/automake/maintainer_002dmode.html
 AM_MAINTAINER_MODE
+AC_CONFIG_HEADERS([config.h])
+
+# Define automake variables that flag whether optional libraries should be used.
+AM_CONDITIONAL([USE_FFTW3], [test "x$ac_cv_lib_fftw3_fftw_malloc" = "xyes"])
 
 AC_OUTPUT

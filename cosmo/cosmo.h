@@ -11,3 +11,4 @@
 #include "cosmo/BaryonPerturbations.h"
 
 #include "cosmo/TransferFunctionPowerSpectrum.h"
+#include "cosmo/PowerSpectrumCorrelationFunction.h"
