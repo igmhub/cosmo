@@ -21,8 +21,11 @@ namespace cosmo {
 	}; // TransferFunctionPowerSpectrum
 	
 	// Returns the RMS amplitude of fluctuations inside a sphere of the specified
-	// radius in Mpc/h for the specified power spectrum function.
-    double getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch);
+	// radius in Mpc/h for the specified power spectrum function. Use gaussian = true
+	// for a Gaussian window function with the specified radius. Otherwise, a step
+	// function (top-hat) window function is used.
+    double getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch,
+        bool gaussian = false);
 	
 } // cosmo
 

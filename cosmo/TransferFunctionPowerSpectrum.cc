@@ -32,23 +32,25 @@ double local::TransferFunctionPowerSpectrum::operator()(double kMpch) const {
 namespace cosmo {
     class RmsIntegrand {
     public:
-        RmsIntegrand(PowerSpectrumPtr powerSpectrum, double rMpch)
-        : _powerSpectrum(powerSpectrum), _rMpch(rMpch) { }
+        RmsIntegrand(PowerSpectrumPtr powerSpectrum, double rMpch, bool gaussian)
+        : _powerSpectrum(powerSpectrum), _rMpch(rMpch), _gaussian(gaussian) { }
         double operator()(double kMpch) const {
             double kr(kMpch*_rMpch), kr2(kr*kr);
-            double wgt((std::sin(kr)-kr*std::cos(kr))*3/(kr2*kr));
+            double wgt(_gaussian ?
+                std::exp(-kr2/2) : (std::sin(kr)-kr*std::cos(kr))*3/(kr2*kr));
             return (*_powerSpectrum)(kMpch)*wgt*wgt/kMpch;
         }
     private:
         PowerSpectrumPtr _powerSpectrum;
         double _rMpch;
+        bool _gaussian;
     };
 } // cosmo::
 
-double local::getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch) {
-    RmsIntegrand rmsIntegrand(powerSpectrum,rMpch);
+double local::getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch, bool gaussian) {
+    RmsIntegrand rmsIntegrand(powerSpectrum,rMpch,gaussian);
     likely::Integrator::IntegrandPtr integrand(new likely::Integrator::Integrand(
         boost::ref(rmsIntegrand)));
     likely::Integrator integrator(integrand,1e-8,1e-6);
-    return integrator.integrateSingular(0,1) + integrator.integrateUp(1);
+    return std::sqrt(integrator.integrateSingular(0,1) + integrator.integrateUp(1));
 }

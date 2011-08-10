@@ -116,6 +116,7 @@ int main(int argc, char **argv) {
     cosmo::TransferFunctionPtr transfer(new cosmo::TransferFunction(boost::bind(
         &cosmo::BaryonPerturbations::getMatterTransfer,&baryons,_1)));
 
+    // Use COBE normalization for n=1
     double deltaH(1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter)));
     std::cout << "deltaH = " << deltaH << std::endl;
 
@@ -123,8 +124,17 @@ int main(int argc, char **argv) {
     cosmo::PowerSpectrumPtr power(new cosmo::PowerSpectrum(boost::ref(transferPower)));
     double sig8pred(0.5*std::pow(OmegaMatter,-0.65));
     
-    std::cout << "sigma(8 Mpc) = " << cosmo::getRmsAmplitude(power,8*hubbleConstant)
+    std::cout << "sigma(8 Mpc/h) = " << cosmo::getRmsAmplitude(power,8)
         << " (pred = " << sig8pred << ")" << std::endl;
+        
+    // Calculate the Gaussian RMS amplitude on the Jean's length appropriate for
+    // QSO spectra, evolved for z = 3.
+    double rQSO(0.0416/std::sqrt(OmegaMatter)); // in Mpc/h
+    double evol(cosmology->getGrowthFunction(3)/cosmology->getGrowthFunction(0));
+    double sigmaQSO(cosmo::getRmsAmplitude(power,rQSO,true));
+
+    std::cout << "rQSO = " << rQSO << " Mpc/h, sigmaQSO(z=0) = " << sigmaQSO
+        << ", sigmaQSO(z=3) = " << sigmaQSO*evol << std::endl;
 
     return 0;
 }
