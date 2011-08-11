@@ -135,12 +135,14 @@ int main(int argc, char **argv) {
         << ", sigmaQSO(z=3) = " << sigmaQSO*evol << std::endl;
     
     if(0 < saveTransferFile.length()) {
+        double pi(4*std::atan(1)),fourpi2(4*pi*pi);
         std::ofstream out(saveTransferFile.c_str());
         double kratio(std::pow(kmax/kmin,1/(nk-1.)));
         for(int i = 0; i < nk; ++i) {
             double k(kmin*std::pow(kratio,i));
             if(k > kmax) k = kmax; // might happen with rounding
-            out << k << ' ' << (*transferPtr)(k) << ' ' << transferPower(k) << std::endl;
+            out << k << ' ' << (*transferPtr)(k) << ' '
+                << fourpi2/(k*k*k)*transferPower(k) << std::endl;
         }
         out.close();
     }
