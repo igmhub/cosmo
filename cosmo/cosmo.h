@@ -12,3 +12,4 @@
 
 #include "cosmo/TransferFunctionPowerSpectrum.h"
 #include "cosmo/PowerSpectrumCorrelationFunction.h"
+#include "cosmo/OneDimensionalPowerSpectrum.h"
