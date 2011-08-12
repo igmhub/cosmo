@@ -4,6 +4,10 @@
 // cosmocalc --omega-matter 0.2 --omega-baryon 0.1 --hubble-constant 0.5 --cmb-temp 2.728 \
 //   --kmin 0.001 --kmax 1 --nk 500 --save-transfer fig3.dat
 
+// Reproduce Fig.1 of JMLG paper draft (needs an extra factor of pi/2 ??)
+// ./cosmocalc --omega-baryon 0.044 --omega-matter 0.27 --omega-lambda 0.73 \
+//   --hubble-constant 0.71 --save-transfer xfer.dat -r 0.1 --kmax 1
+
 #include "cosmo/cosmo.h"
 
 #include "boost/program_options.hpp"
@@ -21,7 +25,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology calculator");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,
-        zval,kval,kmin,kmax,rmin,rmax;
+        zval,kval,kmin,kmax,rval,rmin,rmax;
     int nk,nr;
     std::string saveTransferFile,saveCorrelationFile;
     cli.add_options()
@@ -43,6 +47,8 @@ int main(int argc, char **argv) {
             "Emitter redshift.")
         ("wavenumber,k", po::value<double>(&kval)->default_value(0.1),
             "Perturbation wavenumber in 1/(Mpc/h).")
+        ("radius,r", po::value<double>(&rval)->default_value(0.04),
+            "Radius for 1D power spectrum in Mpc/h.")
         ("save-transfer", po::value<std::string>(&saveTransferFile)->default_value(""),
             "Saves the matter transfer function to the specified filename.")
         ("kmin", po::value<double>(&kmin)->default_value(0.001),
@@ -136,13 +142,16 @@ int main(int argc, char **argv) {
     
     if(0 < saveTransferFile.length()) {
         double pi(4*std::atan(1)),fourpi2(4*pi*pi);
+        cosmo::OneDimensionalPowerSpectrum onedZero(power,0,kmin,kmax,nk),
+            onedHard(power,+rval,kmin,kmax,nk),onedSoft(power,-rval,kmin,kmax,nk);
         std::ofstream out(saveTransferFile.c_str());
         double kratio(std::pow(kmax/kmin,1/(nk-1.)));
         for(int i = 0; i < nk; ++i) {
             double k(kmin*std::pow(kratio,i));
             if(k > kmax) k = kmax; // might happen with rounding
             out << k << ' ' << (*transferPtr)(k) << ' '
-                << fourpi2/(k*k*k)*transferPower(k) << std::endl;
+                << fourpi2/(k*k*k)*transferPower(k) << ' ' << pi/k*onedZero(k)
+                << ' ' << pi/k*onedHard(k) << ' ' << pi/k*onedSoft(k) << std::endl;
         }
         out.close();
     }

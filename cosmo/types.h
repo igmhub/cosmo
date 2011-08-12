@@ -16,7 +16,7 @@ namespace cosmo {
     typedef boost::function<double (double)> TransferFunction;
     typedef boost::shared_ptr<TransferFunction> TransferFunctionPtr;
     
-    // Represents a function that returns the power spectrum value P(k)
+    // Represents a function that returns the power spectrum value k^3/(2pi^2) P(k)
     // given an input wavenumber k in 1/(Mpc/h).
     typedef boost::function<double (double)> PowerSpectrum;
     typedef boost::shared_ptr<TransferFunction> PowerSpectrumPtr;
