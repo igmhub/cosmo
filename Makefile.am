@@ -18,7 +18,8 @@ libcosmo_la_SOURCES = \
 	cosmo/TransferFunctionPowerSpectrum.cc \
 	cosmo/PowerSpectrumCorrelationFunction.cc \
 	cosmo/OneDimensionalPowerSpectrum.cc \
-	cosmo/AbsGaussianRandomFieldGenerator.cc
+	cosmo/AbsGaussianRandomFieldGenerator.cc \
+	cosmo/FftGaussianRandomFieldGenerator.cc
 
 # library headers to install (nobase prefix preserves any subdirectories)
 # Anything that includes config.h should *not* be listed here.
@@ -34,7 +35,8 @@ nobase_include_HEADERS = \
 	cosmo/TransferFunctionPowerSpectrum.h \
 	cosmo/PowerSpectrumCorrelationFunction.h \
 	cosmo/OneDimensionalPowerSpectrum.h \
-	cosmo/AbsGaussianRandomFieldGenerator.h
+	cosmo/AbsGaussianRandomFieldGenerator.h \
+	cosmo/FftGaussianRandomFieldGenerator.h
 
 # instructions for building each program
 
