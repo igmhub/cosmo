@@ -5,6 +5,8 @@
 
 #include "cosmo/types.h"
 
+#include <cstddef>
+
 namespace cosmo {
     // Represents an abstract generator of 3D Gaussian random fields as realizations of
     // a 3D isotropic power spectrum on a uniform rectangular grid.
@@ -29,6 +31,9 @@ namespace cosmo {
         double getField(int x, int y, int z) const;
         // Returns the number of times that generate() has been called.
         int getGenerateCount() const;
+        // Returns the memory size in bytes required for this generator or zero if this
+        // information is not available.
+        virtual std::size_t getMemorySize() const;
 	private:
         PowerSpectrumPtr _powerSpectrum;
         double _spacing;

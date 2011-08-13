@@ -40,3 +40,7 @@ double local::AbsGaussianRandomFieldGenerator::getField(int x, int y, int z) con
     }
     return _getFieldUnchecked(x,y,z);
 }
+
+std::size_t local::AbsGaussianRandomFieldGenerator::getMemorySize() const {
+    return 0;
+}

@@ -5,6 +5,8 @@
 
 #include "cosmo/AbsGaussianRandomFieldGenerator.h"
 
+#include "boost/smart_ptr.hpp"
+
 namespace cosmo {
     // Implements the abstract Gaussian random field generator interface using FFT.
 	class FftGaussianRandomFieldGenerator : public AbsGaussianRandomFieldGenerator {
@@ -12,7 +14,13 @@ namespace cosmo {
 		FftGaussianRandomFieldGenerator(PowerSpectrumPtr powerSpectrum, double spacing,
 		    int nx, int ny, int nz);
 		virtual ~FftGaussianRandomFieldGenerator();
+        // Returns the memory size in bytes required for this generator or zero if this
+        // information is not available.
+        virtual std::size_t getMemorySize() const;
 	private:
+        class Implementation;
+        int _halfz;
+        boost::scoped_ptr<Implementation> _pimpl;
         // The generate() method calls this virtual method.
         virtual void _generate(int seed);
         // The getField method calls this virtual method after checking that data is
