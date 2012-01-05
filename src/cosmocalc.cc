@@ -140,6 +140,9 @@ int main(int argc, char **argv) {
     std::cout << "rQSO = " << rQSO << " Mpc/h, sigmaQSO(z=0) = " << sigmaQSO
         << ", sigmaQSO(z=3) = " << sigmaQSO*evol << std::endl;
     
+    // Calculate the growth factor from zval to z=0
+    evol = cosmology->getGrowthFunction(zval)/cosmology->getGrowthFunction(0);
+    double evolSq(evol*evol);
     if(0 < saveTransferFile.length()) {
         double pi(4*std::atan(1)),fourpi2(4*pi*pi);
         cosmo::OneDimensionalPowerSpectrum onedZero(power,0,kmin,kmax,nk),
@@ -150,8 +153,8 @@ int main(int argc, char **argv) {
             double k(kmin*std::pow(kratio,i));
             if(k > kmax) k = kmax; // might happen with rounding
             out << k << ' ' << (*transferPtr)(k) << ' '
-                << fourpi2/(k*k*k)*transferPower(k) << ' ' << pi/k*onedZero(k)
-                << ' ' << pi/k*onedHard(k) << ' ' << pi/k*onedSoft(k) << std::endl;
+                << fourpi2/(k*k*k)*transferPower(k)*evolSq << ' ' << pi/k*onedZero(k)*evolSq
+                << ' ' << pi/k*onedHard(k)*evolSq << ' ' << pi/k*onedSoft(k)*evolSq << std::endl;
         }
         out.close();
     }
