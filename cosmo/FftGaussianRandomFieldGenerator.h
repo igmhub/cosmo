@@ -20,6 +20,7 @@ namespace cosmo {
 	private:
         class Implementation;
         int _halfz;
+        std::size_t _nbuf;
         boost::scoped_ptr<Implementation> _pimpl;
         // The generate() method calls this virtual method.
         virtual void _generate(int seed);
