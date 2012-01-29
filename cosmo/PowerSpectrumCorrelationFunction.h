@@ -7,7 +7,8 @@
 #include "likely/types.h"
 
 namespace cosmo {
-    // Represents the isotropic correlation function of an isotropic 3D power spectrum.
+    // Represents the l = 0,2,4 correlation functions of an isotropic 3D power
+    // spectrum k^3/(2pi^2) P(k).
 	class PowerSpectrumCorrelationFunction {
 	public:
 	    // Creates a correlation function from the power spectrum provided that is valid
@@ -19,7 +20,7 @@ namespace cosmo {
 		// Returns the correlation function evaluated at the specified radius in Mpc/h.
         double operator()(double rMpch) const;
 	private:
-        PowerSpectrumPtr _powerSpectrum;
+        PowerSpectrumPtr _powerSpectrum; // evaluates k^3/(2pi^2) P(k)
         double _rmin, _rmax;
         int _nr;
         mutable likely::InterpolatorPtr _interpolator;
