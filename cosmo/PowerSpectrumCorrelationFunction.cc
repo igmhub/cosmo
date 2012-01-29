@@ -14,8 +14,8 @@
 namespace local = cosmo;
 
 local::PowerSpectrumCorrelationFunction::PowerSpectrumCorrelationFunction(
-PowerSpectrumPtr powerSpectrum, double rmin, double rmax, int nr)
-: _powerSpectrum(powerSpectrum), _rmin(rmin), _rmax(rmax), _nr(nr)
+PowerSpectrumPtr powerSpectrum, double rmin, double rmax, Multipole multipole, int nr)
+: _powerSpectrum(powerSpectrum), _rmin(rmin), _rmax(rmax), _multipole(multipole), _nr(nr)
 {
     if(rmin <= 0) {
         throw RuntimeError("PowerSpectrumCorrelationFunction: invalid rmin <= 0.");
@@ -72,6 +72,11 @@ double local::PowerSpectrumCorrelationFunction::_integrand1(double kval) const {
 }
 
 double local::PowerSpectrumCorrelationFunction::_integrand2(double kval) const {
+    double kr(kval*_radius);
+    return (*_powerSpectrum)(kval)/(kr*kval);
+}
+
+double local::PowerSpectrumCorrelationFunction::_integrand3(double kval) const {
     double kr(kval*_radius);
     return (*_powerSpectrum)(kval)/(kr*kval);
 }

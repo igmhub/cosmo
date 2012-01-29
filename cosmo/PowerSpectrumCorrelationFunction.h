@@ -11,25 +11,31 @@ namespace cosmo {
     // spectrum k^3/(2pi^2) P(k).
 	class PowerSpectrumCorrelationFunction {
 	public:
-	    // Creates a correlation function from the power spectrum provided that is valid
-	    // from rmin-rmax (in Mpc/h) and which uses nr logarithmically-spaced interpolation
-	    // points over this range.
+        enum Multipole { Monopole = 0, Quadrupole = 2, Hexadecapole = 4 };
+	    // Creates a correlation function for the specified multipole from the power
+	    // spectrum provided that is valid from rmin-rmax (in Mpc/h) and which uses
+	    // nr logarithmically-spaced interpolation points over this range.
 		PowerSpectrumCorrelationFunction(PowerSpectrumPtr powerSpectrum,
-		    double rmin, double rmax, int nr = 1024);
+		    double rmin, double rmax, Multipole = Monopole, int nr = 1024);
 		virtual ~PowerSpectrumCorrelationFunction();
 		// Returns the correlation function evaluated at the specified radius in Mpc/h.
         double operator()(double rMpch) const;
 	private:
         PowerSpectrumPtr _powerSpectrum; // evaluates k^3/(2pi^2) P(k)
         double _rmin, _rmax;
+        Multipole _multipole;
         int _nr;
         mutable likely::InterpolatorPtr _interpolator;
         mutable double _radius;
         // Integrand for 0 <= k < pi/r which is possibly singular and uses a series
         // expansion of sin(kr)/(kr) for small kr.
         double _integrand1(double kval) const;
-        // Integrand for pi/r < k with the oscillatory sin(kr) part factored out.
+        // Partial integrand for pi/r < k with an oscillatory sin(kr) part factored out.
+        // The complete integrand is given by _integrand2 + _integrand3.
         double _integrand2(double kval) const;
+        // Partial integrand for pi/r < k with an oscillatory cos(kr) part factored out.
+        // The complete integrand is given by _integrand2 + _integrand3.
+        double _integrand3(double kval) const;
 	}; // PowerSpectrumCorrelationFunction
 } // cosmo
 

@@ -160,7 +160,9 @@ int main(int argc, char **argv) {
     }
     
     if(0 < saveCorrelationFile.length()) {
-        cosmo::PowerSpectrumCorrelationFunction xi(power,rmin,rmax,nr);
+        cosmo::PowerSpectrumCorrelationFunction::Multipole
+            multipole(cosmo::PowerSpectrumCorrelationFunction::Monopole);
+        cosmo::PowerSpectrumCorrelationFunction xi(power,rmin,rmax,multipole,nr);
         std::ofstream out(saveCorrelationFile.c_str());
         double rratio(std::pow(rmax/rmin,1/(nr-1.)));
         for(int i = 0; i < nr; ++i) {
