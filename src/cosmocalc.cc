@@ -65,6 +65,8 @@ int main(int argc, char **argv) {
             "Maximum radius in (Mpc/h) for tabulating correlation function.")
         ("nr", po::value<int>(&nr)->default_value(100),
             "Number of logarithmic steps to use for tabulating correlation function.")
+        ("quad", "Calculates the quadrupole (l=2) correlation function (default is monopole).")
+        ("hexa", "Calculates the hexedacapole (l=4) correlation function (default is monopole).")
         ;
 
     // do the command line parsing now
@@ -81,7 +83,17 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose"));
+    bool verbose(vm.count("verbose")), quad(vm.count("quad")), hexa(vm.count("hexa"));
+
+    if(quad && hexa) {
+        std::cerr << "Must specify either quad (l=2) or hexa (l=4) for correlation function output."
+            << std::endl;
+        return -1;
+    }
+    cosmo::PowerSpectrumCorrelationFunction::Multipole
+        multipole(cosmo::PowerSpectrumCorrelationFunction::Monopole);
+    if(quad) multipole = cosmo::PowerSpectrumCorrelationFunction::Quadrupole;
+    if(hexa) multipole = cosmo::PowerSpectrumCorrelationFunction::Hexadecapole;
 
     if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
     cosmo::AbsHomogeneousUniversePtr cosmology(
@@ -160,8 +172,6 @@ int main(int argc, char **argv) {
     }
     
     if(0 < saveCorrelationFile.length()) {
-        cosmo::PowerSpectrumCorrelationFunction::Multipole
-            multipole(cosmo::PowerSpectrumCorrelationFunction::Monopole);
         cosmo::PowerSpectrumCorrelationFunction xi(power,rmin,rmax,multipole,nr);
         std::ofstream out(saveCorrelationFile.c_str());
         double rratio(std::pow(rmax/rmin,1/(nr-1.)));
