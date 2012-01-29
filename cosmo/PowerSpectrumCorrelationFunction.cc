@@ -67,16 +67,53 @@ double local::PowerSpectrumCorrelationFunction::operator()(double rMpch) const {
 }
 
 double local::PowerSpectrumCorrelationFunction::_integrand1(double kval) const {
-    double kr(kval*_radius);
-    return (*_powerSpectrum)(kval)*boost::math::sinc_pi(kr)/kval;
+    double kr(kval*_radius),kr2(kr*kr);
+    double result = (*_powerSpectrum)(kval);
+    switch(_multipole) {
+    case Monopole:
+        result *= boost::math::sinc_pi(kr)/kval;
+        break;
+    case Quadrupole:
+        result *= (std::sin(kr)*(kr2 - 3) + 3*std::cos(kr)*kr)/(kr2*kr*kval);
+        break;
+    case Hexadecapole:
+        result *= (std::sin(kr)*(kr2*kr2 - 45*kr2 + 105) +
+            std::cos(kr)*(10*kr2 - 105)*kr)/(kr2*kr2*kr*kval);
+        break;
+    }
+    return result;
 }
 
 double local::PowerSpectrumCorrelationFunction::_integrand2(double kval) const {
-    double kr(kval*_radius);
-    return (*_powerSpectrum)(kval)/(kr*kval);
+    double kr(kval*_radius),kr2(kr*kr);
+    double result = (*_powerSpectrum)(kval);
+    switch(_multipole) {
+    case Monopole:
+        result *= 1/(kr*kval);
+        break;
+    case Quadrupole:
+        result *= (kr2 - 3)/(kr2*kr*kval);
+        break;
+    case Hexadecapole:
+        result *= (kr2*kr2 - 45*kr2 + 105)/(kr2*kr2*kr*kval);
+        break;
+    }
+    return result;
 }
 
 double local::PowerSpectrumCorrelationFunction::_integrand3(double kval) const {
-    double kr(kval*_radius);
-    return (*_powerSpectrum)(kval)/(kr*kval);
+    double kr(kval*_radius),kr2(kr*kr);
+    double result = (*_powerSpectrum)(kval);
+    switch(_multipole) {
+    case Monopole:
+        result = 0;
+        break;
+    case Quadrupole:
+        result *= 3/(kr2*kval);
+        break;
+    case Hexadecapole:
+        result *= (10*kr2 - 105)/(kr2*kr2*kval);
+        break;
+    }
+    return result;
 }
