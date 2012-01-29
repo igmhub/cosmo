@@ -103,7 +103,7 @@ double local::BaryonPerturbations::getMatterTransfer(double kMpch) const {
 }
 
 void local::BaryonPerturbations::calculateTransferFunctions(double kMpch,
-double &Tf_baryon, double &Tf_cdm, double &Tf_full) const {
+double &Tf_baryon, double &Tf_cdm, double &Tf_full, BaoOption baoOption) const {
 
     if(0 == kMpch) {
         Tf_baryon = Tf_cdm = Tf_full = 1;

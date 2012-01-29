@@ -33,10 +33,18 @@ namespace cosmo {
         // Returns the CDM + baryon transfer function value at the specified wavenumber
         // in 1/(Mpc/h).
         double getMatterTransfer(double kMpch) const;
+        // Options for including baryon acoustic oscillations in the transfer function calculation.
+        // See Section 3.2 of astro-ph/9709112 for details.
+        enum BaoOption {
+            NoOscillation,          // sinc(k*s) replaced by 
+            PeriodicOscillation,    // nodes are periodically spaced in k
+            ShiftedOscillation      // first few nodes (k*s < 10) are shifted to higher k
+        };
 		// Calculates and stores the baryon, CDM, and full (baryon+CDM) transfer functions
 		// for the specified input wavenumber k in 1/(Mpc/h).
         void calculateTransferFunctions(double kMpch,
-            double &Tf_baryon, double &Tf_cdm, double &Tf_full) const;
+            double &Tf_baryon, double &Tf_cdm, double &Tf_full,
+            BaoOption baoOption = ShiftedOscillation) const;
 	private:
         double _omegaMatter, _omegaBaryon, _hubbleConstant, _cmbTemperature;
         double
