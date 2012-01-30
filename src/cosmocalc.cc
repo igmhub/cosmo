@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
         ("hexa", "Calculates the hexedacapole (l=4) correlation function (default is monopole).")
         ("no-wiggles", "Calculates the power spectrum without baryon acoustic oscillations.")
         ("periodic-wiggles", "Calculates the power spectrum with periodic acoustic oscillations.")
+        ("bao-fit", "Calculates a power spectrum parameterized for BAO fitting.")
         ;
 
     // do the command line parsing now
@@ -104,7 +105,7 @@ int main(int argc, char **argv) {
     }
     bool verbose(vm.count("verbose")), rlinear(vm.count("rlinear")),
         quad(vm.count("quad")), hexa(vm.count("hexa")), noWiggles(vm.count("no-wiggles")),
-        periodicWiggles(vm.count("periodic-wiggles"));
+        periodicWiggles(vm.count("periodic-wiggles")), baoFit(vm.count("bao-fit"));
 
     // Process the multipole flags.
     if(quad && hexa) {
@@ -118,8 +119,8 @@ int main(int argc, char **argv) {
     if(hexa) multipole = cosmo::PowerSpectrumCorrelationFunction::Hexadecapole;
 
     // Process the wiggle flags.
-    if(noWiggles && periodicWiggles) {
-        std::cerr << "Cannot request both no-wiggles and periodic-wiggles for acoustic oscillations."
+    if(vm.count("no-wiggles")+vm.count("periodic-wiggles")+vm.count("bao-fit") > 1) {
+        std::cerr << "Specify at most one of no-wiggles, periodic-wiggles, bao-fit options."
             << std::endl;
         return -1;
     }
