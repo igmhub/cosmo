@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology calculator");
-    double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,
+    double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,
         zval,kval,kmin,kmax,rval,rmin,rmax,baoAmplitude,baoSigma,baoScale;
     int nk,nr;
     std::string saveTransferFile,saveCorrelationFile;
@@ -60,6 +60,8 @@ int main(int argc, char **argv) {
             "Present-day temperature of the cosmic microwave background in Kelvin.")
         ("spectral-index", po::value<double>(&spectralIndex)->default_value(1),
             "Power exponent of primordial fluctuations.")
+        ("sigma8", po::value<double>(&sigma8)->default_value(0),
+            "Power will be normalized to this value (default is COBE normalization).")
         ("redshift,z", po::value<double>(&zval)->default_value(1),
             "Emitter redshift.")
         ("wavenumber,k", po::value<double>(&kval)->default_value(0.1),
@@ -180,6 +182,30 @@ int main(int argc, char **argv) {
     cosmo::TransferFunctionPowerSpectrum transferPower(transferPtr,spectralIndex,deltaH);
     cosmo::PowerSpectrumPtr power(new cosmo::PowerSpectrum(boost::ref(transferPower)));
 
+    // Calculate the Gaussian RMS amplitude on the Jean's length appropriate for
+    // QSO spectra, evolved for z = 3.
+    double rQSO(0.0416/std::sqrt(OmegaMatter)); // in Mpc/h
+    double evol(cosmology->getGrowthFunction(3)/cosmology->getGrowthFunction(0));
+    double sigmaQSO(cosmo::getRmsAmplitude(power,rQSO,true));
+    std::cout << "rQSO = " << rQSO << " Mpc/h, sigmaQSO(z=0) = " << sigmaQSO
+        << ", sigmaQSO(z=3) = " << sigmaQSO*evol << std::endl;
+
+    // Check the normalization at 8 Mpc/h scales.
+    double sig8pred(0.5*std::pow(OmegaMatter,-0.65));
+    double sig8calc(cosmo::getRmsAmplitude(power,8));
+    std::cout << "sigma(8 Mpc/h) = " << sig8calc
+        << " (pred = " << sig8pred << ")" << std::endl;
+    double norm(1);
+    if(sigma8 > 0) {
+        std::cout << "Rescaling to sigma(8 Mpc/h) = " << sigma8 << std::endl;
+        double tmp(sigma8/sig8calc);
+        norm = tmp*tmp;
+    }
+    
+    // Calculate the growth factor from zval to z=0
+    evol = cosmology->getGrowthFunction(zval)/cosmology->getGrowthFunction(0);
+    double evolSq(evol*evol);
+
     // Add BAO fitting parameters if requested
     boost::shared_ptr<cosmo::BaryonPerturbations> noWigglesBaryonsPtr;
     cosmo::TransferFunctionPtr noWigglesTransferPtr;
@@ -198,22 +224,6 @@ int main(int argc, char **argv) {
         power.reset(new cosmo::PowerSpectrum(boost::ref(*baoFitPowerPtr)));
     }
 
-    double sig8pred(0.5*std::pow(OmegaMatter,-0.65));    
-    std::cout << "sigma(8 Mpc/h) = " << cosmo::getRmsAmplitude(power,8)
-        << " (pred = " << sig8pred << ")" << std::endl;
-
-    // Calculate the Gaussian RMS amplitude on the Jean's length appropriate for
-    // QSO spectra, evolved for z = 3.
-    double rQSO(0.0416/std::sqrt(OmegaMatter)); // in Mpc/h
-    double evol(cosmology->getGrowthFunction(3)/cosmology->getGrowthFunction(0));
-    double sigmaQSO(cosmo::getRmsAmplitude(power,rQSO,true));
-
-    std::cout << "rQSO = " << rQSO << " Mpc/h, sigmaQSO(z=0) = " << sigmaQSO
-        << ", sigmaQSO(z=3) = " << sigmaQSO*evol << std::endl;
-    
-    // Calculate the growth factor from zval to z=0
-    evol = cosmology->getGrowthFunction(zval)/cosmology->getGrowthFunction(0);
-    double evolSq(evol*evol);
     if(0 < saveTransferFile.length()) {
         double pi(4*std::atan(1)),fourpi2(4*pi*pi);
         cosmo::OneDimensionalPowerSpectrum onedZero(power,0,kmin,kmax,nk),
@@ -224,8 +234,8 @@ int main(int argc, char **argv) {
             double k(kmin*std::pow(kratio,i));
             if(k > kmax) k = kmax; // might happen with rounding
             out << k << ' ' << (*transferPtr)(k) << ' '
-                << fourpi2/(k*k*k)*transferPower(k)*evolSq << ' ' << pi/k*onedZero(k)*evolSq
-                << ' ' << pi/k*onedHard(k)*evolSq << ' ' << pi/k*onedSoft(k)*evolSq << std::endl;
+                << fourpi2/(k*k*k)*transferPower(k)*evolSq*norm << ' ' << pi/k*onedZero(k)*evolSq*norm
+                << ' ' << pi/k*onedHard(k)*evolSq*norm << ' ' << pi/k*onedSoft(k)*evolSq*norm << std::endl;
         }
         out.close();
     }
@@ -238,7 +248,7 @@ int main(int argc, char **argv) {
         for(int i = 0; i < nr; ++i) {
             r = rlinear ? rmin + dr*i : rmin*std::pow(dr,i);
             if(r > rmax) r = rmax; // might happen with rounding but xi(r) will complain
-            out << r << ' ' << r*xi(r)*evolSq << std::endl;
+            out << r << ' ' << r*xi(r)*evolSq*norm << std::endl;
         }
         out.close();        
     }
