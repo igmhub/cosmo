@@ -178,8 +178,26 @@ int main(int argc, char **argv) {
 
     cosmo::TransferFunctionPowerSpectrum transferPower(transferPtr,spectralIndex,deltaH);
     cosmo::PowerSpectrumPtr power(new cosmo::PowerSpectrum(boost::ref(transferPower)));
-    double sig8pred(0.5*std::pow(OmegaMatter,-0.65));
-    
+
+    // Add BAO fitting parameters if requested
+    boost::shared_ptr<cosmo::BaryonPerturbations> noWigglesBaryonsPtr;
+    cosmo::TransferFunctionPtr noWigglesTransferPtr;
+    boost::shared_ptr<cosmo::TransferFunctionPowerSpectrum> noWigglesTransferPowerPtr;
+    cosmo::PowerSpectrumPtr noWigglesPowerPtr;
+    boost::shared_ptr<BaoFitPower> baoFitPowerPtr;
+    if(baoFit) {
+        noWigglesBaryonsPtr.reset(new cosmo::BaryonPerturbations(
+            OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::NoOscillation));
+        noWigglesTransferPtr.reset(new cosmo::TransferFunction(boost::bind(
+            &cosmo::BaryonPerturbations::getMatterTransfer,noWigglesBaryonsPtr,_1)));
+        noWigglesTransferPowerPtr.reset(new cosmo::TransferFunctionPowerSpectrum(
+            noWigglesTransferPtr,spectralIndex,deltaH));
+        noWigglesPowerPtr.reset(new cosmo::PowerSpectrum(boost::ref(*noWigglesTransferPowerPtr)));
+        baoFitPowerPtr.reset(new BaoFitPower(baoAmplitude,baoScale,baoSigma,power,noWigglesPowerPtr));
+        power.reset(new cosmo::PowerSpectrum(boost::ref(*baoFitPowerPtr)));
+    }
+
+    double sig8pred(0.5*std::pow(OmegaMatter,-0.65));    
     std::cout << "sigma(8 Mpc/h) = " << cosmo::getRmsAmplitude(power,8)
         << " (pred = " << sig8pred << ")" << std::endl;
 
