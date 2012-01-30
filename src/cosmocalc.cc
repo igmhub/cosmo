@@ -68,6 +68,8 @@ int main(int argc, char **argv) {
         ("rlinear", "Use linearly spaced r-values for saved correlation function (default is log).")
         ("quad", "Calculates the quadrupole (l=2) correlation function (default is monopole).")
         ("hexa", "Calculates the hexedacapole (l=4) correlation function (default is monopole).")
+        ("no-wiggles", "Calculates the power spectrum without baryon acoustic oscillations.")
+        ("periodic-wiggles", "Calculates the power spectrum with periodic acoustic oscillations.")
         ;
 
     // do the command line parsing now
@@ -85,10 +87,12 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose")), rlinear(vm.count("rlinear")),
-        quad(vm.count("quad")), hexa(vm.count("hexa"));
+        quad(vm.count("quad")), hexa(vm.count("hexa")), noWiggles(vm.count("no-wiggles")),
+        periodicWiggles(vm.count("periodic-wiggles"));
 
+    // Process the multipole flags.
     if(quad && hexa) {
-        std::cerr << "Must specify either quad (l=2) or hexa (l=4) for correlation function output."
+        std::cerr << "Cannot request both quad (l=2) and hexa (l=4) for correlation function output."
             << std::endl;
         return -1;
     }
@@ -97,6 +101,17 @@ int main(int argc, char **argv) {
     if(quad) multipole = cosmo::PowerSpectrumCorrelationFunction::Quadrupole;
     if(hexa) multipole = cosmo::PowerSpectrumCorrelationFunction::Hexadecapole;
 
+    // Process the wiggle flags.
+    if(noWiggles && periodicWiggles) {
+        std::cerr << "Cannot request both no-wiggles and periodic-wiggles for acoustic oscillations."
+            << std::endl;
+        return -1;
+    }
+    cosmo::BaryonPerturbations::BaoOption baoOption(cosmo::BaryonPerturbations::ShiftedOscillation);
+    if(noWiggles) baoOption = cosmo::BaryonPerturbations::NoOscillation;
+    if(periodicWiggles) baoOption = cosmo::BaryonPerturbations::PeriodicOscillation;
+
+    // Build the homogeneous cosmology we will use.
     if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
     cosmo::AbsHomogeneousUniversePtr cosmology(
         new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
@@ -113,7 +128,7 @@ int main(int argc, char **argv) {
     std::cout << "D1(z) = " << 2.5*OmegaMatter*cosmology->getGrowthFunction(zval)
         << std::endl;
     
-    cosmo::BaryonPerturbations baryons(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp);
+    cosmo::BaryonPerturbations baryons(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,baoOption);
 
     std::cout << "z(eq) = " << baryons.getMatterRadiationEqualityRedshift() << std::endl;
     std::cout << "k(eq) = " << baryons.getMatterRadiationEqualityScale() << " /(Mpc/h)"
