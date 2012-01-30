@@ -44,7 +44,7 @@ double local::PowerSpectrumCorrelationFunction::operator()(double rMpch) const {
         likely::Integrator integrator1(integrand1,1e-8,1e-6);        
         likely::Integrator::IntegrandPtr integrand2(new likely::Integrator::Integrand(
             boost::bind(&PowerSpectrumCorrelationFunction::_integrand2,this,_1)));
-        likely::Integrator integrator2(integrand2,1e-6,0);        
+        likely::Integrator integrator2(integrand2,1e-7,0); // sin-integrand needs more accuracy than cos      
         likely::Integrator::IntegrandPtr integrand3(new likely::Integrator::Integrand(
             boost::bind(&PowerSpectrumCorrelationFunction::_integrand3,this,_1)));
         likely::Integrator integrator3(integrand3,1e-6,0);        
