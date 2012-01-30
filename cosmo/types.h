@@ -19,7 +19,7 @@ namespace cosmo {
     // Represents a function that returns the power spectrum value k^3/(2pi^2) P(k)
     // given an input wavenumber k in 1/(Mpc/h).
     typedef boost::function<double (double)> PowerSpectrum;
-    typedef boost::shared_ptr<TransferFunction> PowerSpectrumPtr;
+    typedef boost::shared_ptr<PowerSpectrum> PowerSpectrumPtr;
     
 } // cosmo
 
