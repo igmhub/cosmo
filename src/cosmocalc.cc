@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology calculator");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,
-        zval,kval,kmin,kmax,rval,rmin,rmax;
+        zval,kval,kmin,kmax,rval,rmin,rmax,baoAmplitude,baoSigma,baoScale;
     int nk,nr;
     std::string saveTransferFile,saveCorrelationFile;
     cli.add_options()
@@ -87,6 +87,12 @@ int main(int argc, char **argv) {
         ("no-wiggles", "Calculates the power spectrum without baryon acoustic oscillations.")
         ("periodic-wiggles", "Calculates the power spectrum with periodic acoustic oscillations.")
         ("bao-fit", "Calculates a power spectrum parameterized for BAO fitting.")
+        ("bao-amplitude", po::value<double>(&baoAmplitude)->default_value(1),
+            "Amplitude of baryon acoustic oscillations relative to fiducial model.")
+        ("bao-sigma", po::value<double>(&baoSigma)->default_value(0),
+            "Gaussian smearing of BAO correlation function peak in Mpc/h relative to fiducial model.")
+        ("bao-scale", po::value<double>(&baoScale)->default_value(1),
+            "Rescaling of wavenumber relative to fiducial model (>1 means larger acoustic scale)");
         ;
 
     // do the command line parsing now
