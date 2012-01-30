@@ -9,9 +9,9 @@
 namespace local = cosmo;
 
 local::BaryonPerturbations::BaryonPerturbations(double omegaMatter, double omegaBaryon,
-double hubbleConstant, double cmbTemperature)
+double hubbleConstant, double cmbTemperature, BaoOption baoOption)
 : _omegaMatter(omegaMatter), _omegaBaryon(omegaBaryon),
-_hubbleConstant(hubbleConstant), _cmbTemperature(cmbTemperature)
+_hubbleConstant(hubbleConstant), _cmbTemperature(cmbTemperature), _baoOption(baoOption)
 {
     if(omegaMatter < 0) {
         throw RuntimeError("BaryonPerturbation: invalid omegaMatter < 0.");
@@ -80,7 +80,7 @@ local::BaryonPerturbations::~BaryonPerturbations() { }
 
 double local::BaryonPerturbations::getCdmTransfer(double kMpch) const {
     if(kMpch != _kSave) {
-        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full);
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_baoOption);
         _kSave = kMpch;
     }
     return _Tf_cdm;
@@ -88,7 +88,7 @@ double local::BaryonPerturbations::getCdmTransfer(double kMpch) const {
 
 double local::BaryonPerturbations::getBaryonTransfer(double kMpch) const {
     if(kMpch != _kSave) {
-        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full);
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_baoOption);
         _kSave = kMpch;
     }
     return _Tf_baryon;
@@ -96,7 +96,7 @@ double local::BaryonPerturbations::getBaryonTransfer(double kMpch) const {
 
 double local::BaryonPerturbations::getMatterTransfer(double kMpch) const {
     if(kMpch != _kSave) {
-        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full);
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_baoOption);
         _kSave = kMpch;
     }
     return _Tf_full;
