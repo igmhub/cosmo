@@ -237,7 +237,7 @@ int main(int argc, char **argv) {
         for(int i = 0; i < nr; ++i) {
             r = rlinear ? rmin + dr*i : rmin*std::pow(dr,i);
             if(r > rmax) r = rmax; // might happen with rounding but xi(r) will complain
-            out << r << ' ' << r*xi(r) << std::endl;
+            out << r << ' ' << r*xi(r)*evolSq << std::endl;
         }
         out.close();        
     }
