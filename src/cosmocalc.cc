@@ -20,6 +20,22 @@
 
 namespace po = boost::program_options;
 
+class BaoFitPower {
+public:
+    BaoFitPower(double scale, double alpha, double sigma,
+        cosmo::PowerSpectrumPtr full, cosmo::PowerSpectrumPtr nowiggles)
+    : _scale(scale), _alpha(alpha), _sigsq(sigma*sigma), _full(full), _nowiggles(nowiggles)
+    { }
+    double operator()(double k) const {
+        double ak(_alpha*k), smooth(std::exp(-ak*ak*_sigsq/2));
+        double fullPower = (*_full)(ak), nowigglesPower = (*_nowiggles)(ak);
+        return _scale*smooth*(fullPower - nowigglesPower) + nowigglesPower;
+    }
+private:
+    double _scale, _alpha, _sigsq;
+    cosmo::PowerSpectrumPtr _full, _nowiggles;
+}; // BaoFitPower
+
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
