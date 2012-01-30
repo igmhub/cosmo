@@ -24,15 +24,16 @@ class BaoFitPower {
 public:
     BaoFitPower(double amplitude, double scale, double sigma,
         cosmo::PowerSpectrumPtr full, cosmo::PowerSpectrumPtr nowiggles)
-    : _amplitude(amplitude), _scale(scale), _sigsq(sigma*sigma), _full(full), _nowiggles(nowiggles)
+    : _amplitude(amplitude), _scale(scale), _scale4(scale*scale*scale*scale), _sigsq(sigma*sigma),
+        _full(full), _nowiggles(nowiggles)
     { }
     double operator()(double k) const {
         double ak(k/_scale), smooth(std::exp(-ak*ak*_sigsq/2));
         double fullPower = (*_full)(ak), nowigglesPower = (*_nowiggles)(ak);
-        return _amplitude*smooth*(fullPower - nowigglesPower) + nowigglesPower;
+        return _scale4*(_amplitude*smooth*(fullPower - nowigglesPower) + nowigglesPower);
     }
 private:
-    double _amplitude, _scale, _sigsq;
+    double _amplitude, _scale, _scale4, _sigsq;
     cosmo::PowerSpectrumPtr _full, _nowiggles;
 }; // BaoFitPower
 
