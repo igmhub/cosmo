@@ -15,6 +15,13 @@ namespace cosmo {
 		virtual ~TransferFunctionPowerSpectrum();
 		// Returns the value of k^3/(2pi^2) P(k).
         double operator()(double kMpch) const;
+        // Sets our normalization (deltaH) to match the specified value of sigma, the
+        // RMS amplitude of fluctuations within a radius of rMpch, and returns the
+        // previous value. Use gaussian = true for a Gaussian window function with the
+        // specified radius. Otherwise, a step function (top-hat) window function is
+        // used. The default values of rMpch = 8 and gaussian = false correspond to the
+        // usual definition of sigma8.
+        double setSigma(double sigma, double rMpch = 8, bool gaussian = false);
 	private:
         TransferFunctionPtr _transferFunction;
         double _spectralIndex, _deltaHSq;

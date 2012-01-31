@@ -29,6 +29,14 @@ double local::TransferFunctionPowerSpectrum::operator()(double kMpch) const {
     return _deltaHSq*std::pow(y,3+_spectralIndex)*Tf*Tf;
 }
 
+double local::TransferFunctionPowerSpectrum::setSigma(double sigma, double rMpch, bool gaussian) {
+    PowerSpectrumPtr self(new cosmo::PowerSpectrum(boost::ref(*this)));
+    double sigmaOld = getRmsAmplitude(self, rMpch, gaussian);
+    double ratio(sigma/sigmaOld);
+    _deltaHSq *= ratio*ratio;
+    return sigmaOld;
+}
+
 namespace cosmo {
     class RmsIntegrand {
     public:
