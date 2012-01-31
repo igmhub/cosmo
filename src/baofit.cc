@@ -14,19 +14,26 @@ namespace po = boost::program_options;
 
 class BaoFitPower {
 public:
-    BaoFitPower(double amplitude, double scale, double sigma,
-        cosmo::PowerSpectrumPtr full, cosmo::PowerSpectrumPtr nowiggles)
-    : _amplitude(amplitude), _scale(scale), _scale4(scale*scale*scale*scale), _sigsq(sigma*sigma),
-        _full(full), _nowiggles(nowiggles)
-    { }
+    BaoFitPower(cosmo::PowerSpectrumPtr fiducial, cosmo::PowerSpectrumPtr nowiggles)
+    : _fiducial(fiducial), _nowiggles(nowiggles)
+    {
+        setAmplitude(1);
+        setScale(1);
+        setSigma(0);
+    }
+    // Setter methods
+    void setAmplitude(double value) { _amplitude = value; }
+    void setScale(double value) { _scale = value; double tmp(value*value); _scale4 = tmp*tmp; }
+    void setSigma(double value) { _sigma = value; _sigma2 = value*value; }
+    // Returns the hybrid power k^3/(2pi^2) P(k) at the specified wavenumber k in Mpc/h.
     double operator()(double k) const {
-        double ak(k/_scale), smooth(std::exp(-ak*ak*_sigsq/2));
-        double fullPower = (*_full)(ak), nowigglesPower = (*_nowiggles)(ak);
-        return _scale4*(_amplitude*smooth*(fullPower - nowigglesPower) + nowigglesPower);
+        double ak(k/_scale), smooth(std::exp(-ak*ak*_sigma2/2));
+        double fiducialPower = (*_fiducial)(ak), nowigglesPower = (*_nowiggles)(ak);
+        return _scale4*(_amplitude*smooth*(fiducialPower - nowigglesPower) + nowigglesPower);
     }
 private:
-    double _amplitude, _scale, _scale4, _sigsq;
-    cosmo::PowerSpectrumPtr _full, _nowiggles;
+    double _amplitude, _scale, _scale4, _sigma, _sigma2;
+    cosmo::PowerSpectrumPtr _fiducial, _nowiggles;
 }; // BaoFitPower
 
 int main(int argc, char **argv) {
@@ -79,6 +86,17 @@ int main(int argc, char **argv) {
     cosmo::BaryonPerturbations
         baryons(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::ShiftedOscillation),
         nowiggles(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::NoOscillation);
+        
+    // Dump some info about the fiducial model if requested.
+    if(verbose) {
+        std::cout << "z(eq) = " << baryons.getMatterRadiationEqualityRedshift() << std::endl;
+        std::cout << "k(eq) = " << baryons.getMatterRadiationEqualityScale() << " /(Mpc/h)"
+            << std::endl;
+        std::cout << "sound horizon = " << baryons.getSoundHorizon() << " Mpc/h at z(drag) = "
+            << baryons.getDragEpoch() << std::endl;
+        std::cout << "Silk damping scale = " << baryons.getSilkDampingScale() << " /(Mpc/h)"
+            << std::endl;
+    }
 
     // Make shareable pointers to the matter transfer functions of these models.
     cosmo::TransferFunctionPtr
@@ -95,15 +113,14 @@ int main(int argc, char **argv) {
     baryonsPower.setSigma(sigma8,8);
     nowigglesPower.setDeltaH(baryonsPower.getDeltaH());
 
-    //!!cosmo::PowerSpectrumPtr power(new cosmo::PowerSpectrum(boost::ref(transferPower)));
+    // Make shareable power spectrum pointers.
+    cosmo::PowerSpectrumPtr
+        baryonsPowerPtr(new cosmo::PowerSpectrum(boost::ref(baryonsPower))),
+        nowigglesPowerPtr(new cosmo::PowerSpectrum(boost::ref(nowigglesPower)));
 
-    std::cout << "z(eq) = " << baryons.getMatterRadiationEqualityRedshift() << std::endl;
-    std::cout << "k(eq) = " << baryons.getMatterRadiationEqualityScale() << " /(Mpc/h)"
-        << std::endl;
-    std::cout << "sound horizon = " << baryons.getSoundHorizon() << " Mpc/h at z(drag) = "
-        << baryons.getDragEpoch() << std::endl;
-    std::cout << "Silk damping scale = " << baryons.getSilkDampingScale() << " /(Mpc/h)"
-        << std::endl;
+    // Build a hybrid power spectrum that combines the fiducial and nowiggles models.
+    BaoFitPower hybridPower(baryonsPowerPtr,nowigglesPowerPtr);
+    cosmo::PowerSpectrumPtr hybridPowerPtr(new cosmo::PowerSpectrum(boost::ref(hybridPower)));
 
     return 0;
 }
