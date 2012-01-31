@@ -13,6 +13,12 @@ namespace cosmo {
 		TransferFunctionPowerSpectrum(TransferFunctionPtr transferFunction,
 		    double spectralIndex = 1, double deltaH = 1);
 		virtual ~TransferFunctionPowerSpectrum();
+		// Gets/sets the value of spectralIndex.
+        double getSpectralIndex() const;
+        void setSpectralIndex(double value);
+        // Gets/sets the value of deltaH.
+        double getDeltaH() const;
+        void setDeltaH(double value);
 		// Returns the value of k^3/(2pi^2) P(k).
         double operator()(double kMpch) const;
         // Sets our normalization (deltaH) to match the specified value of sigma, the
@@ -24,8 +30,11 @@ namespace cosmo {
         double setSigma(double sigma, double rMpch = 8, bool gaussian = false);
 	private:
         TransferFunctionPtr _transferFunction;
-        double _spectralIndex, _deltaHSq;
+        double _spectralIndex, _deltaH, _deltaHSq;
 	}; // TransferFunctionPowerSpectrum
+	
+    inline double TransferFunctionPowerSpectrum::getSpectralIndex() const { return _spectralIndex; }
+    inline double TransferFunctionPowerSpectrum::getDeltaH() const { return _deltaH; }
 	
 	// Returns the RMS amplitude of fluctuations inside a sphere of the specified
 	// radius in Mpc/h for the specified power spectrum function. Use gaussian = true

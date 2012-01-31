@@ -14,14 +14,26 @@ namespace local = cosmo;
 
 local::TransferFunctionPowerSpectrum::TransferFunctionPowerSpectrum(
 TransferFunctionPtr transferFunction, double spectralIndex, double deltaH)
-: _transferFunction(transferFunction), _spectralIndex(spectralIndex), _deltaHSq(deltaH*deltaH)
+: _transferFunction(transferFunction)
 {
-    if(deltaH <= 0) {
-        throw RuntimeError("TransferFunctionPowerSpectrum: invalid deltaH <= 0.");
-    }
+    setSpectralIndex(spectralIndex);
+    setDeltaH(deltaH);
 }
 
 local::TransferFunctionPowerSpectrum::~TransferFunctionPowerSpectrum() { }
+
+
+void local::TransferFunctionPowerSpectrum::setSpectralIndex(double value) {
+    _spectralIndex = value;
+}
+
+void local::TransferFunctionPowerSpectrum::setDeltaH(double value) {
+    if(value <= 0) {
+        throw RuntimeError("TransferFunctionPowerSpectrum: invalid deltaH <= 0.");
+    }
+    _deltaH = value;
+    _deltaHSq = value*value;
+}
 
 double local::TransferFunctionPowerSpectrum::operator()(double kMpch) const {
     double Tf((*_transferFunction)(kMpch));
