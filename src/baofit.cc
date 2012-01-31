@@ -39,7 +39,7 @@ private:
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
-    po::options_description cli("Cosmology calculator");
+    po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,zref;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
