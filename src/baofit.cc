@@ -75,10 +75,27 @@ int main(int argc, char **argv) {
     if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
     cosmo::AbsHomogeneousUniversePtr cosmology(new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
     
-    // Build fiducial and "no-wiggles" Eisenstein & Hu transfer functions.
+    // Build fiducial and "no-wiggles" Eisenstein & Hu models.
     cosmo::BaryonPerturbations
         baryons(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::ShiftedOscillation),
         nowiggles(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::NoOscillation);
+
+    // Make shareable pointers to the matter transfer functions of these models.
+    cosmo::TransferFunctionPtr
+        baryonsTransferPtr(new cosmo::TransferFunction(boost::bind(
+            &cosmo::BaryonPerturbations::getMatterTransfer,&baryons,_1))),
+        nowigglesTransferPtr(new cosmo::TransferFunction(boost::bind(
+            &cosmo::BaryonPerturbations::getMatterTransfer,&nowiggles,_1)));    
+
+    // Build the corresponding power spectra.
+    cosmo::TransferFunctionPowerSpectrum
+        baryonsPower(baryonsTransferPtr,spectralIndex),
+        nowigglesPower(nowigglesTransferPtr,spectralIndex);
+    // Normalize the fiducial model to sigma8, and use the same value of deltaH for the nowiggles model.
+    baryonsPower.setSigma(sigma8,8);
+    nowigglesPower.setDeltaH(baryonsPower.getDeltaH());
+
+    //!!cosmo::PowerSpectrumPtr power(new cosmo::PowerSpectrum(boost::ref(transferPower)));
 
     std::cout << "z(eq) = " << baryons.getMatterRadiationEqualityRedshift() << std::endl;
     std::cout << "k(eq) = " << baryons.getMatterRadiationEqualityScale() << " /(Mpc/h)"
