@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,zref;
+    std::string dataName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -60,6 +61,8 @@ int main(int argc, char **argv) {
             "Power will be normalized to this value.")
         ("zref", po::value<double>(&zref)->default_value(2.25),
             "Reference redshift.")
+        ("data", po::value<std::string>(&dataName)->default_value(""),
+            "3D covariance data will be read from <data>.params and <data>.cov")
         ;
 
     // do the command line parsing now
@@ -121,6 +124,18 @@ int main(int argc, char **argv) {
     // Build a hybrid power spectrum that combines the fiducial and nowiggles models.
     BaoFitPower hybridPower(baryonsPowerPtr,nowigglesPowerPtr);
     cosmo::PowerSpectrumPtr hybridPowerPtr(new cosmo::PowerSpectrum(boost::ref(hybridPower)));
+    
+    // Check for the required data name.
+    if(0 == dataName.length()) {
+        std::cerr << "Missing required parameter --data." << std::endl;
+        return -1;
+    }
+
+    // Loop over lines in the data file.
+    std::string paramsName(dataName + ".params");
+    std::ifstream paramsIn(paramsName.c_str());
+    
+    paramsIn.close();
 
     return 0;
 }
