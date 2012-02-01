@@ -5,6 +5,9 @@
 #include "boost/program_options.hpp"
 #include "boost/bind.hpp"
 #include "boost/ref.hpp"
+#include "boost/lexical_cast.hpp"
+#include "boost/regex.hpp"
+#include "boost/format.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -143,7 +146,12 @@ int main(int argc, char **argv) {
     try {
         std::string line;
         int lineNumber(0);
+        std::string fpat("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?");
+        boost::match_results<std::string::const_iterator> what;
         // Loop over lines in the parameter file.
+        boost::regex paramPattern(
+            boost::str(boost::format("\\s*%s\\s+%s\\s*\\| Lya covariance 3D \\(%s,%s,%s\\)\\s*")
+            % fpat % fpat % fpat % fpat % fpat));
         std::string paramsName(dataName + ".params");
         std::ifstream paramsIn(paramsName.c_str());
         if(!paramsIn.good()) throw cosmo::RuntimeError("Unable to open " + paramsName);
@@ -154,6 +162,11 @@ int main(int argc, char **argv) {
                 throw cosmo::RuntimeError("Unable to read line " + boost::lexical_cast<std::string>(lineNumber));
             }
             lineNumber++;
+            // Parse this line with a regexp.
+            if(!boost::regex_match(line,what,paramPattern)) {
+                throw cosmo::RuntimeError("Badly formatted line " + boost::lexical_cast<std::string>(lineNumber)
+                    + ": '" + line + "'");
+            }
         }
         paramsIn.close();
         if(verbose) std::cout << "Read " << lineNumber << " values from " << paramsName << std::endl;
