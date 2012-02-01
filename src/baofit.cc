@@ -141,14 +141,24 @@ int main(int argc, char **argv) {
     
     // Load the data we will fit.
     try {
+        std::string line;
+        int lineNumber(0);
         // Loop over lines in the parameter file.
         std::string paramsName(dataName + ".params");
         std::ifstream paramsIn(paramsName.c_str());
-        
-    
+        if(!paramsIn.good()) throw cosmo::RuntimeError("Unable to open " + paramsName);
+        while(paramsIn.good() && !paramsIn.eof()) {
+            std::getline(paramsIn,line);
+            if(paramsIn.eof()) break;
+            if(!paramsIn.good()) {
+                throw cosmo::RuntimeError("Unable to read line " + boost::lexical_cast<std::string>(lineNumber));
+            }
+            lineNumber++;
+        }
         paramsIn.close();
+        if(verbose) std::cout << "Read " << lineNumber << " values from " << paramsName << std::endl;
     }
-    catch(std::ios_base::failure const &e) {
+    catch(cosmo::RuntimeError const &e) {
         std::cerr << "ERROR while reading data:\n  " << e.what() << std::endl;
         return -2;
     }
