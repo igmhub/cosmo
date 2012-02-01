@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
             "3D covariance data will be read from <data>.params and <data>.cov")
         ;
 
-    // do the command line parsing now
+    // Do the command line parsing now.
     po::variables_map vm;
     try {
         po::store(po::parse_command_line(argc, argv, cli), vm);
@@ -80,62 +80,79 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose"));
-
-    // Build the homogeneous cosmology we will use.
-    if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
-    cosmo::AbsHomogeneousUniversePtr cosmology(new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
-    
-    // Build fiducial and "no-wiggles" Eisenstein & Hu models.
-    cosmo::BaryonPerturbations
-        baryons(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::ShiftedOscillation),
-        nowiggles(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::NoOscillation);
-        
-    // Dump some info about the fiducial model if requested.
-    if(verbose) {
-        std::cout << "z(eq) = " << baryons.getMatterRadiationEqualityRedshift() << std::endl;
-        std::cout << "k(eq) = " << baryons.getMatterRadiationEqualityScale() << " /(Mpc/h)"
-            << std::endl;
-        std::cout << "sound horizon = " << baryons.getSoundHorizon() << " Mpc/h at z(drag) = "
-            << baryons.getDragEpoch() << std::endl;
-        std::cout << "Silk damping scale = " << baryons.getSilkDampingScale() << " /(Mpc/h)"
-            << std::endl;
-    }
-
-    // Make shareable pointers to the matter transfer functions of these models.
-    cosmo::TransferFunctionPtr
-        baryonsTransferPtr(new cosmo::TransferFunction(boost::bind(
-            &cosmo::BaryonPerturbations::getMatterTransfer,&baryons,_1))),
-        nowigglesTransferPtr(new cosmo::TransferFunction(boost::bind(
-            &cosmo::BaryonPerturbations::getMatterTransfer,&nowiggles,_1)));    
-
-    // Build the corresponding power spectra.
-    cosmo::TransferFunctionPowerSpectrum
-        baryonsPower(baryonsTransferPtr,spectralIndex),
-        nowigglesPower(nowigglesTransferPtr,spectralIndex);
-    // Normalize the fiducial model to sigma8, and use the same value of deltaH for the nowiggles model.
-    baryonsPower.setSigma(sigma8,8);
-    nowigglesPower.setDeltaH(baryonsPower.getDeltaH());
-
-    // Make shareable power spectrum pointers.
-    cosmo::PowerSpectrumPtr
-        baryonsPowerPtr(new cosmo::PowerSpectrum(boost::ref(baryonsPower))),
-        nowigglesPowerPtr(new cosmo::PowerSpectrum(boost::ref(nowigglesPower)));
-
-    // Build a hybrid power spectrum that combines the fiducial and nowiggles models.
-    BaoFitPower hybridPower(baryonsPowerPtr,nowigglesPowerPtr);
-    cosmo::PowerSpectrumPtr hybridPowerPtr(new cosmo::PowerSpectrum(boost::ref(hybridPower)));
-    
     // Check for the required data name.
     if(0 == dataName.length()) {
         std::cerr << "Missing required parameter --data." << std::endl;
         return -1;
     }
 
-    // Loop over lines in the data file.
-    std::string paramsName(dataName + ".params");
-    std::ifstream paramsIn(paramsName.c_str());
+    // Initialize the cosmology calculations we will need.
+    try {
+        // Build the homogeneous cosmology we will use.
+        if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
+        cosmo::AbsHomogeneousUniversePtr cosmology(new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
     
-    paramsIn.close();
+        // Build fiducial and "no-wiggles" Eisenstein & Hu models.
+        cosmo::BaryonPerturbations
+            baryons(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::ShiftedOscillation),
+            nowiggles(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::NoOscillation);
+        
+        // Dump some info about the fiducial model if requested.
+        if(verbose) {
+            std::cout << "z(eq) = " << baryons.getMatterRadiationEqualityRedshift() << std::endl;
+            std::cout << "k(eq) = " << baryons.getMatterRadiationEqualityScale() << " /(Mpc/h)"
+                << std::endl;
+            std::cout << "sound horizon = " << baryons.getSoundHorizon() << " Mpc/h at z(drag) = "
+                << baryons.getDragEpoch() << std::endl;
+            std::cout << "Silk damping scale = " << baryons.getSilkDampingScale() << " /(Mpc/h)"
+                << std::endl;
+        }
 
+        // Make shareable pointers to the matter transfer functions of these models.
+        cosmo::TransferFunctionPtr
+            baryonsTransferPtr(new cosmo::TransferFunction(boost::bind(
+                &cosmo::BaryonPerturbations::getMatterTransfer,&baryons,_1))),
+            nowigglesTransferPtr(new cosmo::TransferFunction(boost::bind(
+                &cosmo::BaryonPerturbations::getMatterTransfer,&nowiggles,_1)));    
+
+        // Build the corresponding power spectra.
+        cosmo::TransferFunctionPowerSpectrum
+            baryonsPower(baryonsTransferPtr,spectralIndex),
+            nowigglesPower(nowigglesTransferPtr,spectralIndex);
+        // Normalize the fiducial model to sigma8, and use the same value of deltaH for the nowiggles model.
+        baryonsPower.setSigma(sigma8,8);
+        nowigglesPower.setDeltaH(baryonsPower.getDeltaH());
+
+        // Make shareable power spectrum pointers.
+        cosmo::PowerSpectrumPtr
+            baryonsPowerPtr(new cosmo::PowerSpectrum(boost::ref(baryonsPower))),
+            nowigglesPowerPtr(new cosmo::PowerSpectrum(boost::ref(nowigglesPower)));
+
+        // Build a hybrid power spectrum that combines the fiducial and nowiggles models.
+        BaoFitPower hybridPower(baryonsPowerPtr,nowigglesPowerPtr);
+        cosmo::PowerSpectrumPtr hybridPowerPtr(new cosmo::PowerSpectrum(boost::ref(hybridPower)));
+        
+        if(verbose) std::cout << "Cosmology initialized." << std::endl;
+    }
+    catch(cosmo::RuntimeError const &e) {
+        std::cerr << "ERROR during cosmology initialization:\n  " << e.what() << std::endl;
+        return -2;
+    }
+    
+    // Load the data we will fit.
+    try {
+        // Loop over lines in the parameter file.
+        std::string paramsName(dataName + ".params");
+        std::ifstream paramsIn(paramsName.c_str());
+        
+    
+        paramsIn.close();
+    }
+    catch(std::ios_base::failure const &e) {
+        std::cerr << "ERROR while reading data:\n  " << e.what() << std::endl;
+        return -2;
+    }
+
+    // All done: normal exit.
     return 0;
 }
