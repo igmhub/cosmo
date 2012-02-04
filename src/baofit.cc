@@ -12,14 +12,17 @@
 #include <fstream>
 #include <iostream>
 #include <cmath>
+#include <cassert>
+#include <vector>
 
 namespace po = boost::program_options;
 
 class BaoFitPower {
 public:
     BaoFitPower(cosmo::PowerSpectrumPtr fiducial, cosmo::PowerSpectrumPtr nowiggles)
-    : _fiducial(fiducial), _nowiggles(nowiggles)
-    {
+    : _fiducial(fiducial), _nowiggles(nowiggles) {
+        assert(fiducial);
+        assert(nowiggles);
         setAmplitude(1);
         setScale(1);
         setSigma(0);
@@ -39,11 +42,81 @@ private:
     cosmo::PowerSpectrumPtr _fiducial, _nowiggles;
 }; // BaoFitPower
 
+class Binning {
+public:
+    Binning(int nBins, double lowEdge, double binSize)
+    : _nBins(nBins), _lowEdge(lowEdge), _binSize(binSize) {
+        assert(nBins > 0);
+        assert(binSize > 0);
+    }
+    // Returns the bin index [0,nBins-1] or else -1.
+    int getBinIndex(double value) const {
+        int bin = std::floor((value - _lowEdge)/_binSize);
+        assert(bin >= 0 && bin < _nBins);
+        return bin;
+    }
+    // Returns the midpoint value of the specified bin.
+    double getBinCenter(int index) const {
+        assert(index >= 0 && index < _nBins);
+        return _lowEdge + (index+0.5)*_binSize;
+    }
+    int getNBins() const { return _nBins; }
+    double getLowEdge() const { return _lowEdge; }
+    double getBinSize() const { return _binSize; }
+private:
+    int _nBins;
+    double _lowEdge, _binSize;
+}; // Binning
+
+typedef boost::shared_ptr<const Binning> BinningPtr;
+
+class LyaData {
+public:
+    LyaData(BinningPtr logLambdaBinning, BinningPtr separationBinning, BinningPtr redshiftBinning) : _ndata(0),
+    _logLambdaBinning(logLambdaBinning), _separationBinning(separationBinning), _redshiftBinning(redshiftBinning)
+    {
+        assert(logLambdaBinning);
+        assert(separationBinning);
+        assert(redshiftBinning);
+        _nsep = separationBinning->getNBins();
+        _nz = redshiftBinning->getNBins();
+        int nBinsTotal = logLambdaBinning->getNBins()*_nsep*_nz;
+        _data.resize(nBinsTotal,0);
+        _initialized.resize(nBinsTotal,false);
+    }
+    void addData(double value, double logLambda, double separation, double redshift) {
+        // Lookup which (ll,sep,z) bin we are in.
+        int logLambdaBin(_logLambdaBinning->getBinIndex(logLambda)),
+            separationBin(_separationBinning->getBinIndex(separation)),
+            redshiftBin(_redshiftBinning->getBinIndex(redshift));
+        int index = (logLambdaBin*_nsep + separationBin)*_nz + redshiftBin;
+        // Check that input (ll,sep,z) values correspond to bin centers.
+        assert(std::fabs(logLambda-_logLambdaBinning->getBinCenter(logLambdaBin)) < 1e-6);
+        assert(std::fabs(separation-_separationBinning->getBinCenter(separationBin)) < 1e-6);
+        assert(std::fabs(redshift-_redshiftBinning->getBinCenter(redshiftBin)) < 1e-6);
+        // Check that we have not already filled this bin.
+        assert(!_initialized[index]);
+        // Remember this bin.
+        _data[index] = value;
+        _initialized[index] = true;
+        _ndata++;
+    }
+    int getSize() const { return _data.size(); }
+    int getNData() const { return _ndata; }
+private:
+    BinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
+    std::vector<double> _data;
+    std::vector<bool> _initialized;
+    int _ndata,_nsep,_nz;
+}; // LyaData
+
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,zref;
+    double minll,dll,minsep,dsep,minz,dz;
+    int nll,nsep,nz;
     std::string dataName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
@@ -66,6 +139,24 @@ int main(int argc, char **argv) {
             "Reference redshift.")
         ("data", po::value<std::string>(&dataName)->default_value(""),
             "3D covariance data will be read from <data>.params and <data>.cov")
+        ("minll", po::value<double>(&minll)->default_value(0.0002),
+            "Minimum log(lam2/lam1).")
+        ("dll", po::value<double>(&dll)->default_value(0.004),
+            "log(lam2/lam1) binsize.")
+        ("nll", po::value<int>(&nll)->default_value(99),
+            "Maximum number of log(lam2/lam1) bins.")
+        ("minsep", po::value<double>(&minsep)->default_value(0),
+            "Minimum separation in arcmins.")
+        ("dsep", po::value<double>(&dsep)->default_value(10),
+            "Separation binsize in arcmins.")
+        ("nsep", po::value<int>(&nsep)->default_value(18),
+            "Maximum number of separation bins.")
+        ("minz", po::value<double>(&minz)->default_value(1.7),
+            "Minimum redshift.")
+        ("dz", po::value<double>(&dz)->default_value(1.0),
+            "Redshift binsize.")
+        ("nz", po::value<int>(&nz)->default_value(2),
+            "Maximum number of redshift bins.")
         ;
 
     // Do the command line parsing now.
@@ -144,17 +235,24 @@ int main(int argc, char **argv) {
     
     // Load the data we will fit.
     try {
+        // Initialize the (logLambda,separation,redshift) binning from command-line params.
+        BinningPtr llBins(new Binning(nll,minll,dll)), sepBins(new Binning(nsep,minsep,dsep)),
+            zBins(new Binning(nz,minz,dz));
+        // Initialize the dataset we will fill.
+        LyaData dataset(llBins,sepBins,zBins);
+        // General stuff we will need for reading both files.
         std::string line;
         int lineNumber(0);
-        std::string fpat("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?");
+        // Capturing regexp for a floating-point constant (with non-capturing exponent group).
+        std::string fpat("([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)");
         boost::match_results<std::string::const_iterator> what;
         // Loop over lines in the parameter file.
-        boost::regex paramPattern(
-            boost::str(boost::format("\\s*%s\\s+%s\\s*\\| Lya covariance 3D \\(%s,%s,%s\\)\\s*")
-            % fpat % fpat % fpat % fpat % fpat));
         std::string paramsName(dataName + ".params");
         std::ifstream paramsIn(paramsName.c_str());
         if(!paramsIn.good()) throw cosmo::RuntimeError("Unable to open " + paramsName);
+        boost::regex paramPattern(
+            boost::str(boost::format("\\s*%s\\s+%s\\s*\\| Lya covariance 3D \\(%s,%s,%s\\)\\s*")
+            % fpat % fpat % fpat % fpat % fpat));
         while(paramsIn.good() && !paramsIn.eof()) {
             std::getline(paramsIn,line);
             if(paramsIn.eof()) break;
@@ -167,9 +265,20 @@ int main(int argc, char **argv) {
                 throw cosmo::RuntimeError("Badly formatted line " + boost::lexical_cast<std::string>(lineNumber)
                     + ": '" + line + "'");
             }
+            int nTokens(5);
+            std::vector<double> token(nTokens);
+            for(int tok = 0; tok < nTokens; ++tok) {
+                token[tok] = boost::lexical_cast<double>(std::string(what[tok+1].first,what[tok+1].second));
+            }
+            // Add this bin to our dataset.
+            if(0 != token[1]) throw cosmo::RuntimeError("Got unexpected non-zero token.");
+            dataset.addData(token[0],token[2],token[3],token[4]);
         }
         paramsIn.close();
-        if(verbose) std::cout << "Read " << lineNumber << " values from " << paramsName << std::endl;
+        if(verbose) {
+            std::cout << "Read " << dataset.getNData() << " of " << dataset.getSize()
+                << " data values from " << paramsName << std::endl;
+        }
     }
     catch(cosmo::RuntimeError const &e) {
         std::cerr << "ERROR while reading data:\n  " << e.what() << std::endl;
