@@ -1,6 +1,7 @@
 // Created 31-Jan-2012 by David Kirkby (University of California, Irvine) <dkirkby@uci.edu>
 
 #include "cosmo/cosmo.h"
+#include "likely/likely.h"
 
 #include "boost/program_options.hpp"
 #include "boost/bind.hpp"
@@ -16,6 +17,7 @@
 #include <vector>
 #include <algorithm>
 
+namespace lk = likely;
 namespace po = boost::program_options;
 
 class BaoFitPower {
@@ -42,6 +44,8 @@ private:
     double _amplitude, _scale, _scale4, _sigma, _sigma2;
     cosmo::PowerSpectrumPtr _fiducial, _nowiggles;
 }; // BaoFitPower
+
+typedef boost::shared_ptr<const BaoFitPower> BaoFitPowerPtr;
 
 class Binning {
 public:
@@ -123,6 +127,33 @@ private:
     int _ndata,_nsep,_nz;
 }; // LyaData
 
+typedef boost::shared_ptr<LyaData> LyaDataPtr;
+
+class LyaBaoLikelihood {
+public:
+    LyaBaoLikelihood(LyaDataPtr data, BaoFitPowerPtr power) :
+    _data(data), _power(power)
+    {
+        assert(data);
+        assert(power);
+    }
+    double operator()(lk::Parameters const &params) const {
+        double delta(params[0]-0.25);
+        return delta*delta;
+    }
+    lk::Parameters getInitialValues() const {
+        lk::Parameters initial(1,0);
+        return initial;
+    }
+    lk::Parameters getInitialErrors() const {
+        lk::Parameters errors(1,1);
+        return errors;
+    }
+private:
+    LyaDataPtr _data;
+    BaoFitPowerPtr _power;
+}; // LyaBaoLikelihood
+
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
@@ -194,6 +225,7 @@ int main(int argc, char **argv) {
     }
 
     // Initialize the cosmology calculations we will need.
+    BaoFitPowerPtr power;
     try {
         // Build the homogeneous cosmology we will use.
         if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
@@ -236,8 +268,7 @@ int main(int argc, char **argv) {
             nowigglesPowerPtr(new cosmo::PowerSpectrum(boost::ref(nowigglesPower)));
 
         // Build a hybrid power spectrum that combines the fiducial and nowiggles models.
-        BaoFitPower hybridPower(baryonsPowerPtr,nowigglesPowerPtr);
-        cosmo::PowerSpectrumPtr hybridPowerPtr(new cosmo::PowerSpectrum(boost::ref(hybridPower)));
+        power.reset(new BaoFitPower(baryonsPowerPtr,nowigglesPowerPtr));
         
         if(verbose) std::cout << "Cosmology initialized." << std::endl;
     }
@@ -247,12 +278,13 @@ int main(int argc, char **argv) {
     }
     
     // Load the data we will fit.
+    LyaDataPtr data;
     try {
         // Initialize the (logLambda,separation,redshift) binning from command-line params.
         BinningPtr llBins(new Binning(nll,minll,dll)), sepBins(new Binning(nsep,minsep,dsep)),
             zBins(new Binning(nz,minz,dz));
         // Initialize the dataset we will fill.
-        LyaData dataset(llBins,sepBins,zBins);
+        data.reset(new LyaData(llBins,sepBins,zBins));
         // General stuff we will need for reading both files.
         std::string line;
         int lineNumber(0);
@@ -285,11 +317,11 @@ int main(int argc, char **argv) {
             }
             // Add this bin to our dataset.
             if(0 != token[1]) throw cosmo::RuntimeError("Got unexpected non-zero token.");
-            dataset.addData(token[0],token[2],token[3],token[4]);
+            data->addData(token[0],token[2],token[3],token[4]);
         }
         paramsIn.close();
         if(verbose) {
-            std::cout << "Read " << dataset.getNData() << " of " << dataset.getSize()
+            std::cout << "Read " << data->getNData() << " of " << data->getSize()
                 << " data values from " << paramsName << std::endl;
         }
         // Loop over lines in the covariance file.
@@ -314,17 +346,30 @@ int main(int argc, char **argv) {
             int index2(boost::lexical_cast<int>(std::string(what[2].first,what[2].second)));
             double value(boost::lexical_cast<double>(std::string(what[3].first,what[3].second)));
             // Add this covariance to our dataset.
-            dataset.addCovariance(index1,index2,value);
+            data->addCovariance(index1,index2,value);
         }
         covIn.close();
         if(verbose) {
-            std::cout << "Read " << dataset.getNCov() << " of " << dataset.getNData()
+            std::cout << "Read " << data->getNCov() << " of " << data->getNData()
                 << " diagonal covariance values from " << covName << std::endl;
         }
-        assert(dataset.getNCov() == dataset.getNData());
+        assert(data->getNCov() == data->getNData());
     }
     catch(cosmo::RuntimeError const &e) {
         std::cerr << "ERROR while reading data:\n  " << e.what() << std::endl;
+        return -2;
+    }
+    
+    // Minimize the -log(Likelihood) function.
+    try {
+        LyaBaoLikelihood nll(data,power);
+        lk::FunctionPtr fptr(new lk::Function(nll));
+        lk::Parameters initial(nll.getInitialValues()), errors(nll.getInitialErrors());
+        lk::FunctionMinimumPtr fmin = lk::findMinimum(fptr,initial,errors,"mn2::vmetric");
+        fmin->printToStream(std::cout);
+    }
+    catch(cosmo::RuntimeError const &e) {
+        std::cerr << "ERROR during fit:\n  " << e.what() << std::endl;
         return -2;
     }
 
