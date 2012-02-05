@@ -77,18 +77,25 @@ typedef boost::shared_ptr<const Binning> BinningPtr;
 
 class LyaData {
 public:
-    LyaData(BinningPtr logLambdaBinning, BinningPtr separationBinning, BinningPtr redshiftBinning) :
-    _logLambdaBinning(logLambdaBinning), _separationBinning(separationBinning), _redshiftBinning(redshiftBinning)
+    LyaData(BinningPtr logLambdaBinning, BinningPtr separationBinning, BinningPtr redshiftBinning,
+    cosmo::AbsHomogeneousUniversePtr cosmology) : _cosmology(cosmology), _logLambdaBinning(logLambdaBinning),
+    _separationBinning(separationBinning), _redshiftBinning(redshiftBinning)
     {
         assert(logLambdaBinning);
         assert(separationBinning);
         assert(redshiftBinning);
+        assert(cosmology);
         _nsep = separationBinning->getNBins();
         _nz = redshiftBinning->getNBins();
         int nBinsTotal = logLambdaBinning->getNBins()*_nsep*_nz;
         _data.resize(nBinsTotal,0);
         _cov.resize(nBinsTotal,0);
+        _drLos.resize(nBinsTotal,0);
+        _drPerp.resize(nBinsTotal,0);
+        _mu.resize(nBinsTotal,0);
         _initialized.resize(nBinsTotal,false);
+        _ds2by12 = separationBinning->getBinSize()*separationBinning->getBinSize()/12;
+        _arcminToRad = 4*std::atan(1)/(60.*180.);
     }
     void addData(double value, double logLambda, double separation, double redshift) {
         // Lookup which (ll,sep,z) bin we are in.
@@ -107,6 +114,23 @@ public:
         _initialized[index] = true;
         _index.push_back(index);
         _hasCov.push_back(false);
+        // Calculate and save model observables for this bin.
+        double ratio(std::exp(0.5*logLambda)),zp1(redshift+1);
+        double z1(zp1/ratio-1), z2(zp1*ratio-1);
+        _drLos[index] = _cosmology->getLineOfSightComovingDistance(z2) -
+            _cosmology->getLineOfSightComovingDistance(z1);
+        // Calculate the geometrically weighted mean separation of this bin as
+        // Integral[s^2,{s,smin,smax}]/Integral[s,{s,smin,smax}] = s + ds^2/(12*s)
+        double swgt = separation + _ds2by12/separation;
+        _drPerp[index] = _cosmology->getTransverseComovingScale(redshift)*(swgt*_arcminToRad);
+        double rsq = _drLos[index]*_drLos[index] + _drPerp[index]*_drPerp[index];
+        _mu[index] = std::abs(_drLos[index])/std::sqrt(rsq);
+        // Agrees with Covariance3D::getRMuZ in ForestCovarianceParam.cpp
+        /*
+        std::cout << '(' << logLambda << ',' << separation << ',' << redshift << ") => ["
+            << z1 << ',' << z2 << ',' << swgt << ';' << _drLos[index] << ','
+            << _drPerp[index] << ',' << _mu[index] << "]\n";
+        */
     }
     void addCovariance(int i, int j, double value) {
         assert(i >= 0 && i < getNData());
@@ -121,10 +145,12 @@ public:
     int getNCov() const { return (int)std::count(_hasCov.begin(),_hasCov.end(),true); }
 private:
     BinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
-    std::vector<double> _data, _cov;
+    cosmo::AbsHomogeneousUniversePtr _cosmology;
+    std::vector<double> _data, _cov, _drLos, _drPerp, _mu;
     std::vector<bool> _initialized, _hasCov;
     std::vector<int> _index;
     int _ndata,_nsep,_nz;
+    double _ds2by12,_arcminToRad;
 }; // LyaData
 
 typedef boost::shared_ptr<LyaData> LyaDataPtr;
@@ -231,11 +257,12 @@ int main(int argc, char **argv) {
     }
 
     // Initialize the cosmology calculations we will need.
+    cosmo::AbsHomogeneousUniversePtr cosmology;
     BaoFitPowerPtr power;
     try {
         // Build the homogeneous cosmology we will use.
         if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
-        cosmo::AbsHomogeneousUniversePtr cosmology(new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
+        cosmology.reset(new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
     
         // Build fiducial and "no-wiggles" Eisenstein & Hu models.
         cosmo::BaryonPerturbations
@@ -290,7 +317,7 @@ int main(int argc, char **argv) {
         BinningPtr llBins(new Binning(nll,minll,dll)), sepBins(new Binning(nsep,minsep,dsep)),
             zBins(new Binning(nz,minz,dz));
         // Initialize the dataset we will fill.
-        data.reset(new LyaData(llBins,sepBins,zBins));
+        data.reset(new LyaData(llBins,sepBins,zBins,cosmology));
         // General stuff we will need for reading both files.
         std::string line;
         int lineNumber(0);
