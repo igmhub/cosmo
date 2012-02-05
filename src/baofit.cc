@@ -9,12 +9,14 @@
 #include "boost/lexical_cast.hpp"
 #include "boost/regex.hpp"
 #include "boost/format.hpp"
+#include "boost/foreach.hpp"
 
 #include <fstream>
 #include <iostream>
 #include <cmath>
 #include <cassert>
 #include <vector>
+#include <map>
 #include <algorithm>
 
 namespace lk = likely;
@@ -45,7 +47,7 @@ private:
     cosmo::PowerSpectrumPtr _fiducial, _nowiggles;
 }; // BaoFitPower
 
-typedef boost::shared_ptr<const BaoFitPower> BaoFitPowerPtr;
+typedef boost::shared_ptr<BaoFitPower> BaoFitPowerPtr;
 
 class Binning {
 public:
@@ -155,29 +157,74 @@ private:
 
 typedef boost::shared_ptr<LyaData> LyaDataPtr;
 
+class Parameter {
+public:
+    Parameter(double value, bool floating = false)
+    : _value(value), _floating(floating)
+    { }
+    void fix(double value) {
+        _value = value;
+        _floating = false;
+    }
+    void setValue(double value) { _value = value; }
+    bool isFloating() const { return _floating; }
+    double getValue() const { return _value; }
+private:
+    double _value;
+    bool _floating;
+}; // Parameter
+
+typedef std::pair<std::string,Parameter> NamedParameter;
+typedef std::map<std::string,Parameter> ParameterMap;
+
 class LyaBaoLikelihood {
 public:
     LyaBaoLikelihood(LyaDataPtr data, BaoFitPowerPtr power, double rmin, double rmax, int nr) :
-    _data(data), _pptr(new cosmo::PowerSpectrum(boost::ref(*power))), _xi(_pptr,rmin,rmax,nr)
+    _data(data), _power(power), _pptr(new cosmo::PowerSpectrum(boost::ref(*power))), _xi(_pptr,rmin,rmax,nr)
     {
         assert(data);
+        _params.insert(NamedParameter("Bias",Parameter(0.2,true)));
+        _params.insert(NamedParameter("Beta",Parameter(0.8)));
+        _params.insert(NamedParameter("BAO Amplitude",Parameter(1)));
+        _params.insert(NamedParameter("BAO Scale",Parameter(1)));
+        _params.insert(NamedParameter("BAO Sigma (Mpc/h)",Parameter(0)));
     }
-    double operator()(lk::Parameters const &params) const {
-        double delta(params[0]-0.25);
-        return delta*delta;
+    double operator()(lk::Parameters const &params) {
+        // Update the values of any floating parameters.
+        lk::Parameters::const_iterator nextValue(params.begin());
+        ParameterMap::iterator iter;
+        for(iter = _params.begin(); iter != _params.end(); ++iter) {
+            if(iter->second.isFloating()) iter->second.setValue(*nextValue++);
+        }
+        // Transfer parameter values to the appropriate models.
+        double bias(_params.find("Bias")->second.getValue());
+        _xi.setDistortion(_params.find("Beta")->second.getValue());
+        _power->setAmplitude(_params.find("BAO Amplitude")->second.getValue());
+        _power->setScale(_params.find("BAO Scale")->second.getValue());
+        _power->setSigma(_params.find("BAO Sigma (Mpc/h)")->second.getValue());
+        // Dummy quadratic NLL
+        return (bias-0.25)*(bias-0.25);
     }
     lk::Parameters getInitialValues() const {
-        lk::Parameters initial(1,0);
+        lk::Parameters initial;
+        BOOST_FOREACH(NamedParameter const &np, _params) {
+            if(np.second.isFloating()) initial.push_back(np.second.getValue());
+        }
         return initial;
     }
     lk::Parameters getInitialErrors() const {
-        lk::Parameters errors(1,1);
+        lk::Parameters errors;
+        BOOST_FOREACH(NamedParameter const &np, _params) {
+            if(np.second.isFloating()) errors.push_back(0.1*np.second.getValue());
+        }
         return errors;
     }
 private:
     LyaDataPtr _data;
+    BaoFitPowerPtr _power;
     cosmo::PowerSpectrumPtr _pptr;
     cosmo::RsdPowerSpectrumCorrelationFunction _xi;
+    ParameterMap _params;
 }; // LyaBaoLikelihood
 
 int main(int argc, char **argv) {
