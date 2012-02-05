@@ -141,6 +141,7 @@ int main(int argc, char **argv) {
     if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
     cosmo::AbsHomogeneousUniversePtr cosmology(
         new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
+    std::cout << "curvature = " << cosmology->getCurvature() << std::endl;
     
     std::cout << "z = " << zval << std::endl;
     std::cout << "D(z) = " << cosmology->getLineOfSightComovingDistance(zval) << " Mpc/h"
