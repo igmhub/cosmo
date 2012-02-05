@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
         ("verbose", "Prints additional information.")
         ("omega-lambda", po::value<double>(&OmegaLambda)->default_value(0.734),
             "Present-day value of OmegaLambda.")
-        ("omega-matter", po::value<double>(&OmegaMatter)->default_value(0.226),
+        ("omega-matter", po::value<double>(&OmegaMatter)->default_value(0.266),
             "Present-day value of OmegaMatter or zero for 1-OmegaLambda.")
         ("omega-baryon", po::value<double>(&OmegaBaryon)->default_value(0.0449),
             "Present-day value of OmegaBaryon, must be <= OmegaMatter.")
