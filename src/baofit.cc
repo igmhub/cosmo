@@ -14,6 +14,7 @@
 #include <cmath>
 #include <cassert>
 #include <vector>
+#include <algorithm>
 
 namespace po = boost::program_options;
 
@@ -72,7 +73,7 @@ typedef boost::shared_ptr<const Binning> BinningPtr;
 
 class LyaData {
 public:
-    LyaData(BinningPtr logLambdaBinning, BinningPtr separationBinning, BinningPtr redshiftBinning) : _ndata(0),
+    LyaData(BinningPtr logLambdaBinning, BinningPtr separationBinning, BinningPtr redshiftBinning) :
     _logLambdaBinning(logLambdaBinning), _separationBinning(separationBinning), _redshiftBinning(redshiftBinning)
     {
         assert(logLambdaBinning);
@@ -82,6 +83,7 @@ public:
         _nz = redshiftBinning->getNBins();
         int nBinsTotal = logLambdaBinning->getNBins()*_nsep*_nz;
         _data.resize(nBinsTotal,0);
+        _cov.resize(nBinsTotal,0);
         _initialized.resize(nBinsTotal,false);
     }
     void addData(double value, double logLambda, double separation, double redshift) {
@@ -99,14 +101,25 @@ public:
         // Remember this bin.
         _data[index] = value;
         _initialized[index] = true;
-        _ndata++;
+        _index.push_back(index);
+        _hasCov.push_back(false);
+    }
+    void addCovariance(int i, int j, double value) {
+        assert(i >= 0 && i < getNData());
+        // assert(j >= 0 && j < getNData());
+        assert(i == j);
+        assert(_hasCov[i] == false);
+        _cov[_index[i]] = value;
+        _hasCov[i] = true;
     }
     int getSize() const { return _data.size(); }
-    int getNData() const { return _ndata; }
+    int getNData() const { return _index.size(); }
+    int getNCov() const { return (int)std::count(_hasCov.begin(),_hasCov.end(),true); }
 private:
     BinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
-    std::vector<double> _data;
-    std::vector<bool> _initialized;
+    std::vector<double> _data, _cov;
+    std::vector<bool> _initialized, _hasCov;
+    std::vector<int> _index;
     int _ndata,_nsep,_nz;
 }; // LyaData
 
@@ -243,8 +256,8 @@ int main(int argc, char **argv) {
         // General stuff we will need for reading both files.
         std::string line;
         int lineNumber(0);
-        // Capturing regexp for a floating-point constant (with non-capturing exponent group).
-        std::string fpat("([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)");
+        // Capturing regexps for positive integer and signed floating-point constants.
+        std::string ipat("(0|(?:[1-9][0-9]*))"),fpat("([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)");
         boost::match_results<std::string::const_iterator> what;
         // Loop over lines in the parameter file.
         std::string paramsName(dataName + ".params");
@@ -262,8 +275,8 @@ int main(int argc, char **argv) {
             lineNumber++;
             // Parse this line with a regexp.
             if(!boost::regex_match(line,what,paramPattern)) {
-                throw cosmo::RuntimeError("Badly formatted line " + boost::lexical_cast<std::string>(lineNumber)
-                    + ": '" + line + "'");
+                throw cosmo::RuntimeError("Badly formatted params line " +
+                    boost::lexical_cast<std::string>(lineNumber) + ": '" + line + "'");
             }
             int nTokens(5);
             std::vector<double> token(nTokens);
@@ -279,6 +292,36 @@ int main(int argc, char **argv) {
             std::cout << "Read " << dataset.getNData() << " of " << dataset.getSize()
                 << " data values from " << paramsName << std::endl;
         }
+        // Loop over lines in the covariance file.
+        std::string covName(dataName + ".cov");
+        std::ifstream covIn(covName.c_str());
+        if(!covIn.good()) throw cosmo::RuntimeError("Unable to open " + covName);
+        boost::regex covPattern(boost::str(boost::format("\\s*%s\\s+%s\\s+%s\\s*") % ipat % ipat % fpat));
+        lineNumber = 0;
+        while(covIn.good() && !covIn.eof()) {
+            std::getline(covIn,line);
+            if(covIn.eof()) break;
+            if(!covIn.good()) {
+                throw cosmo::RuntimeError("Unable to read line " + boost::lexical_cast<std::string>(lineNumber));
+            }
+            lineNumber++;
+            // Parse this line with a regexp.
+            if(!boost::regex_match(line,what,covPattern)) {
+                throw cosmo::RuntimeError("Badly formatted cov line " +
+                    boost::lexical_cast<std::string>(lineNumber) + ": '" + line + "'");
+            }
+            int index1(boost::lexical_cast<int>(std::string(what[1].first,what[1].second)));
+            int index2(boost::lexical_cast<int>(std::string(what[2].first,what[2].second)));
+            double value(boost::lexical_cast<double>(std::string(what[3].first,what[3].second)));
+            // Add this covariance to our dataset.
+            dataset.addCovariance(index1,index2,value);
+        }
+        covIn.close();
+        if(verbose) {
+            std::cout << "Read " << dataset.getNCov() << " of " << dataset.getNData()
+                << " diagonal covariance values from " << covName << std::endl;
+        }
+        assert(dataset.getNCov() == dataset.getNData());
     }
     catch(cosmo::RuntimeError const &e) {
         std::cerr << "ERROR while reading data:\n  " << e.what() << std::endl;
