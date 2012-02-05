@@ -14,7 +14,7 @@ namespace local = cosmo;
 
 local::HomogeneousUniverseCalculator::HomogeneousUniverseCalculator(double zmax, int nz,
 double epsAbs)
-: _zmax(zmax), _nz(nz), _epsAbs(epsAbs)
+: _zmax(zmax), _nz(nz), _epsAbs(epsAbs), _curvatureScale(0)
 {
     if(zmax <= 0) {
         throw RuntimeError("HomogeneousUniverseCalculator: invalid zmax <= 0.");
