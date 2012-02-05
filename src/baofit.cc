@@ -131,11 +131,10 @@ typedef boost::shared_ptr<LyaData> LyaDataPtr;
 
 class LyaBaoLikelihood {
 public:
-    LyaBaoLikelihood(LyaDataPtr data, BaoFitPowerPtr power) :
-    _data(data), _power(power)
+    LyaBaoLikelihood(LyaDataPtr data, BaoFitPowerPtr power, double rmin, double rmax, int nr) :
+    _data(data), _pptr(new cosmo::PowerSpectrum(boost::ref(*power))), _xi(_pptr,rmin,rmax,nr)
     {
         assert(data);
-        assert(power);
     }
     double operator()(lk::Parameters const &params) const {
         double delta(params[0]-0.25);
@@ -151,7 +150,8 @@ public:
     }
 private:
     LyaDataPtr _data;
-    BaoFitPowerPtr _power;
+    cosmo::PowerSpectrumPtr _pptr;
+    cosmo::RsdPowerSpectrumCorrelationFunction _xi;
 }; // LyaBaoLikelihood
 
 int main(int argc, char **argv) {
@@ -159,8 +159,8 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,zref;
-    double minll,dll,minsep,dsep,minz,dz;
-    int nll,nsep,nz;
+    double minll,dll,minsep,dsep,minz,dz,rmin,rmax;
+    int nll,nsep,nz,nr;
     std::string dataName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
@@ -201,6 +201,12 @@ int main(int argc, char **argv) {
             "Redshift binsize.")
         ("nz", po::value<int>(&nz)->default_value(2),
             "Maximum number of redshift bins.")
+        ("rmin", po::value<double>(&rmin)->default_value(10),
+            "Minimum value of 3D separation of fit in Mpc/h.")
+        ("rmax", po::value<double>(&rmax)->default_value(170),
+            "Maximum value of 3D separation of fit in Mpc/h.")
+        ("nr", po::value<int>(&nr)->default_value(1024),
+            "Number of interpolation points to use in 3D separation.")
         ;
 
     // Do the command line parsing now.
@@ -362,7 +368,7 @@ int main(int argc, char **argv) {
     
     // Minimize the -log(Likelihood) function.
     try {
-        LyaBaoLikelihood nll(data,power);
+        LyaBaoLikelihood nll(data,power,rmin,rmax,nr);
         lk::FunctionPtr fptr(new lk::Function(nll));
         lk::Parameters initial(nll.getInitialValues()), errors(nll.getInitialErrors());
         lk::FunctionMinimumPtr fmin = lk::findMinimum(fptr,initial,errors,"mn2::vmetric");
