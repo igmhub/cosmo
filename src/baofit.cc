@@ -2,6 +2,15 @@
 
 #include "cosmo/cosmo.h"
 #include "likely/likely.h"
+// the following are not part of the public API, so not included by likely.h
+#include "likely/MinuitEngine.h"
+#include "likely/EngineRegistry.h"
+
+#include "Minuit2/MnUserParameters.h"
+#include "Minuit2/FunctionMinimum.h"
+#include "Minuit2/MnPrint.h"
+#include "Minuit2/MnStrategy.h"
+#include "Minuit2/MnMigrad.h"
 
 #include "boost/program_options.hpp"
 #include "boost/bind.hpp"
@@ -195,24 +204,24 @@ public:
         _params.insert(NamedParameter("Alpha",Parameter(4.0,true)));
         _params.insert(NamedParameter("Bias",Parameter(0.2,true)));
         _params.insert(NamedParameter("Beta",Parameter(0.8,true)));
-        _params.insert(NamedParameter("BAO Amplitude",Parameter(1,false)));
+        _params.insert(NamedParameter("BAO Ampl",Parameter(1,false)));
         _params.insert(NamedParameter("BAO Scale",Parameter(1,false)));
-        _params.insert(NamedParameter("BAO Sigma (Mpc/h)",Parameter(0,false)));
+        _params.insert(NamedParameter("BAO Sigma",Parameter(0,false))); // in Mpc/h
     }
     double operator()(lk::Parameters const &params) {
-        // Update the values of any floating parameters.
+        // Update the values of each parameter.
         lk::Parameters::const_iterator nextValue(params.begin());
         ParameterMap::iterator iter;
         for(iter = _params.begin(); iter != _params.end(); ++iter) {
-            if(iter->second.isFloating()) iter->second.setValue(*nextValue++);
+            iter->second.setValue(*nextValue++);
         }
         // Transfer parameter values to the appropriate models.
         double alpha(_params.find("Alpha")->second.getValue());
         double bias(_params.find("Bias")->second.getValue());
         _xi.setDistortion(_params.find("Beta")->second.getValue());
-        _power->setAmplitude(_params.find("BAO Amplitude")->second.getValue());
+        _power->setAmplitude(_params.find("BAO Ampl")->second.getValue());
         _power->setScale(_params.find("BAO Scale")->second.getValue());
-        _power->setSigma(_params.find("BAO Sigma (Mpc/h)")->second.getValue());
+        _power->setSigma(_params.find("BAO Sigma")->second.getValue());
         // Loop over the dataset bins.
         double nll(0);
         double biasSq(bias*bias);
@@ -234,7 +243,21 @@ public:
                 << pred << ' ' << obs << ' ' << err << std::endl;
             **/
         }
-        return nll;
+        return 0.5*nll; // convert chi2 into -log(L) to match UP=1
+    }
+    int getNPar() const { return _params.size(); }
+    void initialize(lk::MinuitEngine::StatePtr initialState) {
+        BOOST_FOREACH(NamedParameter const &np, _params) {
+            std::string const &name(np.first);
+            double value(np.second.getValue());
+            if(np.second.isFloating()) {
+                initialState->Add(name,value,0.1*value); // error = 0.1*value
+            }
+            else {
+                initialState->Add(name,value,0);
+                initialState->Fix(name);
+            }
+        }
     }
     lk::Parameters getInitialValues() const {
         lk::Parameters initial;
@@ -486,13 +509,33 @@ int main(int argc, char **argv) {
     
     // Minimize the -log(Likelihood) function.
     try {
+        lk::GradientCalculatorPtr gcptr;
         LyaBaoLikelihood nll(data,power,zref,redshiftGrowthFactor,rmin,rmax,nr);
         lk::FunctionPtr fptr(new lk::Function(nll));
-        lk::Parameters initial(nll.getInitialValues()), errors(nll.getInitialErrors());
-        lk::FunctionMinimumPtr fmin = lk::findMinimum(fptr,initial,errors,"mn2::vmetric");
-        fmin->printToStream(std::cout);
+
+        int npar(nll.getNPar());
+        lk::AbsEnginePtr engine = lk::getEngine("mn2::vmetric",fptr,gcptr,npar);
+        lk::MinuitEngine &minuit = dynamic_cast<lk::MinuitEngine&>(*engine);        
+        lk::MinuitEngine::StatePtr initialState(new ROOT::Minuit2::MnUserParameterState());
+        nll.initialize(initialState);
+        std::cout << *initialState;
+        
+        ROOT::Minuit2::MnMigrad fitter((ROOT::Minuit2::FCNBase const&)(minuit),*initialState,
+            ROOT::Minuit2::MnStrategy(1)); // lo(0),med(1),hi(2)
+
+        int maxfcn = 100*npar*npar;
+        double edmtol = 0.1;
+        ROOT::Minuit2::FunctionMinimum min = fitter(maxfcn,edmtol);
+        std::cout << min;
+        std::cout << min.UserCovariance();
+        std::cout << min.UserState().GlobalCC();
+
     }
     catch(cosmo::RuntimeError const &e) {
+        std::cerr << "ERROR during fit:\n  " << e.what() << std::endl;
+        return -2;
+    }
+    catch(lk::RuntimeError const &e) {
         std::cerr << "ERROR during fit:\n  " << e.what() << std::endl;
         return -2;
     }
