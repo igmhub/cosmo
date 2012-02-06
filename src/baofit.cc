@@ -187,10 +187,11 @@ class LyaBaoLikelihood {
 public:
     LyaBaoLikelihood(LyaDataPtr data, BaoFitPowerPtr power, double zref, double growth,
     double rmin, double rmax, int nr) : _data(data), _power(power), _zref(zref), _growth(growth),
-    _pptr(new cosmo::PowerSpectrum(boost::ref(*power))), _xi(_pptr,rmin,rmax,nr),
+    _pptr(new cosmo::PowerSpectrum(boost::ref(*_power))), _xi(_pptr,rmin,rmax,nr),
     _rmin(rmin), _rmax(rmax)
     {
         assert(data);
+        assert(power);
         _params.insert(NamedParameter("Alpha",Parameter(4.0,false)));
         _params.insert(NamedParameter("Bias",Parameter(0.2,true)));
         _params.insert(NamedParameter("Beta",Parameter(0.8)));
@@ -221,7 +222,7 @@ public:
             double mu = _data->getCosAngle(index);
             double z = _data->getRedshift(index);
             double zfactor = _growth*std::pow((1+z)/(1+_zref),alpha);
-            double pred = 0; //biasSq*zfactor*_xi(r,mu);
+            double pred = biasSq*zfactor*_xi(r,mu);
             double obs = _data->getData(index);
             double err = _data->getError(index);
             std::cout << index << ' ' << r << ' ' << mu << ' ' << z << " => "
@@ -346,40 +347,44 @@ int main(int argc, char **argv) {
          }
     
         // Build fiducial and "no-wiggles" Eisenstein & Hu models.
-        cosmo::BaryonPerturbations
-            baryons(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::ShiftedOscillation),
-            nowiggles(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::NoOscillation);
+        boost::shared_ptr<cosmo::BaryonPerturbations>
+            baryons(new cosmo::BaryonPerturbations(
+                OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::ShiftedOscillation)),
+            nowiggles(new cosmo::BaryonPerturbations(
+                OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::NoOscillation));
         
         // Dump some info about the fiducial model if requested.
         if(verbose) {
-            std::cout << "z(eq) = " << baryons.getMatterRadiationEqualityRedshift() << std::endl;
-            std::cout << "k(eq) = " << baryons.getMatterRadiationEqualityScale() << " /(Mpc/h)"
+            std::cout << "z(eq) = " << baryons->getMatterRadiationEqualityRedshift() << std::endl;
+            std::cout << "k(eq) = " << baryons->getMatterRadiationEqualityScale() << " /(Mpc/h)"
                 << std::endl;
-            std::cout << "sound horizon = " << baryons.getSoundHorizon() << " Mpc/h at z(drag) = "
-                << baryons.getDragEpoch() << std::endl;
-            std::cout << "Silk damping scale = " << baryons.getSilkDampingScale() << " /(Mpc/h)"
+            std::cout << "sound horizon = " << baryons->getSoundHorizon() << " Mpc/h at z(drag) = "
+                << baryons->getDragEpoch() << std::endl;
+            std::cout << "Silk damping scale = " << baryons->getSilkDampingScale() << " /(Mpc/h)"
                 << std::endl;
         }
 
         // Make shareable pointers to the matter transfer functions of these models.
         cosmo::TransferFunctionPtr
             baryonsTransferPtr(new cosmo::TransferFunction(boost::bind(
-                &cosmo::BaryonPerturbations::getMatterTransfer,&baryons,_1))),
+                &cosmo::BaryonPerturbations::getMatterTransfer,baryons,_1))),
             nowigglesTransferPtr(new cosmo::TransferFunction(boost::bind(
-                &cosmo::BaryonPerturbations::getMatterTransfer,&nowiggles,_1)));    
+                &cosmo::BaryonPerturbations::getMatterTransfer,nowiggles,_1)));    
 
         // Build the corresponding power spectra.
-        cosmo::TransferFunctionPowerSpectrum
-            baryonsPower(baryonsTransferPtr,spectralIndex),
-            nowigglesPower(nowigglesTransferPtr,spectralIndex);
+        boost::shared_ptr<cosmo::TransferFunctionPowerSpectrum>
+            baryonsPower(new cosmo::TransferFunctionPowerSpectrum(baryonsTransferPtr,spectralIndex)),
+            nowigglesPower(new cosmo::TransferFunctionPowerSpectrum(nowigglesTransferPtr,spectralIndex));
         // Normalize the fiducial model to sigma8, and use the same value of deltaH for the nowiggles model.
-        baryonsPower.setSigma(sigma8,8);
-        nowigglesPower.setDeltaH(baryonsPower.getDeltaH());
+        baryonsPower->setSigma(sigma8,8);
+        nowigglesPower->setDeltaH(baryonsPower->getDeltaH());
 
         // Make shareable power spectrum pointers.
         cosmo::PowerSpectrumPtr
-            baryonsPowerPtr(new cosmo::PowerSpectrum(boost::ref(baryonsPower))),
-            nowigglesPowerPtr(new cosmo::PowerSpectrum(boost::ref(nowigglesPower)));
+            baryonsPowerPtr(new cosmo::PowerSpectrum(boost::bind(
+                &cosmo::TransferFunctionPowerSpectrum::operator(),baryonsPower,_1))),
+            nowigglesPowerPtr(new cosmo::PowerSpectrum(boost::bind(
+                &cosmo::TransferFunctionPowerSpectrum::operator(),nowigglesPower,_1)));
 
         // Build a hybrid power spectrum that combines the fiducial and nowiggles models.
         power.reset(new BaoFitPower(baryonsPowerPtr,nowigglesPowerPtr));
