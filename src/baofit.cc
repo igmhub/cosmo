@@ -137,7 +137,7 @@ public:
     void addCovariance(int i, int j, double value) {
         assert(i >= 0 && i < getNData());
         // assert(j >= 0 && j < getNData());
-        assert(i == j);
+        assert(i == j && value > 0);
         assert(_hasCov[i] == false);
         _cov[_index[i]] = value;
         _hasCov[i] = true;
@@ -147,7 +147,7 @@ public:
     int getNCov() const { return (int)std::count(_hasCov.begin(),_hasCov.end(),true); }
     int getIndex(int k) const { return _index[k]; }
     double getData(int index) const { return _data[index]; }
-    double getError(int index) const { return _cov[index]; }
+    double getVariance(int index) const { return _cov[index]; }
     double getRadius(int index) const { return _r3d[index]; }
     double getCosAngle(int index) const { return _mu[index]; }
     double getRedshift(int index) const { return _redshiftBinning->getBinCenter(index % _nz); }
@@ -192,12 +192,12 @@ public:
     {
         assert(data);
         assert(power);
-        _params.insert(NamedParameter("Alpha",Parameter(4.0,false)));
+        _params.insert(NamedParameter("Alpha",Parameter(4.0,true)));
         _params.insert(NamedParameter("Bias",Parameter(0.2,true)));
-        _params.insert(NamedParameter("Beta",Parameter(0.8)));
-        _params.insert(NamedParameter("BAO Amplitude",Parameter(1)));
-        _params.insert(NamedParameter("BAO Scale",Parameter(1)));
-        _params.insert(NamedParameter("BAO Sigma (Mpc/h)",Parameter(0)));
+        _params.insert(NamedParameter("Beta",Parameter(0.8,true)));
+        _params.insert(NamedParameter("BAO Amplitude",Parameter(1,false)));
+        _params.insert(NamedParameter("BAO Scale",Parameter(1,false)));
+        _params.insert(NamedParameter("BAO Sigma (Mpc/h)",Parameter(0,false)));
     }
     double operator()(lk::Parameters const &params) {
         // Update the values of any floating parameters.
@@ -214,6 +214,7 @@ public:
         _power->setScale(_params.find("BAO Scale")->second.getValue());
         _power->setSigma(_params.find("BAO Sigma (Mpc/h)")->second.getValue());
         // Loop over the dataset bins.
+        double nll(0);
         double biasSq(bias*bias);
         for(int k= 0; k < _data->getNData(); ++k) {
             int index(_data->getIndex(k));
@@ -224,12 +225,16 @@ public:
             double zfactor = _growth*std::pow((1+z)/(1+_zref),alpha);
             double pred = biasSq*zfactor*_xi(r,mu);
             double obs = _data->getData(index);
-            double err = _data->getError(index);
+            double var = _data->getVariance(index);
+            // Update the chi2 = -log(L) for this bin
+            double diff(obs-pred);
+            nll += diff*diff/var;
+            /**
             std::cout << index << ' ' << r << ' ' << mu << ' ' << z << " => "
                 << pred << ' ' << obs << ' ' << err << std::endl;
+            **/
         }
-        // Dummy quadratic NLL
-        return (bias-0.25)*(bias-0.25);
+        return nll;
     }
     lk::Parameters getInitialValues() const {
         lk::Parameters initial;
