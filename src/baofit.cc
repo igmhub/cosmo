@@ -92,8 +92,7 @@ public:
         int nBinsTotal = logLambdaBinning->getNBins()*_nsep*_nz;
         _data.resize(nBinsTotal,0);
         _cov.resize(nBinsTotal,0);
-        _drLos.resize(nBinsTotal,0);
-        _drPerp.resize(nBinsTotal,0);
+        _r3d.resize(nBinsTotal,0);
         _mu.resize(nBinsTotal,0);
         _initialized.resize(nBinsTotal,false);
         _ds2by12 = separationBinning->getBinSize()*separationBinning->getBinSize()/12;
@@ -119,14 +118,15 @@ public:
         // Calculate and save model observables for this bin.
         double ratio(std::exp(0.5*logLambda)),zp1(redshift+1);
         double z1(zp1/ratio-1), z2(zp1*ratio-1);
-        _drLos[index] = _cosmology->getLineOfSightComovingDistance(z2) -
+        double drLos = _cosmology->getLineOfSightComovingDistance(z2) -
             _cosmology->getLineOfSightComovingDistance(z1);
         // Calculate the geometrically weighted mean separation of this bin as
         // Integral[s^2,{s,smin,smax}]/Integral[s,{s,smin,smax}] = s + ds^2/(12*s)
         double swgt = separation + _ds2by12/separation;
-        _drPerp[index] = _cosmology->getTransverseComovingScale(redshift)*(swgt*_arcminToRad);
-        double rsq = _drLos[index]*_drLos[index] + _drPerp[index]*_drPerp[index];
-        _mu[index] = std::abs(_drLos[index])/std::sqrt(rsq);
+        double drPerp = _cosmology->getTransverseComovingScale(redshift)*(swgt*_arcminToRad);
+        double rsq = drLos*drLos + drPerp*drPerp;
+        _r3d[index] = std::sqrt(rsq);
+        _mu[index] = std::abs(drLos)/_r3d[index];
         // Agrees with Covariance3D::getRMuZ in ForestCovarianceParam.cpp
         /*
         std::cout << '(' << logLambda << ',' << separation << ',' << redshift << ") => ["
@@ -145,10 +145,16 @@ public:
     int getSize() const { return _data.size(); }
     int getNData() const { return _index.size(); }
     int getNCov() const { return (int)std::count(_hasCov.begin(),_hasCov.end(),true); }
+    int getIndex(int k) const { return _index[k]; }
+    double getData(int index) const { return _data[index]; }
+    double getError(int index) const { return _cov[index]; }
+    double getRadius(int index) const { return _r3d[index]; }
+    double getCosAngle(int index) const { return _mu[index]; }
+    double getRedshift(int index) const { return _redshiftBinning->getBinCenter(index % _nz); }
 private:
     BinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
     cosmo::AbsHomogeneousUniversePtr _cosmology;
-    std::vector<double> _data, _cov, _drLos, _drPerp, _mu;
+    std::vector<double> _data, _cov, _r3d, _mu;
     std::vector<bool> _initialized, _hasCov;
     std::vector<int> _index;
     int _ndata,_nsep,_nz;
@@ -179,10 +185,13 @@ typedef std::map<std::string,Parameter> ParameterMap;
 
 class LyaBaoLikelihood {
 public:
-    LyaBaoLikelihood(LyaDataPtr data, BaoFitPowerPtr power, double rmin, double rmax, int nr) :
-    _data(data), _power(power), _pptr(new cosmo::PowerSpectrum(boost::ref(*power))), _xi(_pptr,rmin,rmax,nr)
+    LyaBaoLikelihood(LyaDataPtr data, BaoFitPowerPtr power, double zref, double growth,
+    double rmin, double rmax, int nr) : _data(data), _power(power), _zref(zref), _growth(growth),
+    _pptr(new cosmo::PowerSpectrum(boost::ref(*power))), _xi(_pptr,rmin,rmax,nr),
+    _rmin(rmin), _rmax(rmax)
     {
         assert(data);
+        _params.insert(NamedParameter("Alpha",Parameter(4.0,false)));
         _params.insert(NamedParameter("Bias",Parameter(0.2,true)));
         _params.insert(NamedParameter("Beta",Parameter(0.8)));
         _params.insert(NamedParameter("BAO Amplitude",Parameter(1)));
@@ -197,11 +206,27 @@ public:
             if(iter->second.isFloating()) iter->second.setValue(*nextValue++);
         }
         // Transfer parameter values to the appropriate models.
+        double alpha(_params.find("Alpha")->second.getValue());
         double bias(_params.find("Bias")->second.getValue());
         _xi.setDistortion(_params.find("Beta")->second.getValue());
         _power->setAmplitude(_params.find("BAO Amplitude")->second.getValue());
         _power->setScale(_params.find("BAO Scale")->second.getValue());
         _power->setSigma(_params.find("BAO Sigma (Mpc/h)")->second.getValue());
+        // Loop over the dataset bins.
+        double biasSq(bias*bias);
+        for(int k= 0; k < _data->getNData(); ++k) {
+            int index(_data->getIndex(k));
+            double r = _data->getRadius(index);
+            if(r < _rmin || r >= _rmax) continue;
+            double mu = _data->getCosAngle(index);
+            double z = _data->getRedshift(index);
+            double zfactor = _growth*std::pow((1+z)/(1+_zref),alpha);
+            double pred = 0; //biasSq*zfactor*_xi(r,mu);
+            double obs = _data->getData(index);
+            double err = _data->getError(index);
+            std::cout << index << ' ' << r << ' ' << mu << ' ' << z << " => "
+                << pred << ' ' << obs << ' ' << err << std::endl;
+        }
         // Dummy quadratic NLL
         return (bias-0.25)*(bias-0.25);
     }
@@ -224,6 +249,7 @@ private:
     BaoFitPowerPtr _power;
     cosmo::PowerSpectrumPtr _pptr;
     cosmo::RsdPowerSpectrumCorrelationFunction _xi;
+    double _zref, _growth, _rmin, _rmax;
     ParameterMap _params;
 }; // LyaBaoLikelihood
 
@@ -306,10 +332,18 @@ int main(int argc, char **argv) {
     // Initialize the cosmology calculations we will need.
     cosmo::AbsHomogeneousUniversePtr cosmology;
     BaoFitPowerPtr power;
+    double redshiftGrowthFactor(1);
     try {
         // Build the homogeneous cosmology we will use.
         if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
         cosmology.reset(new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
+        
+        // Calculate the redshift growth factor to apply for the reference redshift.
+         double ratio = cosmology->getGrowthFunction(zref)/cosmology->getGrowthFunction(0);
+         redshiftGrowthFactor = ratio*ratio;
+         if(verbose) {
+             std::cout << "Redshift growth factor for zref = " << zref << " is " << redshiftGrowthFactor << std::endl;
+         }
     
         // Build fiducial and "no-wiggles" Eisenstein & Hu models.
         cosmo::BaryonPerturbations
@@ -442,7 +476,7 @@ int main(int argc, char **argv) {
     
     // Minimize the -log(Likelihood) function.
     try {
-        LyaBaoLikelihood nll(data,power,rmin,rmax,nr);
+        LyaBaoLikelihood nll(data,power,zref,redshiftGrowthFactor,rmin,rmax,nr);
         lk::FunctionPtr fptr(new lk::Function(nll));
         lk::Parameters initial(nll.getInitialValues()), errors(nll.getInitialErrors());
         lk::FunctionMinimumPtr fmin = lk::findMinimum(fptr,initial,errors,"mn2::vmetric");
