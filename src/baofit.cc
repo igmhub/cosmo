@@ -290,6 +290,15 @@ public:
             }
         }
     }
+    void dump(std::string const &filename) {
+        std::ofstream out(filename.c_str());
+        for(int k= 0; k < _data->getNData(); ++k) {
+            int index(_data->getIndex(k));
+            double obs = _data->getData(index);
+            out << index << ' ' << obs << ' ' << _pull[k] << std::endl;
+        }
+        out.close();
+    }
 private:
     LyaDataPtr _data;
     LyaBaoModelPtr _model;
@@ -303,7 +312,7 @@ int main(int argc, char **argv) {
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,zref,minll,dll,minsep,dsep,minz,dz;
     int nll,nsep,nz;
-    std::string fiducialName,nowigglesName,dataName;
+    std::string fiducialName,nowigglesName,dataName,dumpName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -337,6 +346,8 @@ int main(int argc, char **argv) {
             "Redshift binsize.")
         ("nz", po::value<int>(&nz)->default_value(2),
             "Maximum number of redshift bins.")
+        ("dump", po::value<std::string>(&dumpName)->default_value(""),
+            "Filename for dumping fit results.")
         ;
 
     // Do the command line parsing now.
@@ -354,9 +365,18 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose"));
-    // Check for the required data name.
+
+    // Check for the required filename parameters.
     if(0 == dataName.length()) {
         std::cerr << "Missing required parameter --data." << std::endl;
+        return -1;
+    }
+    if(0 == fiducialName.length()) {
+        std::cerr << "Missing required parameter --fiducial." << std::endl;
+        return -1;
+    }
+    if(0 == nowigglesName.length()) {
+        std::cerr << "Missing required parameter --nowiggles." << std::endl;
         return -1;
     }
 
@@ -469,7 +489,7 @@ int main(int argc, char **argv) {
     try {
         lk::GradientCalculatorPtr gcptr;
         LyaBaoLikelihood nll(data,model);
-        lk::FunctionPtr fptr(new lk::Function(nll));
+        lk::FunctionPtr fptr(new lk::Function(boost::ref(nll)));
 
         int npar(nll.getNPar());
         lk::AbsEnginePtr engine = lk::getEngine("mn2::vmetric",fptr,gcptr,npar);
@@ -487,7 +507,8 @@ int main(int argc, char **argv) {
         std::cout << min;
         std::cout << min.UserCovariance();
         std::cout << min.UserState().GlobalCC();
-
+        
+        if(dumpName.length() > 0) nll.dump(dumpName);
     }
     catch(cosmo::RuntimeError const &e) {
         std::cerr << "ERROR during fit:\n  " << e.what() << std::endl;
