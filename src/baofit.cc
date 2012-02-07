@@ -25,7 +25,6 @@
 #include <cmath>
 #include <cassert>
 #include <vector>
-#include <map>
 #include <algorithm>
 
 namespace lk = likely;
@@ -248,6 +247,7 @@ public:
     : _data(data), _model(model) {
         assert(data);
         assert(model);
+        _pull.resize(data->getNData());
         _params.push_back(Parameter("Alpha",4.0,true));
         _params.push_back(Parameter("Bias",0.2,true));
         _params.push_back(Parameter("Beta",0.8,true));
@@ -268,8 +268,12 @@ public:
             // Update the chi2 = -log(L) for this bin
             double diff(obs-pred);
             nll += diff*diff/var;
+            // Remember this bin's pull.
+            _pull[k] = diff/std::sqrt(var);
+            /**
             std::cout << index << ' ' << r << ' ' << mu << ' ' << z << " => "
                 << pred << ' ' << obs << ' ' << var << std::endl;
+            **/
         }
         return 0.5*nll; // convert chi2 into -log(L) to match UP=1
     }
@@ -290,6 +294,7 @@ private:
     LyaDataPtr _data;
     LyaBaoModelPtr _model;
     std::vector<Parameter> _params;
+    std::vector<double> _pull;
 }; // LyaBaoLikelihood
 
 int main(int argc, char **argv) {
