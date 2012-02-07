@@ -21,6 +21,11 @@ namespace cosmo {
     typedef boost::function<double (double)> PowerSpectrum;
     typedef boost::shared_ptr<PowerSpectrum> PowerSpectrumPtr;
     
+    // Represents a function that returns a correlation function value given an
+    // input pair separation in Mpc/h.
+    typedef boost::function<double (double)> CorrelationFunction;
+    typedef boost::shared_ptr<CorrelationFunction> CorrelationFunctionPtr;
+    
 } // cosmo
 
 #endif COSMO_TYPES

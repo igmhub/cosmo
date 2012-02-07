@@ -81,8 +81,7 @@ libcosmo_la_LIBADD =
 am_libcosmo_la_OBJECTS = AbsHomogeneousUniverse.lo \
 	HomogeneousUniverseCalculator.lo LambdaCdmUniverse.lo \
 	BaryonPerturbations.lo TransferFunctionPowerSpectrum.lo \
-	PowerSpectrumCorrelationFunction.lo \
-	RsdPowerSpectrumCorrelationFunction.lo \
+	PowerSpectrumCorrelationFunction.lo RsdCorrelationFunction.lo \
 	OneDimensionalPowerSpectrum.lo \
 	AbsGaussianRandomFieldGenerator.lo \
 	FftGaussianRandomFieldGenerator.lo
@@ -265,7 +264,7 @@ libcosmo_la_SOURCES = \
 	cosmo/BaryonPerturbations.cc \
 	cosmo/TransferFunctionPowerSpectrum.cc \
 	cosmo/PowerSpectrumCorrelationFunction.cc \
-	cosmo/RsdPowerSpectrumCorrelationFunction.cc \
+	cosmo/RsdCorrelationFunction.cc \
 	cosmo/OneDimensionalPowerSpectrum.cc \
 	cosmo/AbsGaussianRandomFieldGenerator.cc \
 	cosmo/FftGaussianRandomFieldGenerator.cc
@@ -284,7 +283,7 @@ nobase_include_HEADERS = \
 	cosmo/BaryonPerturbations.h \
 	cosmo/TransferFunctionPowerSpectrum.h \
 	cosmo/PowerSpectrumCorrelationFunction.h \
-	cosmo/RsdPowerSpectrumCorrelationFunction.h \
+	cosmo/RsdCorrelationFunction.h \
 	cosmo/OneDimensionalPowerSpectrum.h \
 	cosmo/AbsGaussianRandomFieldGenerator.h \
 	cosmo/FftGaussianRandomFieldGenerator.h
@@ -471,7 +470,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/LambdaCdmUniverse.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/OneDimensionalPowerSpectrum.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PowerSpectrumCorrelationFunction.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RsdPowerSpectrumCorrelationFunction.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RsdCorrelationFunction.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TransferFunctionPowerSpectrum.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/baofit.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmo3d.Po@am__quote@
@@ -541,12 +540,12 @@ PowerSpectrumCorrelationFunction.lo: cosmo/PowerSpectrumCorrelationFunction.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o PowerSpectrumCorrelationFunction.lo `test -f 'cosmo/PowerSpectrumCorrelationFunction.cc' || echo '$(srcdir)/'`cosmo/PowerSpectrumCorrelationFunction.cc
 
-RsdPowerSpectrumCorrelationFunction.lo: cosmo/RsdPowerSpectrumCorrelationFunction.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RsdPowerSpectrumCorrelationFunction.lo -MD -MP -MF $(DEPDIR)/RsdPowerSpectrumCorrelationFunction.Tpo -c -o RsdPowerSpectrumCorrelationFunction.lo `test -f 'cosmo/RsdPowerSpectrumCorrelationFunction.cc' || echo '$(srcdir)/'`cosmo/RsdPowerSpectrumCorrelationFunction.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/RsdPowerSpectrumCorrelationFunction.Tpo $(DEPDIR)/RsdPowerSpectrumCorrelationFunction.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/RsdPowerSpectrumCorrelationFunction.cc' object='RsdPowerSpectrumCorrelationFunction.lo' libtool=yes @AMDEPBACKSLASH@
+RsdCorrelationFunction.lo: cosmo/RsdCorrelationFunction.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RsdCorrelationFunction.lo -MD -MP -MF $(DEPDIR)/RsdCorrelationFunction.Tpo -c -o RsdCorrelationFunction.lo `test -f 'cosmo/RsdCorrelationFunction.cc' || echo '$(srcdir)/'`cosmo/RsdCorrelationFunction.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/RsdCorrelationFunction.Tpo $(DEPDIR)/RsdCorrelationFunction.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/RsdCorrelationFunction.cc' object='RsdCorrelationFunction.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RsdPowerSpectrumCorrelationFunction.lo `test -f 'cosmo/RsdPowerSpectrumCorrelationFunction.cc' || echo '$(srcdir)/'`cosmo/RsdPowerSpectrumCorrelationFunction.cc
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RsdCorrelationFunction.lo `test -f 'cosmo/RsdCorrelationFunction.cc' || echo '$(srcdir)/'`cosmo/RsdCorrelationFunction.cc
 
 OneDimensionalPowerSpectrum.lo: cosmo/OneDimensionalPowerSpectrum.cc
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT OneDimensionalPowerSpectrum.lo -MD -MP -MF $(DEPDIR)/OneDimensionalPowerSpectrum.Tpo -c -o OneDimensionalPowerSpectrum.lo `test -f 'cosmo/OneDimensionalPowerSpectrum.cc' || echo '$(srcdir)/'`cosmo/OneDimensionalPowerSpectrum.cc

@@ -17,7 +17,7 @@ libcosmo_la_SOURCES = \
 	cosmo/BaryonPerturbations.cc \
 	cosmo/TransferFunctionPowerSpectrum.cc \
 	cosmo/PowerSpectrumCorrelationFunction.cc \
-	cosmo/RsdPowerSpectrumCorrelationFunction.cc \
+	cosmo/RsdCorrelationFunction.cc \
 	cosmo/OneDimensionalPowerSpectrum.cc \
 	cosmo/AbsGaussianRandomFieldGenerator.cc \
 	cosmo/FftGaussianRandomFieldGenerator.cc
@@ -35,7 +35,7 @@ nobase_include_HEADERS = \
 	cosmo/BaryonPerturbations.h \
 	cosmo/TransferFunctionPowerSpectrum.h \
 	cosmo/PowerSpectrumCorrelationFunction.h \
-	cosmo/RsdPowerSpectrumCorrelationFunction.h \
+	cosmo/RsdCorrelationFunction.h \
 	cosmo/OneDimensionalPowerSpectrum.h \
 	cosmo/AbsGaussianRandomFieldGenerator.h \
 	cosmo/FftGaussianRandomFieldGenerator.h
