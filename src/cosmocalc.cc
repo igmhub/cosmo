@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
             "Maximum radius in (Mpc/h) for tabulating correlation function.")
         ("nr", po::value<int>(&nr)->default_value(100),
             "Number of logarithmic steps to use for tabulating correlation function.")
-        ("rlinear", "Use linearly spaced r-values for saved correlation function (default is log).")
+        ("rlog", "Use log spaced r-values for saved correlation function (default is linear).")
         ("quad", "Calculates the quadrupole (l=2) correlation function (default is monopole).")
         ("hexa", "Calculates the hexedacapole (l=4) correlation function (default is monopole).")
         ("no-wiggles", "Calculates the power spectrum without baryon acoustic oscillations.")
@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose")), rlinear(vm.count("rlinear")),
+    bool verbose(vm.count("verbose")), rlog(vm.count("rlog")),
         quad(vm.count("quad")), hexa(vm.count("hexa")), noWiggles(vm.count("no-wiggles")),
         periodicWiggles(vm.count("periodic-wiggles")), baoFit(vm.count("bao-fit"));
 
@@ -245,9 +245,9 @@ int main(int argc, char **argv) {
         cosmo::PowerSpectrumCorrelationFunction xi(power,rmin,rmax,multipole,nr);
         std::ofstream out(saveCorrelationFile.c_str());
         double r,dr;
-        dr = rlinear ? (rmax-rmin)/(nr-1.) : std::pow(rmax/rmin,1/(nr-1.));
+        dr = rlog ? std::pow(rmax/rmin,1/(nr-1.)) : (rmax-rmin)/(nr-1.);
         for(int i = 0; i < nr; ++i) {
-            r = rlinear ? rmin + dr*i : rmin*std::pow(dr,i);
+            r = rlog ? rmin*std::pow(dr,i) : rmin + dr*i;
             if(r > rmax) r = rmax; // might happen with rounding but xi(r) will complain
             out << r << ' ' << r*xi(r)*evolSq*norm << std::endl;
         }
