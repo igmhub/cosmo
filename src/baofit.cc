@@ -172,10 +172,61 @@ private:
 
 typedef boost::shared_ptr<LyaData> LyaDataPtr;
 
+class LyaBaoModel {
+public:
+    LyaBaoModel(std::string const &fiducialName, std::string const &nowigglesName, double zref)
+    : _zref(zref) {
+        boost::format fileName("%s.%d.dat");
+        _fid0 = load(boost::str(fileName % fiducialName % 0));
+        _fid2 = load(boost::str(fileName % fiducialName % 2));
+        _fid4 = load(boost::str(fileName % fiducialName % 4));
+        _nw0 = load(boost::str(fileName % nowigglesName % 0));
+        _nw2 = load(boost::str(fileName % nowigglesName % 2));
+        _nw4 = load(boost::str(fileName % nowigglesName % 4));
+        cosmo::CorrelationFunctionPtr fid0(new cosmo::CorrelationFunction(boost::bind(
+            &lk::Interpolator::operator(),_fid0,_1)));
+        cosmo::CorrelationFunctionPtr fid2(new cosmo::CorrelationFunction(boost::bind(
+            &lk::Interpolator::operator(),_fid2,_1)));
+        cosmo::CorrelationFunctionPtr fid4(new cosmo::CorrelationFunction(boost::bind(
+            &lk::Interpolator::operator(),_fid4,_1)));
+        cosmo::CorrelationFunctionPtr nw0(new cosmo::CorrelationFunction(boost::bind(
+            &lk::Interpolator::operator(),_nw0,_1)));
+        cosmo::CorrelationFunctionPtr nw2(new cosmo::CorrelationFunction(boost::bind(
+            &lk::Interpolator::operator(),_nw2,_1)));
+        cosmo::CorrelationFunctionPtr nw4(new cosmo::CorrelationFunction(boost::bind(
+            &lk::Interpolator::operator(),_nw4,_1)));
+        _fid.reset(new cosmo::RsdCorrelationFunction(fid0,fid2,fid4));
+        _nw.reset(new cosmo::RsdCorrelationFunction(nw0,nw2,nw4));
+    }
+    double evaluate(double r, double mu, double z, lk::Parameters const &p) const {
+        double alpha(p[0]), bias(p[1]), beta(p[2]), ampl(p[3]), scale(p[4]);
+        double zfactor = std::pow((1+z)/(1+_zref),alpha);
+        _fid->setDistortion(beta);
+        _nw->setDistortion(beta);
+        double fid((*_fid)(r*scale,mu)), nw((*_nw)(r*scale,mu)); // scale cancels in mu
+        double xi = ampl*(fid-nw)+nw;
+        return bias*bias*zfactor*xi;
+    }
+private:
+    lk::InterpolatorPtr load(std::string const &fileName) {
+        std::vector<std::vector<double> > columns(2);
+        std::ifstream in(fileName.c_str());
+        lk::readVectors(in,columns);
+        in.close();
+        lk::InterpolatorPtr iptr(new lk::Interpolator(columns[0],columns[1],"cspline"));
+        return iptr;
+    }
+    double _zref, _growth;
+    lk::InterpolatorPtr _fid0, _fid2, _fid4, _nw0, _nw2, _nw4;
+    boost::scoped_ptr<cosmo::RsdCorrelationFunction> _fid, _nw;
+}; // LyaBaoModel
+
+typedef boost::shared_ptr<LyaBaoModel> LyaBaoModelPtr;
+
 class Parameter {
 public:
-    Parameter(double value, bool floating = false)
-    : _value(value), _floating(floating)
+    Parameter(std::string const &name, double value, bool floating = false)
+    : _name(name), _value(value), _floating(floating)
     { }
     void fix(double value) {
         _value = value;
@@ -184,112 +235,70 @@ public:
     void setValue(double value) { _value = value; }
     bool isFloating() const { return _floating; }
     double getValue() const { return _value; }
+    std::string getName() const { return _name; }
 private:
+    std::string _name;
     double _value;
     bool _floating;
 }; // Parameter
 
-typedef std::pair<std::string,Parameter> NamedParameter;
-typedef std::map<std::string,Parameter> ParameterMap;
-
 class LyaBaoLikelihood {
 public:
-    LyaBaoLikelihood(LyaDataPtr data, BaoFitPowerPtr power, double zref, double growth,
-    double rmin, double rmax, int nr) : _data(data), _power(power), _zref(zref), _growth(growth),
-    _pptr(new cosmo::PowerSpectrum(boost::ref(*_power))), _xi(_pptr,rmin,rmax,nr),
-    _rmin(rmin), _rmax(rmax)
-    {
+    LyaBaoLikelihood(LyaDataPtr data, LyaBaoModelPtr model)
+    : _data(data), _model(model) {
         assert(data);
-        assert(power);
-        _params.insert(NamedParameter("Alpha",Parameter(4.0,true)));
-        _params.insert(NamedParameter("Bias",Parameter(0.2,true)));
-        _params.insert(NamedParameter("Beta",Parameter(0.8,true)));
-        _params.insert(NamedParameter("BAO Ampl",Parameter(1,false)));
-        _params.insert(NamedParameter("BAO Scale",Parameter(1,false)));
-        _params.insert(NamedParameter("BAO Sigma",Parameter(0,false))); // in Mpc/h
+        assert(model);
+        _params.push_back(Parameter("Alpha",4.0,true));
+        _params.push_back(Parameter("Bias",0.2,true));
+        _params.push_back(Parameter("Beta",0.8,true));
+        _params.push_back(Parameter("BAO Ampl",1,true));
+        _params.push_back(Parameter("BAO Scale",1,true));
     }
     double operator()(lk::Parameters const &params) {
-        // Update the values of each parameter.
-        lk::Parameters::const_iterator nextValue(params.begin());
-        ParameterMap::iterator iter;
-        for(iter = _params.begin(); iter != _params.end(); ++iter) {
-            iter->second.setValue(*nextValue++);
-        }
-        // Transfer parameter values to the appropriate models.
-        double alpha(_params.find("Alpha")->second.getValue());
-        double bias(_params.find("Bias")->second.getValue());
-        _xi.setDistortion(_params.find("Beta")->second.getValue());
-        _power->setAmplitude(_params.find("BAO Ampl")->second.getValue());
-        _power->setScale(_params.find("BAO Scale")->second.getValue());
-        _power->setSigma(_params.find("BAO Sigma")->second.getValue());
         // Loop over the dataset bins.
         double nll(0);
-        double biasSq(bias*bias);
         for(int k= 0; k < _data->getNData(); ++k) {
             int index(_data->getIndex(k));
             double r = _data->getRadius(index);
-            if(r < _rmin || r >= _rmax) continue;
             double mu = _data->getCosAngle(index);
             double z = _data->getRedshift(index);
-            double zfactor = _growth*std::pow((1+z)/(1+_zref),alpha);
-            double pred = biasSq*zfactor*_xi(r,mu);
             double obs = _data->getData(index);
             double var = _data->getVariance(index);
+            double pred = _model->evaluate(r,mu,z,params);
             // Update the chi2 = -log(L) for this bin
             double diff(obs-pred);
             nll += diff*diff/var;
-            /**
             std::cout << index << ' ' << r << ' ' << mu << ' ' << z << " => "
-                << pred << ' ' << obs << ' ' << err << std::endl;
-            **/
+                << pred << ' ' << obs << ' ' << var << std::endl;
         }
         return 0.5*nll; // convert chi2 into -log(L) to match UP=1
     }
     int getNPar() const { return _params.size(); }
     void initialize(lk::MinuitEngine::StatePtr initialState) {
-        BOOST_FOREACH(NamedParameter const &np, _params) {
-            std::string const &name(np.first);
-            double value(np.second.getValue());
-            if(np.second.isFloating()) {
-                initialState->Add(name,value,0.1*value); // error = 0.1*value
+        BOOST_FOREACH(Parameter const &param, _params) {
+            double value(param.getValue());
+            if(param.isFloating()) {
+                initialState->Add(param.getName(),value,0.1*value); // error = 0.1*value
             }
             else {
-                initialState->Add(name,value,0);
-                initialState->Fix(name);
+                initialState->Add(param.getName(),value,0);
+                initialState->Fix(param.getName());
             }
         }
-    }
-    lk::Parameters getInitialValues() const {
-        lk::Parameters initial;
-        BOOST_FOREACH(NamedParameter const &np, _params) {
-            if(np.second.isFloating()) initial.push_back(np.second.getValue());
-        }
-        return initial;
-    }
-    lk::Parameters getInitialErrors() const {
-        lk::Parameters errors;
-        BOOST_FOREACH(NamedParameter const &np, _params) {
-            if(np.second.isFloating()) errors.push_back(0.1*np.second.getValue());
-        }
-        return errors;
     }
 private:
     LyaDataPtr _data;
-    BaoFitPowerPtr _power;
-    cosmo::PowerSpectrumPtr _pptr;
-    cosmo::RsdPowerSpectrumCorrelationFunction _xi;
-    double _zref, _growth, _rmin, _rmax;
-    ParameterMap _params;
+    LyaBaoModelPtr _model;
+    std::vector<Parameter> _params;
 }; // LyaBaoLikelihood
 
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
-    double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,zref;
-    double minll,dll,minsep,dsep,minz,dz,rmin,rmax;
-    int nll,nsep,nz,nr;
-    std::string dataName;
+    double OmegaLambda,OmegaMatter,zref,minll,dll,minsep,dsep,minz,dz;
+    int nll,nsep,nz;
+    std::string fiducialName,nowigglesName,dataName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -297,16 +306,10 @@ int main(int argc, char **argv) {
             "Present-day value of OmegaLambda.")
         ("omega-matter", po::value<double>(&OmegaMatter)->default_value(0.266),
             "Present-day value of OmegaMatter or zero for 1-OmegaLambda.")
-        ("omega-baryon", po::value<double>(&OmegaBaryon)->default_value(0.0449),
-            "Present-day value of OmegaBaryon, must be <= OmegaMatter.")
-        ("hubble-constant", po::value<double>(&hubbleConstant)->default_value(0.710),
-            "Present-day value of the Hubble parameter h = H0/(100 km/s/Mpc).")
-        ("cmb-temp", po::value<double>(&cmbTemp)->default_value(2.725),
-            "Present-day temperature of the cosmic microwave background in Kelvin.")
-        ("spectral-index", po::value<double>(&spectralIndex)->default_value(1),
-            "Power exponent of primordial fluctuations.")
-        ("sigma8", po::value<double>(&sigma8)->default_value(0.801),
-            "Power will be normalized to this value.")
+        ("fiducial", po::value<std::string>(&fiducialName)->default_value(""),
+            "Fiducial correlation functions will be read from <name>.<ell>.dat with ell=0,2,4.")
+        ("nowiggles", po::value<std::string>(&nowigglesName)->default_value(""),
+            "No-wiggles correlation functions will be read from <name>.<ell>.dat with ell=0,2,4.")
         ("zref", po::value<double>(&zref)->default_value(2.25),
             "Reference redshift.")
         ("data", po::value<std::string>(&dataName)->default_value(""),
@@ -329,12 +332,6 @@ int main(int argc, char **argv) {
             "Redshift binsize.")
         ("nz", po::value<int>(&nz)->default_value(2),
             "Maximum number of redshift bins.")
-        ("rmin", po::value<double>(&rmin)->default_value(10),
-            "Minimum value of 3D separation of fit in Mpc/h.")
-        ("rmax", po::value<double>(&rmax)->default_value(170),
-            "Maximum value of 3D separation of fit in Mpc/h.")
-        ("nr", po::value<int>(&nr)->default_value(1024),
-            "Number of interpolation points to use in 3D separation.")
         ;
 
     // Do the command line parsing now.
@@ -360,66 +357,22 @@ int main(int argc, char **argv) {
 
     // Initialize the cosmology calculations we will need.
     cosmo::AbsHomogeneousUniversePtr cosmology;
-    BaoFitPowerPtr power;
-    double redshiftGrowthFactor(1);
+    LyaBaoModelPtr model;
     try {
         // Build the homogeneous cosmology we will use.
         if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
         cosmology.reset(new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
         
-        // Calculate the redshift growth factor to apply for the reference redshift.
-         double ratio = cosmology->getGrowthFunction(zref)/cosmology->getGrowthFunction(0);
-         redshiftGrowthFactor = ratio*ratio;
-         if(verbose) {
-             std::cout << "Redshift growth factor for zref = " << zref << " is " << redshiftGrowthFactor << std::endl;
-         }
-    
-        // Build fiducial and "no-wiggles" Eisenstein & Hu models.
-        boost::shared_ptr<cosmo::BaryonPerturbations>
-            baryons(new cosmo::BaryonPerturbations(
-                OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::ShiftedOscillation)),
-            nowiggles(new cosmo::BaryonPerturbations(
-                OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::NoOscillation));
-        
-        // Dump some info about the fiducial model if requested.
-        if(verbose) {
-            std::cout << "z(eq) = " << baryons->getMatterRadiationEqualityRedshift() << std::endl;
-            std::cout << "k(eq) = " << baryons->getMatterRadiationEqualityScale() << " /(Mpc/h)"
-                << std::endl;
-            std::cout << "sound horizon = " << baryons->getSoundHorizon() << " Mpc/h at z(drag) = "
-                << baryons->getDragEpoch() << std::endl;
-            std::cout << "Silk damping scale = " << baryons->getSilkDampingScale() << " /(Mpc/h)"
-                << std::endl;
-        }
+         // Build our fit model from tabulated ell=0,2,4 correlation functions on disk.
+         model.reset(new LyaBaoModel(fiducialName,nowigglesName,zref));
 
-        // Make shareable pointers to the matter transfer functions of these models.
-        cosmo::TransferFunctionPtr
-            baryonsTransferPtr(new cosmo::TransferFunction(boost::bind(
-                &cosmo::BaryonPerturbations::getMatterTransfer,baryons,_1))),
-            nowigglesTransferPtr(new cosmo::TransferFunction(boost::bind(
-                &cosmo::BaryonPerturbations::getMatterTransfer,nowiggles,_1)));    
-
-        // Build the corresponding power spectra.
-        boost::shared_ptr<cosmo::TransferFunctionPowerSpectrum>
-            baryonsPower(new cosmo::TransferFunctionPowerSpectrum(baryonsTransferPtr,spectralIndex)),
-            nowigglesPower(new cosmo::TransferFunctionPowerSpectrum(nowigglesTransferPtr,spectralIndex));
-        // Normalize the fiducial model to sigma8, and use the same value of deltaH for the nowiggles model.
-        baryonsPower->setSigma(sigma8,8);
-        nowigglesPower->setDeltaH(baryonsPower->getDeltaH());
-
-        // Make shareable power spectrum pointers.
-        cosmo::PowerSpectrumPtr
-            baryonsPowerPtr(new cosmo::PowerSpectrum(boost::bind(
-                &cosmo::TransferFunctionPowerSpectrum::operator(),baryonsPower,_1))),
-            nowigglesPowerPtr(new cosmo::PowerSpectrum(boost::bind(
-                &cosmo::TransferFunctionPowerSpectrum::operator(),nowigglesPower,_1)));
-
-        // Build a hybrid power spectrum that combines the fiducial and nowiggles models.
-        power.reset(new BaoFitPower(baryonsPowerPtr,nowigglesPowerPtr));
-        
         if(verbose) std::cout << "Cosmology initialized." << std::endl;
     }
     catch(cosmo::RuntimeError const &e) {
+        std::cerr << "ERROR during cosmology initialization:\n  " << e.what() << std::endl;
+        return -2;
+    }
+    catch(lk::RuntimeError const &e) {
         std::cerr << "ERROR during cosmology initialization:\n  " << e.what() << std::endl;
         return -2;
     }
@@ -510,7 +463,7 @@ int main(int argc, char **argv) {
     // Minimize the -log(Likelihood) function.
     try {
         lk::GradientCalculatorPtr gcptr;
-        LyaBaoLikelihood nll(data,power,zref,redshiftGrowthFactor,rmin,rmax,nr);
+        LyaBaoLikelihood nll(data,model);
         lk::FunctionPtr fptr(new lk::Function(nll));
 
         int npar(nll.getNPar());
