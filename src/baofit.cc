@@ -297,8 +297,9 @@ public:
         out << llbins->getNBins() << ' ' << llbins->getLowEdge() << ' ' << llbins->getBinSize() << std::endl;
         out << sepbins->getNBins() << ' ' << sepbins->getLowEdge() << ' ' << sepbins->getBinSize() << std::endl;
         out << zbins->getNBins() << ' ' << zbins->getLowEdge() << ' ' << zbins->getBinSize() << std::endl;
-        // Dump the number of data bins and the model oversampling factor
-        out << _data->getNData() << ' ' << oversampling << std::endl;
+        // Dump the number of data bins, the model oversampling factor, and the fitted BAO scale.
+        double scale = params[4];
+        out << _data->getNData() << ' ' << oversampling << ' ' << scale << std::endl;
         // Dump binned data and most recent pulls.
         for(int k= 0; k < _data->getNData(); ++k) {
             int index(_data->getIndex(k));
@@ -323,7 +324,7 @@ public:
                     double ll = llbins->getBinCenter(ill);
                     _data->transform(ll,sep,z,ds,r,mu);
                     double pred = _model->evaluate(r,mu,z,params);
-                    out << pred << std::endl;
+                    out << r << ' ' << pred << std::endl;
                 }
             }
         }
