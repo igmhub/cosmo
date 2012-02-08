@@ -159,6 +159,9 @@ public:
     double getRadius(int index) const { return _r3d[index]; }
     double getCosAngle(int index) const { return _mu[index]; }
     double getRedshift(int index) const { return _redshiftBinning->getBinCenter(index % _nz); }
+    BinningPtr getLogLambdaBinning() const { return _logLambdaBinning; }
+    BinningPtr getSeparationBinning() const { return _separationBinning; }
+    BinningPtr getRedshiftBinning() const { return _redshiftBinning; }
 private:
     BinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
     cosmo::AbsHomogeneousUniversePtr _cosmology;
@@ -292,6 +295,13 @@ public:
     }
     void dump(std::string const &filename) {
         std::ofstream out(filename.c_str());
+        // Dump binning info first
+        BinningPtr bins(_data->getLogLambdaBinning());
+        out << bins->getNBins() << ' ' << bins->getLowEdge() << ' ' << bins->getBinSize() << std::endl;
+        bins = _data->getSeparationBinning();
+        out << bins->getNBins() << ' ' << bins->getLowEdge() << ' ' << bins->getBinSize() << std::endl;
+        bins = _data->getRedshiftBinning();
+        out << bins->getNBins() << ' ' << bins->getLowEdge() << ' ' << bins->getBinSize() << std::endl;
         for(int k= 0; k < _data->getNData(); ++k) {
             int index(_data->getIndex(k));
             double obs = _data->getData(index);
