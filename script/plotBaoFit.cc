@@ -56,15 +56,33 @@ void plotBaoFit(const char *filename = "fit.dat") {
     // Loop over bin data in the input file.
     int index;
     double data,pull;
+    double *minData = new double[nz], *maxData = new double[nz], *sumSqData = new double[nz];
+    for(int iz = 0; iz < nz; ++iz) {
+        minData[iz] = 1;
+        maxData[iz] = 0;
+        sumSqData[iz] = 0;
+    }
     for(int k = 0; k < ndata; ++k) {
         in >> index >> data >> pull;
         int iz = index % nz;
+        if(minData[iz] > maxData[iz]) {
+            minData[iz] = maxData[iz] = data;
+        }
+        else {
+            if(data < minData[iz]) minData[iz] = data;
+            if(data > maxData[iz]) maxData[iz] = data;
+        }
+        sumSqData[iz] += data*data;
         TH2F *dataHist = (TH2F *)gDirectory->Get(Form("data%d",iz));
         TH2F *pullHist = (TH2F *)gDirectory->Get(Form("pull%d",iz));
         int isep = 1 + (index/nz) % nsep;
         int ill = 1 + (index/(nz*nsep)) % nll;
         dataHist->SetBinContent(isep,ill,data);
         pullHist->SetBinContent(isep,ill,pull);
+    }
+    for(int iz = 0; iz < nz; ++iz) {
+        std::cout << "min/max " << iz << ' ' << minData[iz] << ' ' << maxData[iz] << std::endl;
+        std::cout << "RMS = " << std::sqrt(sumSqData[iz]) << std::endl;
     }
     
     // Loop over model predictions in the input file.
@@ -82,9 +100,11 @@ void plotBaoFit(const char *filename = "fit.dat") {
     }
 
     // Draw plots.
-    double zmax=1e-4,nsig=3;
+    double nsig=3;
     for(iz = 0; iz < nz; ++iz) {
+        double zmax = 0.05*std::sqrt(sumSqData[iz]);
         TH2F *dataHist = (TH2F *)gDirectory->Get(Form("data%d",iz));
+        TH2F *pullHist = (TH2F *)gDirectory->Get(Form("pull%d",iz));
         TH2F *modelHist = (TH2F *)gDirectory->Get(Form("model%d",iz));
         TH2F *r3dHist = (TH2F *)gDirectory->Get(Form("r3d%d",iz));
         canvas->cd(iz+1);
@@ -92,6 +112,19 @@ void plotBaoFit(const char *filename = "fit.dat") {
         dataHist->GetYaxis()->SetTitleOffset(1.65);
         dataHist->SetMaximum(+zmax);
         dataHist->SetMinimum(-zmax*0.99); // factor of 0.99 ensures that zero is white
+        // Trunctate bins outside the limits so that they are colored correctly.
+        for(int ill = 0; ill < nll; ++ill) {
+            for(int isep = 0; isep < nsep; ++isep) {
+                double data = dataHist->GetBinContent(isep+1,ill+1);
+                if(data < -zmax) data = -0.99*zmax;
+                if(data > +zmax) data = +0.99*zmax;
+                dataHist->SetBinContent(isep+1,ill+1,data);
+                double pull = pullHist->GetBinContent(isep+1,ill+1);
+                if(pull < -nsig) pull = -0.98*nsig;
+                if(pull > +nsig) pull = +0.98*nsig;
+                pullHist->SetBinContent(isep+1,ill+1,pull);
+            }
+        }
         dataHist->Draw("col");
         modelHist->SetMaximum(+zmax);
         modelHist->SetMinimum(-zmax);
@@ -100,7 +133,6 @@ void plotBaoFit(const char *filename = "fit.dat") {
         r3dHist->SetLineWidth(5);
         r3dHist->SetLineColor(kGreen-6);
         r3dHist->Draw("cont3same");
-        TH2F *pullHist = (TH2F *)gDirectory->Get(Form("pull%d",iz));
         pullHist->GetYaxis()->SetTitleOffset(1.65);
         pullHist->SetMaximum(+nsig);
         pullHist->SetMinimum(-nsig*0.99); // factor of 0.99 ensures that zero is white
