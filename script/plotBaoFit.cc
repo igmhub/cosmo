@@ -38,19 +38,21 @@ void plotBaoFit(const char *filename = "fit.dat") {
     canvas->Divide(nz,2,0.,0.);
 
     // Create 2D histograms in (ll,sep) for each redshift.
+    double cLight = 299.792458; // 1e3 km/s
+    double vmin = cLight*minll, vmax = cLight*(minll+nll*dll);
     for(int iz = 0; iz < nz; ++iz) {
         double z(minz + (iz+0.5)*dz);
         TH2F *dataHist = (TH2F *)gDirectory->Get(Form("data%d",iz));
         if(dataHist) continue;
         TH2F *dataHist = new TH2F(Form("data%d",iz),Form("Fit data for z = %.2f",z),
-            nsep,minsep,minsep+nsep*dsep,nll,minll,minll+nll*dll);
+            nsep,minsep,minsep+nsep*dsep,nll,vmin,vmax);
         dataHist->SetXTitle("Angular separation (arcmin)");
-        dataHist->SetYTitle("LOS separation log(lam2/lam1)");
+        dataHist->SetYTitle("Relative radial velocity (10^{3}km/s)");
         TH2F *pullHist = dataHist->Clone(Form("pull%d",iz));
         TH2F *modelHist = new TH2F(Form("model%d",iz),Form("Model predictions for z = %.2f",z),
-            oversampling*nsep,minsep,minsep+nsep*dsep,oversampling*nll,minll,minll+nll*dll);
+            oversampling*nsep,minsep,minsep+nsep*dsep,oversampling*nll,vmin,vmax);
         TH2F *r3dHist = new TH2F(Form("r3d%d",iz),Form("Co-moving 3D separation for z = %.2f",z),
-            oversampling*nsep,minsep,minsep+nsep*dsep,oversampling*nll,minll,minll+nll*dll);
+            oversampling*nsep,minsep,minsep+nsep*dsep,oversampling*nll,vmin,vmax);
     }
     
     // Loop over bin data in the input file.
@@ -107,9 +109,10 @@ void plotBaoFit(const char *filename = "fit.dat") {
         TH2F *pullHist = (TH2F *)gDirectory->Get(Form("pull%d",iz));
         TH2F *modelHist = (TH2F *)gDirectory->Get(Form("model%d",iz));
         TH2F *r3dHist = (TH2F *)gDirectory->Get(Form("r3d%d",iz));
+
         canvas->cd(iz+1);
-        canvas->GetPad(iz+1)->SetMargin(0.15,0.03,0.10,0.01);
-        dataHist->GetYaxis()->SetTitleOffset(1.65);
+        canvas->GetPad(iz+1)->SetMargin(0.11,0.03,0.10,0.01);
+        dataHist->GetYaxis()->SetTitleOffset(1.3);
         dataHist->SetMaximum(+zmax);
         dataHist->SetMinimum(-zmax*0.99); // factor of 0.99 ensures that zero is white
         // Trunctate bins outside the limits so that they are colored correctly.
@@ -133,11 +136,12 @@ void plotBaoFit(const char *filename = "fit.dat") {
         r3dHist->SetLineWidth(5);
         r3dHist->SetLineColor(kGreen-6);
         r3dHist->Draw("cont3same");
-        pullHist->GetYaxis()->SetTitleOffset(1.65);
+
+        canvas->cd(nz+iz+1);
+        canvas->GetPad(nz+iz+1)->SetMargin(0.11,0.03,0.10,0.01);
+        pullHist->GetYaxis()->SetTitleOffset(1.3);
         pullHist->SetMaximum(+nsig);
         pullHist->SetMinimum(-nsig*0.99); // factor of 0.99 ensures that zero is white
-        canvas->cd(nz+iz+1);
-        canvas->GetPad(nz+iz+1)->SetMargin(0.15,0.03,0.10,0.01);
         pullHist->Draw("col");                
     }    
 
