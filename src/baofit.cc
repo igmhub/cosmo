@@ -342,13 +342,13 @@ int main(int argc, char **argv) {
             "Minimum log(lam2/lam1).")
         ("dll", po::value<double>(&dll)->default_value(0.004),
             "log(lam2/lam1) binsize.")
-        ("nll", po::value<int>(&nll)->default_value(99),
+        ("nll", po::value<int>(&nll)->default_value(14),
             "Maximum number of log(lam2/lam1) bins.")
         ("minsep", po::value<double>(&minsep)->default_value(0),
             "Minimum separation in arcmins.")
         ("dsep", po::value<double>(&dsep)->default_value(10),
             "Separation binsize in arcmins.")
-        ("nsep", po::value<int>(&nsep)->default_value(18),
+        ("nsep", po::value<int>(&nsep)->default_value(14),
             "Maximum number of separation bins.")
         ("minz", po::value<double>(&minz)->default_value(1.7),
             "Minimum redshift.")
