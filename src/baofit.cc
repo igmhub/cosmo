@@ -85,6 +85,12 @@ private:
 
 typedef boost::shared_ptr<const Binning> BinningPtr;
 
+BinningPtr oversampleBinning(Binning const &other, int factor) {
+    assert(factor > 0);
+    BinningPtr bptr(new Binning(other.getNBins()*factor,other.getLowEdge(),other.getBinSize()/factor));
+    return bptr;
+}
+
 class LyaData {
 public:
     LyaData(BinningPtr logLambdaBinning, BinningPtr separationBinning, BinningPtr redshiftBinning,
@@ -103,7 +109,7 @@ public:
         _r3d.resize(nBinsTotal,0);
         _mu.resize(nBinsTotal,0);
         _initialized.resize(nBinsTotal,false);
-        _ds2by12 = separationBinning->getBinSize()*separationBinning->getBinSize()/12;
+        _ds = separationBinning->getBinSize();
         _arcminToRad = 4*std::atan(1)/(60.*180.);
     }
     void addData(double value, double logLambda, double separation, double redshift) {
@@ -124,23 +130,20 @@ public:
         _index.push_back(index);
         _hasCov.push_back(false);
         // Calculate and save model observables for this bin.
-        double ratio(std::exp(0.5*logLambda)),zp1(redshift+1);
+        transform(logLambda,separation,redshift,_ds,_r3d[index],_mu[index]);
+    }
+    void transform(double ll, double sep, double z, double ds, double &r3d, double &mu) const {
+        double ratio(std::exp(0.5*ll)),zp1(z+1);
         double z1(zp1/ratio-1), z2(zp1*ratio-1);
         double drLos = _cosmology->getLineOfSightComovingDistance(z2) -
             _cosmology->getLineOfSightComovingDistance(z1);
         // Calculate the geometrically weighted mean separation of this bin as
         // Integral[s^2,{s,smin,smax}]/Integral[s,{s,smin,smax}] = s + ds^2/(12*s)
-        double swgt = separation + _ds2by12/separation;
-        double drPerp = _cosmology->getTransverseComovingScale(redshift)*(swgt*_arcminToRad);
+        double swgt = sep + (ds*ds/12)/sep;
+        double drPerp = _cosmology->getTransverseComovingScale(z)*(swgt*_arcminToRad);
         double rsq = drLos*drLos + drPerp*drPerp;
-        _r3d[index] = std::sqrt(rsq);
-        _mu[index] = std::abs(drLos)/_r3d[index];
-        // Agrees with Covariance3D::getRMuZ in ForestCovarianceParam.cpp
-        /*
-        std::cout << '(' << logLambda << ',' << separation << ',' << redshift << ") => ["
-            << z1 << ',' << z2 << ',' << swgt << ';' << _drLos[index] << ','
-            << _drPerp[index] << ',' << _mu[index] << "]\n";
-        */
+        r3d = std::sqrt(rsq);
+        mu = std::abs(drLos)/r3d;
     }
     void addCovariance(int i, int j, double value) {
         assert(i >= 0 && i < getNData());
@@ -169,7 +172,7 @@ private:
     std::vector<bool> _initialized, _hasCov;
     std::vector<int> _index;
     int _ndata,_nsep,_nz;
-    double _ds2by12,_arcminToRad;
+    double _ds,_arcminToRad;
 }; // LyaData
 
 typedef boost::shared_ptr<LyaData> LyaDataPtr;
@@ -250,7 +253,6 @@ public:
     : _data(data), _model(model) {
         assert(data);
         assert(model);
-        _pull.resize(data->getNData());
         _params.push_back(Parameter("Alpha",4.0,true));
         _params.push_back(Parameter("Bias",0.2,true));
         _params.push_back(Parameter("Beta",0.8,true));
@@ -271,12 +273,6 @@ public:
             // Update the chi2 = -log(L) for this bin
             double diff(obs-pred);
             nll += diff*diff/var;
-            // Remember this bin's pull.
-            _pull[k] = diff/std::sqrt(var);
-            /**
-            std::cout << index << ' ' << r << ' ' << mu << ' ' << z << " => "
-                << pred << ' ' << obs << ' ' << var << std::endl;
-            **/
         }
         return 0.5*nll; // convert chi2 into -log(L) to match UP=1
     }
@@ -293,19 +289,43 @@ public:
             }
         }
     }
-    void dump(std::string const &filename) {
+    void dump(std::string const &filename, lk::Parameters const &params, int oversampling = 10) {
         std::ofstream out(filename.c_str());
         // Dump binning info first
-        BinningPtr bins(_data->getLogLambdaBinning());
-        out << bins->getNBins() << ' ' << bins->getLowEdge() << ' ' << bins->getBinSize() << std::endl;
-        bins = _data->getSeparationBinning();
-        out << bins->getNBins() << ' ' << bins->getLowEdge() << ' ' << bins->getBinSize() << std::endl;
-        bins = _data->getRedshiftBinning();
-        out << bins->getNBins() << ' ' << bins->getLowEdge() << ' ' << bins->getBinSize() << std::endl;
+        BinningPtr llbins(_data->getLogLambdaBinning()), sepbins(_data->getSeparationBinning()),
+            zbins(_data->getRedshiftBinning());
+        out << llbins->getNBins() << ' ' << llbins->getLowEdge() << ' ' << llbins->getBinSize() << std::endl;
+        out << sepbins->getNBins() << ' ' << sepbins->getLowEdge() << ' ' << sepbins->getBinSize() << std::endl;
+        out << zbins->getNBins() << ' ' << zbins->getLowEdge() << ' ' << zbins->getBinSize() << std::endl;
+        // Dump the number of data bins and the model oversampling factor
+        out << _data->getNData() << ' ' << oversampling << std::endl;
+        // Dump binned data and most recent pulls.
         for(int k= 0; k < _data->getNData(); ++k) {
             int index(_data->getIndex(k));
+            double r = _data->getRadius(index);
+            double mu = _data->getCosAngle(index);
+            double z = _data->getRedshift(index);
             double obs = _data->getData(index);
-            out << index << ' ' << obs << ' ' << _pull[k] << std::endl;
+            double var = _data->getVariance(index);
+            double pred = _model->evaluate(r,mu,z,params);
+            double pull = (obs-pred)/std::sqrt(var);
+            out << index << ' ' << obs << ' ' << pull << std::endl;
+        }
+        // Dump oversampled model calculation.
+        sepbins = oversampleBinning(*sepbins,oversampling);
+        llbins = oversampleBinning(*llbins,oversampling);
+        double r,mu,ds(sepbins->getBinSize());
+        for(int iz = 0; iz < zbins->getNBins(); ++iz) {
+            double z = zbins->getBinCenter(iz);
+            for(int isep = 0; isep < sepbins->getNBins(); ++isep) {
+                double sep = sepbins->getBinCenter(isep);
+                for(int ill = 0; ill < llbins->getNBins(); ++ill) {
+                    double ll = llbins->getBinCenter(ill);
+                    _data->transform(ll,sep,z,ds,r,mu);
+                    double pred = _model->evaluate(r,mu,z,params);
+                    out << pred << std::endl;
+                }
+            }
         }
         out.close();
     }
@@ -313,7 +333,6 @@ private:
     LyaDataPtr _data;
     LyaBaoModelPtr _model;
     std::vector<Parameter> _params;
-    std::vector<double> _pull;
 }; // LyaBaoLikelihood
 
 int main(int argc, char **argv) {
@@ -518,7 +537,10 @@ int main(int argc, char **argv) {
         std::cout << min.UserCovariance();
         std::cout << min.UserState().GlobalCC();
         
-        if(dumpName.length() > 0) nll.dump(dumpName);
+        if(dumpName.length() > 0) {
+            if(verbose) std::cout << "Dumping fit results to " << dumpName << std::endl;
+            nll.dump(dumpName,min.UserParameters().Params());
+        }
     }
     catch(cosmo::RuntimeError const &e) {
         std::cerr << "ERROR during fit:\n  " << e.what() << std::endl;
