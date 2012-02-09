@@ -11,6 +11,25 @@ void drawMarker(double const *pValues, int px, int py) {
     marker->Draw();
 }
 
+void drawLines(TCanvas *c, int ipad, bool xline, bool yline) {
+    c->cd(ipad);
+    TVirtualPad *pad = c->GetPad(ipad);
+    if(xline) { // vertical line at constant x=1
+        double ymin = pad->GetUymin(), ymax = pad->GetUymax();
+        TLine *line = new TLine(1,ymin,1,ymax);
+        line->SetLineColor(kRed-8);
+        line->SetLineWidth(2);
+        line->Draw();
+    }
+    if(yline) { // horizontal line at constant y=1
+        double xmin = pad->GetUxmin(), xmax = pad->GetUxmax();
+        TLine *line = new TLine(xmin,1,xmax,1);
+        line->SetLineColor(kRed-8);
+        line->SetLineWidth(2);
+        line->Draw();
+    }
+}
+
 void plotBaoFit(const char *filename = "fit.dat") {
     // Initialize graphics options.
     gROOT->SetStyle("Plain");
@@ -196,15 +215,16 @@ void plotBaoFit(const char *filename = "fit.dat") {
         contourGraph[8]->GetHistogram()->SetYTitle("Redshift Distortion Beta");
         contourGraph[8]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
         
-        canvas2->cd(1); drawMarker(pValue,6,5);
-        canvas2->cd(2); drawMarker(pValue,4,5);
-        canvas2->cd(3); drawMarker(pValue,1,5);
-        canvas2->cd(4); drawMarker(pValue,6,3);
-        canvas2->cd(5); drawMarker(pValue,4,3);
-        canvas2->cd(6); drawMarker(pValue,1,3);
-        canvas2->cd(7); drawMarker(pValue,6,2);
-        canvas2->cd(8); drawMarker(pValue,4,2);
-        canvas2->cd(9); drawMarker(pValue,1,2);
+        canvas2->Update();
+        drawLines(canvas2,1,false,false); drawMarker(pValue,6,5);
+        drawLines(canvas2,2,true,false);  drawMarker(pValue,4,5);
+        drawLines(canvas2,3,false,false); drawMarker(pValue,1,5);
+        drawLines(canvas2,4,false,true);  drawMarker(pValue,6,3);
+        drawLines(canvas2,5,true,true);   drawMarker(pValue,4,3);
+        drawLines(canvas2,6,false,true);  drawMarker(pValue,1,3);
+        drawLines(canvas2,7,false,false); drawMarker(pValue,6,2);
+        drawLines(canvas2,8,true,false);  drawMarker(pValue,4,2);
+        drawLines(canvas2,9,false,false); drawMarker(pValue,1,2);
     }
 
     in.close();
