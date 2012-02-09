@@ -196,17 +196,18 @@ void plotBaoFit(const char *filename = "fit.dat") {
             contourGraph[ig]->SetLineWidth(3);
             contourGraph[ig]->Draw(ig < ngraph ? "ALW":"L");
         }
-        contourGraph[0]->GetHistogram()->SetXTitle("Broadband Power a_{2}/10^{3}");
-        contourGraph[0]->GetHistogram()->SetYTitle("Broadband Power a_{1}/10");
+        
+        contourGraph[0]->GetHistogram()->SetXTitle("Broadband Power a_{1}/10");
+        contourGraph[0]->GetHistogram()->SetYTitle("Broadband Power a_{2}/10^{3}");
         contourGraph[0]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
         contourGraph[1]->GetHistogram()->SetXTitle("BAO Relative Scale");
-        contourGraph[1]->GetHistogram()->SetYTitle("Broadband Power a_{1}/10");
+        contourGraph[1]->GetHistogram()->SetYTitle("Broadband Power a_{2}/10^{3}");
         contourGraph[1]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
         contourGraph[2]->GetHistogram()->SetXTitle("Lyman-#alpha Tracer Bias");
-        contourGraph[2]->GetHistogram()->SetYTitle("Broadband Power a_{1}/10");
+        contourGraph[2]->GetHistogram()->SetYTitle("Broadband Power a_{2}/10^{3}");
         contourGraph[2]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
 
-        contourGraph[3]->GetHistogram()->SetXTitle("Broadband Power a_{2}/10^{3}");
+        contourGraph[3]->GetHistogram()->SetXTitle("Broadband Power a_{1}/10");
         contourGraph[3]->GetHistogram()->SetYTitle("BAO Relative Amplitude");
         contourGraph[3]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
         contourGraph[4]->GetHistogram()->SetXTitle("BAO Relative Scale");
@@ -216,7 +217,7 @@ void plotBaoFit(const char *filename = "fit.dat") {
         contourGraph[5]->GetHistogram()->SetYTitle("BAO Relative Amplitude");
         contourGraph[5]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
 
-        contourGraph[6]->GetHistogram()->SetXTitle("Broadband Power a_{2}/10^{3}");
+        contourGraph[6]->GetHistogram()->SetXTitle("Broadband Power a_{1}/10");
         contourGraph[6]->GetHistogram()->SetYTitle("Lyman-#alpha Redshift Distortion #beta");
         contourGraph[6]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
         contourGraph[7]->GetHistogram()->SetXTitle("BAO Relative Scale");
@@ -227,13 +228,13 @@ void plotBaoFit(const char *filename = "fit.dat") {
         contourGraph[8]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
         
         canvas2->Update();
-        drawLines(canvas2,1,false,false); drawMarker(pValue,6,5);
-        drawLines(canvas2,2,true,false);  drawMarker(pValue,4,5);
-        drawLines(canvas2,3,false,false); drawMarker(pValue,1,5);
-        drawLines(canvas2,4,false,true);  drawMarker(pValue,6,3);
+        drawLines(canvas2,1,false,false); drawMarker(pValue,5,6);
+        drawLines(canvas2,2,true,false);  drawMarker(pValue,4,6);
+        drawLines(canvas2,3,false,false); drawMarker(pValue,1,6);
+        drawLines(canvas2,4,false,true);  drawMarker(pValue,5,3);
         drawLines(canvas2,5,true,true);   drawMarker(pValue,4,3);
         drawLines(canvas2,6,false,true);  drawMarker(pValue,1,3);
-        drawLines(canvas2,7,false,false); drawMarker(pValue,6,2);
+        drawLines(canvas2,7,false,false); drawMarker(pValue,5,2);
         drawLines(canvas2,8,true,false);  drawMarker(pValue,4,2);
         drawLines(canvas2,9,false,false); drawMarker(pValue,1,2);
     }

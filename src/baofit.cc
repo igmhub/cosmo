@@ -408,7 +408,7 @@ int main(int argc, char **argv) {
             "Maximum number of redshift bins.")
         ("dump", po::value<std::string>(&dumpName)->default_value(""),
             "Filename for dumping fit results.")
-        ("ncontour",po::value<int>(&ncontour)->default_value(20),
+        ("ncontour",po::value<int>(&ncontour)->default_value(40),
             "Number of contour points to calculate in BAO parameters.")
         ("minos", "Runs MINOS to improve error estimates.")
         ;
@@ -591,26 +591,26 @@ int main(int argc, char **argv) {
             fmin = fitter(maxfcn,edmtol);
             ROOT::Minuit2::MnContours contours95((ROOT::Minuit2::FCNBase const&)minuit,fmin,strategy);
             // Parameter indices: 1=bias, 2=beta, 3=BAO amp, 4=BAO scale, 5=bband a1/10, 6=bband a2/1000
-            contourData.push_back(contours95(6,5,ncontour));
-            contourData.push_back(contours95(4,5,ncontour));
-            contourData.push_back(contours95(1,5,ncontour));
-            contourData.push_back(contours95(6,3,ncontour));
+            contourData.push_back(contours95(5,6,ncontour));
+            contourData.push_back(contours95(4,6,ncontour));
+            contourData.push_back(contours95(1,6,ncontour));
+            contourData.push_back(contours95(5,3,ncontour));
             contourData.push_back(contours95(4,3,ncontour));
             contourData.push_back(contours95(1,3,ncontour));            
-            contourData.push_back(contours95(6,2,ncontour));
+            contourData.push_back(contours95(5,2,ncontour));
             contourData.push_back(contours95(4,2,ncontour));
             contourData.push_back(contours95(1,2,ncontour));
             // 68% CL
             nll.setErrorScale(2.29575);
             fmin = fitter(maxfcn,edmtol);
             ROOT::Minuit2::MnContours contours68((ROOT::Minuit2::FCNBase const&)minuit,fmin,strategy);
-            contourData.push_back(contours68(6,5,ncontour));
-            contourData.push_back(contours68(4,5,ncontour));
-            contourData.push_back(contours68(1,5,ncontour));
-            contourData.push_back(contours68(6,3,ncontour));
+            contourData.push_back(contours68(5,6,ncontour));
+            contourData.push_back(contours68(4,6,ncontour));
+            contourData.push_back(contours68(1,6,ncontour));
+            contourData.push_back(contours68(5,3,ncontour));
             contourData.push_back(contours68(4,3,ncontour));
             contourData.push_back(contours68(1,3,ncontour));            
-            contourData.push_back(contours68(6,2,ncontour));
+            contourData.push_back(contours68(5,2,ncontour));
             contourData.push_back(contours68(4,2,ncontour));
             contourData.push_back(contours68(1,2,ncontour));
         }
