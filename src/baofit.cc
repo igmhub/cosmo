@@ -11,6 +11,7 @@
 #include "Minuit2/MnPrint.h"
 #include "Minuit2/MnStrategy.h"
 #include "Minuit2/MnMigrad.h"
+#include "Minuit2/MnContours.h"
 
 #include "boost/program_options.hpp"
 #include "boost/bind.hpp"
@@ -230,6 +231,9 @@ private:
 
 typedef boost::shared_ptr<LyaBaoModel> LyaBaoModelPtr;
 
+typedef std::pair<double,double> ContourPoint;
+typedef std::vector<ContourPoint> ContourPoints;
+
 class Parameter {
 public:
     Parameter(std::string const &name, double value, bool floating = false)
@@ -252,7 +256,7 @@ private:
 class LyaBaoLikelihood {
 public:
     LyaBaoLikelihood(LyaDataPtr data, LyaBaoModelPtr model)
-    : _data(data), _model(model) {
+    : _data(data), _model(model),_errorScale(1) {
         assert(data);
         assert(model);
         _params.push_back(Parameter("Alpha",4.0,true));
@@ -263,6 +267,10 @@ public:
         _params.push_back(Parameter("BB a1",0,true));
         _params.push_back(Parameter("BB a2",0,true));
         _params.push_back(Parameter("BB a3",0,true));
+    }
+    void setErrorScale(double scale) {
+        assert(scale > 0);
+        _errorScale = scale;
     }
     double operator()(lk::Parameters const &params) {
         // Loop over the dataset bins.
@@ -279,7 +287,10 @@ public:
             double diff(obs-pred);
             nll += diff*diff/var;
         }
-        return 0.5*nll; // convert chi2 into -log(L) to match UP=1
+        // UP=0.5 is already hardcoded so we need a factor of 2 here since we are
+        // calculating a chi-square. Apply an additional factor of _errorScale to
+        // allow different error contours to be calculated.
+        return 0.5*nll/_errorScale;
     }
     int getNPar() const { return _params.size(); }
     void initialize(lk::MinuitEngine::StatePtr initialState) {
@@ -294,7 +305,8 @@ public:
             }
         }
     }
-    void dump(std::string const &filename, lk::Parameters const &params, int oversampling = 10) {
+    void dump(std::string const &filename, lk::Parameters const &params, ContourPoints const &contourPoints,
+        int oversampling = 10) {
         std::ofstream out(filename.c_str());
         // Dump binning info first
         BinningPtr llbins(_data->getLogLambdaBinning()), sepbins(_data->getSeparationBinning()),
@@ -304,7 +316,8 @@ public:
         out << zbins->getNBins() << ' ' << zbins->getLowEdge() << ' ' << zbins->getBinSize() << std::endl;
         // Dump the number of data bins, the model oversampling factor, and the fitted BAO scale.
         double scale = params[4];
-        out << _data->getNData() << ' ' << oversampling << ' ' << scale << std::endl;
+        out << _data->getNData() << ' ' << oversampling << ' ' << contourPoints.size()
+            << ' ' << scale << std::endl;
         // Dump binned data and most recent pulls.
         for(int k= 0; k < _data->getNData(); ++k) {
             int index(_data->getIndex(k));
@@ -333,12 +346,18 @@ public:
                 }
             }
         }
+        if(contourPoints.size() > 0) {
+            BOOST_FOREACH(ContourPoint const &point, contourPoints) {
+                out << point.first << ' ' << point.second << std::endl;
+            }
+        }
         out.close();
     }
 private:
     LyaDataPtr _data;
     LyaBaoModelPtr _model;
     std::vector<Parameter> _params;
+    double _errorScale;
 }; // LyaBaoLikelihood
 
 int main(int argc, char **argv) {
@@ -346,7 +365,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,zref,minll,dll,minsep,dsep,minz,dz;
-    int nll,nsep,nz;
+    int nll,nsep,nz,contour;
     std::string fiducialName,nowigglesName,dataName,dumpName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
@@ -383,6 +402,8 @@ int main(int argc, char **argv) {
             "Maximum number of redshift bins.")
         ("dump", po::value<std::string>(&dumpName)->default_value(""),
             "Filename for dumping fit results.")
+        ("contour",po::value<int>(&contour)->default_value(20),
+            "Number of contour points to calculate in BAO parameters.")
         ;
 
     // Do the command line parsing now.
@@ -533,8 +554,8 @@ int main(int argc, char **argv) {
         nll.initialize(initialState);
         std::cout << *initialState;
         
-        ROOT::Minuit2::MnMigrad fitter((ROOT::Minuit2::FCNBase const&)(minuit),*initialState,
-            ROOT::Minuit2::MnStrategy(1)); // lo(0),med(1),hi(2)
+        ROOT::Minuit2::MnStrategy strategy(1); // lo(0),med(1),hi(2)
+        ROOT::Minuit2::MnMigrad fitter((ROOT::Minuit2::FCNBase const&)minuit,*initialState,strategy); 
 
         int maxfcn = 100*npar*npar;
         double edmtol = 0.1;
@@ -543,9 +564,20 @@ int main(int argc, char **argv) {
         std::cout << min.UserCovariance();
         std::cout << min.UserState().GlobalCC();
         
+        ContourPoints contourPoints;
+        if(contour > 0) {
+            if(verbose) std::cout << "Calculating contours with " << contour << " points..." << std::endl;
+            nll.setErrorScale(4.61); // 90% CL (see http://wwwasdoc.web.cern.ch/wwwasdoc/minuit/node33.html)
+            min = fitter(maxfcn,edmtol);
+            std::cout << min;
+            ROOT::Minuit2::MnContours contours((ROOT::Minuit2::FCNBase const&)minuit,min,strategy);
+            contourPoints = contours(3,4,contour); // 3 = BAO amplitude, 4 = BAO scale
+            nll.setErrorScale(1);
+        }
+        
         if(dumpName.length() > 0) {
             if(verbose) std::cout << "Dumping fit results to " << dumpName << std::endl;
-            nll.dump(dumpName,min.UserParameters().Params());
+            nll.dump(dumpName,min.UserParameters().Params(),contourPoints);
         }
     }
     catch(cosmo::RuntimeError const &e) {
