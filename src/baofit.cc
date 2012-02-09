@@ -205,12 +205,14 @@ public:
     }
     double evaluate(double r, double mu, double z, lk::Parameters const &p) const {
         double alpha(p[0]), bias(p[1]), beta(p[2]), ampl(p[3]), scale(p[4]);
+        double a1(p[5]), a2(p[6]), a3(p[7]);
         double zfactor = std::pow((1+z)/(1+_zref),alpha);
         _fid->setDistortion(beta);
         _nw->setDistortion(beta);
         double fid((*_fid)(r*scale,mu)), nw((*_nw)(r*scale,mu)); // scale cancels in mu
         double xi = ampl*(fid-nw)+nw;
-        return bias*bias*zfactor*xi;
+        double broadband = a1/(r*r) + a2/r + a3;
+        return bias*bias*zfactor*xi + broadband;
     }
 private:
     lk::InterpolatorPtr load(std::string const &fileName) {
@@ -258,6 +260,9 @@ public:
         _params.push_back(Parameter("Beta",0.8,true));
         _params.push_back(Parameter("BAO Ampl",1,true));
         _params.push_back(Parameter("BAO Scale",1,true));
+        _params.push_back(Parameter("BB a1",0,true));
+        _params.push_back(Parameter("BB a2",0,true));
+        _params.push_back(Parameter("BB a3",0,true));
     }
     double operator()(lk::Parameters const &params) {
         // Loop over the dataset bins.
