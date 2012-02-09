@@ -4,6 +4,13 @@
 #include <fstream>
 #include <iostream>
 
+void drawMarker(double const *pValues, int px, int py) {
+    TMarker *marker = new TMarker(pValues[px],pValues[py],20);
+    marker->SetMarkerColor(kBlue-8);
+    marker->SetMarkerSize(1);
+    marker->Draw();
+}
+
 void plotBaoFit(const char *filename = "fit.dat") {
     // Initialize graphics options.
     gROOT->SetStyle("Plain");
@@ -23,14 +30,17 @@ void plotBaoFit(const char *filename = "fit.dat") {
     
     std::ifstream in(filename);
     // Read the binning parameters.
-    int nll,nsep,nz,ndata,oversampling,ncontour;
+    int nll,nsep,nz,ndata,oversampling,ncontour,npar;
     double minll,minsep,minz,dll,dsep,dz,scale;
     in >> nll >> minll >> dll;
     in >> nsep >> minsep >> dsep;
     in >> nz >> minz >> dz;
-    in >> ndata >> oversampling >> ncontour >> scale;
+    in >> ndata >> oversampling >> ncontour;
+    in >> npar;
+    double *pValue = new double[npar];
+    for(ipar = 0; ipar < npar; ++ipar) in >> pValue[ipar];
     
-    r3dContours[0] *= scale;
+    r3dContours[0] *= pValue[4]; // scale
     
     // Initialize the drawing canvas.
     TCanvas *canvas = new TCanvas("canvas","canvas",nz*400,800);
@@ -136,37 +146,65 @@ void plotBaoFit(const char *filename = "fit.dat") {
     }
 
     if(ncontour > 0) {
-        TCanvas *canvas2 = new TCanvas("canvas2","canvas2",800,800);
-        canvas2->Divide(2,2,0.001,0.001);
+        TCanvas *canvas2 = new TCanvas("canvas2","canvas2",1000,1000);
+        canvas2->Divide(3,3,0.001,0.001);
         Double_t *xContour = new Double_t[ncontour+1], *yContour = new Double_t[ncontour+1];
-        TGraph *contourGraph[8];
-        for(int ig = 0; ig < 8; ++ig) {
+        int ngraph = 9;
+        TGraph **contourGraph = new TGraph*[2*ngraph];
+        for(int ig = 0; ig < 2*ngraph; ++ig) {
             for(int i = 0; i < ncontour; ++i) in >> xContour[i] >> yContour[i];
             // Close the contour
             xContour[ncontour] = xContour[0];
             yContour[ncontour] = yContour[0];
             contourGraph[ig] = new TGraph(ncontour+1,xContour,yContour);
-            int ipad = ig%4+1;
+            int ipad = ig%ngraph+1;
             canvas2->cd(ipad);
             canvas2->GetPad(ipad)->SetMargin(0.15,0.02,0.10,0.02);
             canvas2->GetPad(ipad)->SetGridx();
             canvas2->GetPad(ipad)->SetGridy();
             contourGraph[ig]->SetLineColor(kBlue-8);
             contourGraph[ig]->SetLineWidth(3);
-            contourGraph[ig]->Draw(ig < 4 ? "ALW":"L");
+            contourGraph[ig]->Draw(ig < ngraph ? "ALW":"L");
         }
-        contourGraph[0]->GetHistogram()->SetXTitle("BAO Relative Scale");
-        contourGraph[0]->GetHistogram()->SetYTitle("BAO Relative Amplitude");
+        contourGraph[0]->GetHistogram()->SetXTitle("Broadband Power a_{2}");
+        contourGraph[0]->GetHistogram()->SetYTitle("Broadband Power a_{1}");
         contourGraph[0]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
-        contourGraph[1]->GetHistogram()->SetXTitle("Lyman-alpha Bias");
-        contourGraph[1]->GetHistogram()->SetYTitle("BAO Relative Amplitude");
+        contourGraph[1]->GetHistogram()->SetXTitle("BAO Relative Scale");
+        contourGraph[1]->GetHistogram()->SetYTitle("Broadband Power a_{1}");
         contourGraph[1]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
-        contourGraph[2]->GetHistogram()->SetXTitle("BAO Relative Scale");
-        contourGraph[2]->GetHistogram()->SetYTitle("Redshift Distortion Beta");
+        contourGraph[2]->GetHistogram()->SetXTitle("Lyman-alpha Bias");
+        contourGraph[2]->GetHistogram()->SetYTitle("Broadband Power a_{1}");
         contourGraph[2]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
-        contourGraph[3]->GetHistogram()->SetXTitle("Lyman-alpha Bias");
-        contourGraph[3]->GetHistogram()->SetYTitle("Redshift Distortion Beta");
+
+        contourGraph[3]->GetHistogram()->SetXTitle("Broadband Power a_{2}");
+        contourGraph[3]->GetHistogram()->SetYTitle("BAO Relative Amplitude");
         contourGraph[3]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
+        contourGraph[4]->GetHistogram()->SetXTitle("BAO Relative Scale");
+        contourGraph[4]->GetHistogram()->SetYTitle("BAO Relative Amplitude");
+        contourGraph[4]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
+        contourGraph[5]->GetHistogram()->SetXTitle("Lyman-alpha Bias");
+        contourGraph[5]->GetHistogram()->SetYTitle("BAO Relative Amplitude");
+        contourGraph[5]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
+
+        contourGraph[6]->GetHistogram()->SetXTitle("Broadband Power a_{2}");
+        contourGraph[6]->GetHistogram()->SetYTitle("Redshift Distortion Beta");
+        contourGraph[6]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
+        contourGraph[7]->GetHistogram()->SetXTitle("BAO Relative Scale");
+        contourGraph[7]->GetHistogram()->SetYTitle("Redshift Distortion Beta");
+        contourGraph[7]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
+        contourGraph[8]->GetHistogram()->SetXTitle("Lyman-alpha Bias");
+        contourGraph[8]->GetHistogram()->SetYTitle("Redshift Distortion Beta");
+        contourGraph[8]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
+        
+        canvas2->cd(1); drawMarker(pValue,6,5);
+        canvas2->cd(2); drawMarker(pValue,4,5);
+        canvas2->cd(3); drawMarker(pValue,1,5);
+        canvas2->cd(4); drawMarker(pValue,6,3);
+        canvas2->cd(5); drawMarker(pValue,4,3);
+        canvas2->cd(6); drawMarker(pValue,1,3);
+        canvas2->cd(7); drawMarker(pValue,6,2);
+        canvas2->cd(8); drawMarker(pValue,4,2);
+        canvas2->cd(9); drawMarker(pValue,1,2);
     }
 
     in.close();

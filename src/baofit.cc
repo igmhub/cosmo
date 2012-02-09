@@ -314,10 +314,13 @@ public:
         out << llbins->getNBins() << ' ' << llbins->getLowEdge() << ' ' << llbins->getBinSize() << std::endl;
         out << sepbins->getNBins() << ' ' << sepbins->getLowEdge() << ' ' << sepbins->getBinSize() << std::endl;
         out << zbins->getNBins() << ' ' << zbins->getLowEdge() << ' ' << zbins->getBinSize() << std::endl;
-        // Dump the number of data bins, the model oversampling factor, and the fitted BAO scale.
-        double scale = params[4];
+        // Dump the number of data bins, the model oversampling factor, and the number of contour points.
         int ncontour = (0 == contourData.size()) ? 0 : contourData[0].size();
-        out << _data->getNData() << ' ' << oversampling << ' ' << ncontour << ' ' << scale << std::endl;
+        out << _data->getNData() << ' ' << oversampling << ' ' << ncontour << std::endl;
+        // Dump the number of parameters and their best-fit values.
+        out << params.size();
+        BOOST_FOREACH(double const &pValue, params) out << ' ' << pValue;
+        out << std::endl;
         // Dump binned data and most recent pulls.
         for(int k= 0; k < _data->getNData(); ++k) {
             int index(_data->getIndex(k));
@@ -575,18 +578,27 @@ int main(int argc, char **argv) {
             nll.setErrorScale(5.99146);
             min = fitter(maxfcn,edmtol);
             ROOT::Minuit2::MnContours contours95((ROOT::Minuit2::FCNBase const&)minuit,min,strategy);
-            // Parameter indices: 1=bias, 2=beta, 3=BAO amp, 4=BAO scale
+            // Parameter indices: 1=bias, 2=beta, 3=BAO amp, 4=BAO scale, 5-6: broadband
+            contourData.push_back(contours95(6,5,ncontour));
+            contourData.push_back(contours95(4,5,ncontour));
+            contourData.push_back(contours95(1,5,ncontour));
+            contourData.push_back(contours95(6,3,ncontour));
             contourData.push_back(contours95(4,3,ncontour));
-            contourData.push_back(contours95(1,3,ncontour));
+            contourData.push_back(contours95(1,3,ncontour));            
+            contourData.push_back(contours95(6,2,ncontour));
             contourData.push_back(contours95(4,2,ncontour));
             contourData.push_back(contours95(1,2,ncontour));
             // 68% CL
             nll.setErrorScale(2.29575);
             min = fitter(maxfcn,edmtol);
             ROOT::Minuit2::MnContours contours68((ROOT::Minuit2::FCNBase const&)minuit,min,strategy);
-            // Parameter indices: 1=bias, 2=beta, 3=BAO amp, 4=BAO scale
+            contourData.push_back(contours68(6,5,ncontour));
+            contourData.push_back(contours68(4,5,ncontour));
+            contourData.push_back(contours68(1,5,ncontour));
+            contourData.push_back(contours68(6,3,ncontour));
             contourData.push_back(contours68(4,3,ncontour));
-            contourData.push_back(contours68(1,3,ncontour));
+            contourData.push_back(contours68(1,3,ncontour));            
+            contourData.push_back(contours68(6,2,ncontour));
             contourData.push_back(contours68(4,2,ncontour));
             contourData.push_back(contours68(1,2,ncontour));
         }
