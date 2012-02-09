@@ -166,17 +166,17 @@ void plotBaoFit(const char *filename = "fit.dat") {
             contourGraph[ig]->SetLineWidth(3);
             contourGraph[ig]->Draw(ig < ngraph ? "ALW":"L");
         }
-        contourGraph[0]->GetHistogram()->SetXTitle("Broadband Power a_{2}");
-        contourGraph[0]->GetHistogram()->SetYTitle("Broadband Power a_{1}");
+        contourGraph[0]->GetHistogram()->SetXTitle("Broadband Power a_{2}/10^{3}");
+        contourGraph[0]->GetHistogram()->SetYTitle("Broadband Power a_{1}/10");
         contourGraph[0]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
         contourGraph[1]->GetHistogram()->SetXTitle("BAO Relative Scale");
-        contourGraph[1]->GetHistogram()->SetYTitle("Broadband Power a_{1}");
+        contourGraph[1]->GetHistogram()->SetYTitle("Broadband Power a_{1}/10");
         contourGraph[1]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
         contourGraph[2]->GetHistogram()->SetXTitle("Lyman-alpha Bias");
-        contourGraph[2]->GetHistogram()->SetYTitle("Broadband Power a_{1}");
+        contourGraph[2]->GetHistogram()->SetYTitle("Broadband Power a_{1}/10");
         contourGraph[2]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
 
-        contourGraph[3]->GetHistogram()->SetXTitle("Broadband Power a_{2}");
+        contourGraph[3]->GetHistogram()->SetXTitle("Broadband Power a_{2}/10^{3}");
         contourGraph[3]->GetHistogram()->SetYTitle("BAO Relative Amplitude");
         contourGraph[3]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
         contourGraph[4]->GetHistogram()->SetXTitle("BAO Relative Scale");
@@ -186,7 +186,7 @@ void plotBaoFit(const char *filename = "fit.dat") {
         contourGraph[5]->GetHistogram()->SetYTitle("BAO Relative Amplitude");
         contourGraph[5]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
 
-        contourGraph[6]->GetHistogram()->SetXTitle("Broadband Power a_{2}");
+        contourGraph[6]->GetHistogram()->SetXTitle("Broadband Power a_{2}/10^{3}");
         contourGraph[6]->GetHistogram()->SetYTitle("Redshift Distortion Beta");
         contourGraph[6]->GetHistogram()->GetYaxis()->SetTitleOffset(1.5);
         contourGraph[7]->GetHistogram()->SetXTitle("BAO Relative Scale");

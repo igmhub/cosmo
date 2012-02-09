@@ -212,7 +212,7 @@ public:
         _nw->setDistortion(beta);
         double fid((*_fid)(r*scale,mu)), nw((*_nw)(r*scale,mu)); // scale cancels in mu
         double xi = ampl*(fid-nw)+nw;
-        double broadband = a1/(r*r) + a2/r + a3;
+        double broadband = 1e-1*a1/(r*r) + 1e-3*a2/r + 1e-5*a3;
         return bias*bias*zfactor*xi + broadband;
     }
 private:
@@ -578,7 +578,7 @@ int main(int argc, char **argv) {
             nll.setErrorScale(5.99146);
             min = fitter(maxfcn,edmtol);
             ROOT::Minuit2::MnContours contours95((ROOT::Minuit2::FCNBase const&)minuit,min,strategy);
-            // Parameter indices: 1=bias, 2=beta, 3=BAO amp, 4=BAO scale, 5-6: broadband
+            // Parameter indices: 1=bias, 2=beta, 3=BAO amp, 4=BAO scale, 5=bband a1/10, 6=bband a2/1000
             contourData.push_back(contours95(6,5,ncontour));
             contourData.push_back(contours95(4,5,ncontour));
             contourData.push_back(contours95(1,5,ncontour));
