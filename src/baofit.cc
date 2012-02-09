@@ -305,8 +305,8 @@ public:
             }
         }
     }
-    void dump(std::string const &filename, lk::Parameters const &params, ContourPoints const &contourPoints,
-        int oversampling = 10) {
+    void dump(std::string const &filename, lk::Parameters const &params,
+    std::vector<ContourPoints> const &contourData,int oversampling = 10) {
         std::ofstream out(filename.c_str());
         // Dump binning info first
         BinningPtr llbins(_data->getLogLambdaBinning()), sepbins(_data->getSeparationBinning()),
@@ -316,8 +316,8 @@ public:
         out << zbins->getNBins() << ' ' << zbins->getLowEdge() << ' ' << zbins->getBinSize() << std::endl;
         // Dump the number of data bins, the model oversampling factor, and the fitted BAO scale.
         double scale = params[4];
-        out << _data->getNData() << ' ' << oversampling << ' ' << contourPoints.size()
-            << ' ' << scale << std::endl;
+        int ncontour = (0 == contourData.size()) ? 0 : contourData[0].size();
+        out << _data->getNData() << ' ' << oversampling << ' ' << ncontour << ' ' << scale << std::endl;
         // Dump binned data and most recent pulls.
         for(int k= 0; k < _data->getNData(); ++k) {
             int index(_data->getIndex(k));
@@ -346,9 +346,11 @@ public:
                 }
             }
         }
-        if(contourPoints.size() > 0) {
-            BOOST_FOREACH(ContourPoint const &point, contourPoints) {
-                out << point.first << ' ' << point.second << std::endl;
+        if(ncontour) {
+            BOOST_FOREACH(ContourPoints const &points, contourData) {
+                BOOST_FOREACH(ContourPoint const &point, points) {
+                    out << point.first << ' ' << point.second << std::endl;
+                }
             }
         }
         out.close();
@@ -365,7 +367,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,zref,minll,dll,minsep,dsep,minz,dz;
-    int nll,nsep,nz,contour;
+    int nll,nsep,nz,ncontour;
     std::string fiducialName,nowigglesName,dataName,dumpName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
@@ -402,7 +404,7 @@ int main(int argc, char **argv) {
             "Maximum number of redshift bins.")
         ("dump", po::value<std::string>(&dumpName)->default_value(""),
             "Filename for dumping fit results.")
-        ("contour",po::value<int>(&contour)->default_value(20),
+        ("ncontour",po::value<int>(&ncontour)->default_value(20),
             "Number of contour points to calculate in BAO parameters.")
         ;
 
@@ -564,20 +566,34 @@ int main(int argc, char **argv) {
         std::cout << min.UserCovariance();
         std::cout << min.UserState().GlobalCC();
         
-        ContourPoints contourPoints;
-        if(contour > 0) {
-            if(verbose) std::cout << "Calculating contours with " << contour << " points..." << std::endl;
-            nll.setErrorScale(4.61); // 90% CL (see http://wwwasdoc.web.cern.ch/wwwasdoc/minuit/node33.html)
+        std::vector<ContourPoints> contourData;
+        if(ncontour > 0) {
+            if(verbose) std::cout << "Calculating contours with " << ncontour << " points..." << std::endl;
+            // 95% CL (see http://wwwasdoc.web.cern.ch/wwwasdoc/minuit/node33.html)
+            // Calculate in mathematica using:
+            // Solve[CDF[ChiSquareDistribution[2], x] == 0.95, x]
+            nll.setErrorScale(5.99146);
             min = fitter(maxfcn,edmtol);
-            std::cout << min;
-            ROOT::Minuit2::MnContours contours((ROOT::Minuit2::FCNBase const&)minuit,min,strategy);
-            contourPoints = contours(3,4,contour); // 3 = BAO amplitude, 4 = BAO scale
-            nll.setErrorScale(1);
+            ROOT::Minuit2::MnContours contours95((ROOT::Minuit2::FCNBase const&)minuit,min,strategy);
+            // Parameter indices: 1=bias, 2=beta, 3=BAO amp, 4=BAO scale
+            contourData.push_back(contours95(4,3,ncontour));
+            contourData.push_back(contours95(1,3,ncontour));
+            contourData.push_back(contours95(4,2,ncontour));
+            contourData.push_back(contours95(1,2,ncontour));
+            // 68% CL
+            nll.setErrorScale(2.29575);
+            min = fitter(maxfcn,edmtol);
+            ROOT::Minuit2::MnContours contours68((ROOT::Minuit2::FCNBase const&)minuit,min,strategy);
+            // Parameter indices: 1=bias, 2=beta, 3=BAO amp, 4=BAO scale
+            contourData.push_back(contours68(4,3,ncontour));
+            contourData.push_back(contours68(1,3,ncontour));
+            contourData.push_back(contours68(4,2,ncontour));
+            contourData.push_back(contours68(1,2,ncontour));
         }
         
         if(dumpName.length() > 0) {
             if(verbose) std::cout << "Dumping fit results to " << dumpName << std::endl;
-            nll.dump(dumpName,min.UserParameters().Params(),contourPoints);
+            nll.dump(dumpName,min.UserParameters().Params(),contourData);
         }
     }
     catch(cosmo::RuntimeError const &e) {
