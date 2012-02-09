@@ -163,7 +163,7 @@ void plotBaoFit(const char *filename = "fit.dat") {
         r3dHist->SetContour(1,r3dContours);
         r3dHist->SetLineWidth(5);
         r3dHist->SetLineColor(kGreen-6);
-        r3dHist->Draw("cont3same");
+        //r3dHist->Draw("cont3same");
         drawLabel(Form("z = %.1f",zval));
 
         canvas->cd(nz+iz+1);
