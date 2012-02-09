@@ -11,6 +11,7 @@
 #include "Minuit2/MnPrint.h"
 #include "Minuit2/MnStrategy.h"
 #include "Minuit2/MnMigrad.h"
+#include "Minuit2/MnMinos.h"
 #include "Minuit2/MnContours.h"
 
 #include "boost/program_options.hpp"
@@ -409,6 +410,7 @@ int main(int argc, char **argv) {
             "Filename for dumping fit results.")
         ("ncontour",po::value<int>(&ncontour)->default_value(20),
             "Number of contour points to calculate in BAO parameters.")
+        ("minos", "Runs MINOS to improve error estimates.")
         ;
 
     // Do the command line parsing now.
@@ -425,7 +427,7 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose"));
+    bool verbose(vm.count("verbose")), minos(vm.count("minos"));
 
     // Check for the required filename parameters.
     if(0 == dataName.length()) {
@@ -564,10 +566,20 @@ int main(int argc, char **argv) {
 
         int maxfcn = 100*npar*npar;
         double edmtol = 0.1;
-        ROOT::Minuit2::FunctionMinimum min = fitter(maxfcn,edmtol);
-        std::cout << min;
-        std::cout << min.UserCovariance();
-        std::cout << min.UserState().GlobalCC();
+        ROOT::Minuit2::FunctionMinimum fmin = fitter(maxfcn,edmtol);
+        
+        if(minos) {
+            ROOT::Minuit2::MnMinos minosError((ROOT::Minuit2::FCNBase const&)minuit,fmin,strategy);
+            for(int ipar = 0; ipar < npar; ++ipar) {
+                std::pair<double,double> error = minosError(ipar,maxfcn);
+                std::cout << "MINOS error[" << ipar << "] = +" << error.second
+                    << ' ' << error.first << std::endl;
+            }
+        }
+        
+        std::cout << fmin;
+        std::cout << fmin.UserCovariance();
+        std::cout << fmin.UserState().GlobalCC();
         
         std::vector<ContourPoints> contourData;
         if(ncontour > 0) {
@@ -576,8 +588,8 @@ int main(int argc, char **argv) {
             // Calculate in mathematica using:
             // Solve[CDF[ChiSquareDistribution[2], x] == 0.95, x]
             nll.setErrorScale(5.99146);
-            min = fitter(maxfcn,edmtol);
-            ROOT::Minuit2::MnContours contours95((ROOT::Minuit2::FCNBase const&)minuit,min,strategy);
+            fmin = fitter(maxfcn,edmtol);
+            ROOT::Minuit2::MnContours contours95((ROOT::Minuit2::FCNBase const&)minuit,fmin,strategy);
             // Parameter indices: 1=bias, 2=beta, 3=BAO amp, 4=BAO scale, 5=bband a1/10, 6=bband a2/1000
             contourData.push_back(contours95(6,5,ncontour));
             contourData.push_back(contours95(4,5,ncontour));
@@ -590,8 +602,8 @@ int main(int argc, char **argv) {
             contourData.push_back(contours95(1,2,ncontour));
             // 68% CL
             nll.setErrorScale(2.29575);
-            min = fitter(maxfcn,edmtol);
-            ROOT::Minuit2::MnContours contours68((ROOT::Minuit2::FCNBase const&)minuit,min,strategy);
+            fmin = fitter(maxfcn,edmtol);
+            ROOT::Minuit2::MnContours contours68((ROOT::Minuit2::FCNBase const&)minuit,fmin,strategy);
             contourData.push_back(contours68(6,5,ncontour));
             contourData.push_back(contours68(4,5,ncontour));
             contourData.push_back(contours68(1,5,ncontour));
@@ -605,7 +617,7 @@ int main(int argc, char **argv) {
         
         if(dumpName.length() > 0) {
             if(verbose) std::cout << "Dumping fit results to " << dumpName << std::endl;
-            nll.dump(dumpName,min.UserParameters().Params(),contourData);
+            nll.dump(dumpName,fmin.UserParameters().Params(),contourData);
         }
     }
     catch(cosmo::RuntimeError const &e) {
