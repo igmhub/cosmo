@@ -58,22 +58,13 @@ void plotBaoFit(const char *filename = "fit.dat") {
     // Loop over bin data in the input file.
     int index;
     double data,pull;
-    double *minData = new double[nz], *maxData = new double[nz], *sumSqData = new double[nz];
+    double *sumSqData = new double[nz];
     for(int iz = 0; iz < nz; ++iz) {
-        minData[iz] = 1;
-        maxData[iz] = 0;
         sumSqData[iz] = 0;
     }
     for(int k = 0; k < ndata; ++k) {
         in >> index >> data >> pull;
         int iz = index % nz;
-        if(minData[iz] > maxData[iz]) {
-            minData[iz] = maxData[iz] = data;
-        }
-        else {
-            if(data < minData[iz]) minData[iz] = data;
-            if(data > maxData[iz]) maxData[iz] = data;
-        }
         sumSqData[iz] += data*data;
         TH2F *dataHist = (TH2F *)gDirectory->Get(Form("data%d",iz));
         TH2F *pullHist = (TH2F *)gDirectory->Get(Form("pull%d",iz));
@@ -83,7 +74,6 @@ void plotBaoFit(const char *filename = "fit.dat") {
         pullHist->SetBinContent(isep,ill,pull);
     }
     for(int iz = 0; iz < nz; ++iz) {
-        std::cout << "min/max " << iz << ' ' << minData[iz] << ' ' << maxData[iz] << std::endl;
         std::cout << "RMS = " << std::sqrt(sumSqData[iz]) << std::endl;
     }
     
