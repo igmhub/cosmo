@@ -108,7 +108,6 @@ public:
         _nz = redshiftBinning->getNBins();
         int nBinsTotal = logLambdaBinning->getNBins()*_nsep*_nz;
         _data.resize(nBinsTotal,0);
-        _cov.resize(nBinsTotal,0);
         _r3d.resize(nBinsTotal,0);
         _mu.resize(nBinsTotal,0);
         _initialized.resize(nBinsTotal,false);
@@ -131,11 +130,14 @@ public:
         _data[index] = value;
         _initialized[index] = true;
         _index.push_back(index);
-        _hasCov.push_back(false);
         // Calculate and save model observables for this bin.
         transform(logLambda,separation,redshift,_ds,_r3d[index],_mu[index]);
     }
     void finalizeData() {
+        int nData = getNData();
+        int nCov = (nData*(nData+1))/2;
+        _cov.resize(nCov,0);
+        _hasCov.resize(nCov,false);
         _dataFinalized = true;
     }
     void transform(double ll, double sep, double z, double ds, double &r3d, double &mu) const {
@@ -152,13 +154,21 @@ public:
         mu = std::abs(drLos)/r3d;
     }
     void addCovariance(int i, int j, double value) {
+        int row,col;
+         // put into upper-diagonal form col >= row
+        if(i >= j) {
+            col = i; row = j;
+        }
+        else {
+            row = i; col = j;
+        }
         assert(_dataFinalized);
-        assert(i >= 0 && i < getNData());
-        // assert(j >= 0 && j < getNData());
-        assert(i == j && value > 0);
-        assert(_hasCov[i] == false);
-        _cov[_index[i]] = value;
-        _hasCov[i] = true;
+        assert(row >= 0 && col >= 0 && col < getNData());
+        assert(col > row || value > 0); // diagonal elements must be positive
+        int index(row+(col*(col+1))/2); // see http://www.netlib.org/lapack/lug/node123.html
+        assert(_hasCov[index] == false);
+        _cov[index] = value;
+        _hasCov[index] = true;
     }
     void finalizeCovariance() {
         assert(_dataFinalized);
@@ -169,7 +179,7 @@ public:
     int getNCov() const { return (int)std::count(_hasCov.begin(),_hasCov.end(),true); }
     int getIndex(int k) const { return _index[k]; }
     double getData(int index) const { return _data[index]; }
-    double getVariance(int index) const { return _cov[index]; }
+    double getVariance(int index) const { return _cov[(index*(index+3))/2]; }
     double getRadius(int index) const { return _r3d[index]; }
     double getCosAngle(int index) const { return _mu[index]; }
     double getRedshift(int index) const { return _redshiftBinning->getBinCenter(index % _nz); }
@@ -292,7 +302,7 @@ public:
             double mu = _data->getCosAngle(index);
             double z = _data->getRedshift(index);
             double obs = _data->getData(index);
-            double var = _data->getVariance(index);
+            double var = _data->getVariance(k);
             double pred = _model->evaluate(r,mu,z,params);
             // Update the chi2 = -log(L) for this bin
             double diff(obs-pred);
@@ -339,7 +349,7 @@ public:
             double mu = _data->getCosAngle(index);
             double z = _data->getRedshift(index);
             double obs = _data->getData(index);
-            double var = _data->getVariance(index);
+            double var = _data->getVariance(k);
             double pred = _model->evaluate(r,mu,z,params);
             double pull = (obs-pred)/std::sqrt(var);
             out << index << ' ' << obs << ' ' << pull << std::endl;
@@ -550,10 +560,11 @@ int main(int argc, char **argv) {
         data->finalizeCovariance();
         covIn.close();
         if(verbose) {
-            std::cout << "Read " << data->getNCov() << " of " << data->getNData()
-                << " diagonal covariance values from " << covName << std::endl;
+            int ndata = data->getNData();
+            int ncov = (ndata*(ndata+1))/2;
+            std::cout << "Read " << data->getNCov() << " of " << ncov
+                << " covariance values from " << covName << std::endl;
         }
-        assert(data->getNCov() == data->getNData());
     }
     catch(cosmo::RuntimeError const &e) {
         std::cerr << "ERROR while reading data:\n  " << e.what() << std::endl;
