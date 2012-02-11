@@ -29,6 +29,12 @@
 #include <vector>
 #include <algorithm>
 
+// Declare a binding to this LAPACK Cholesky decomposition routine:
+// http://www.netlib.org/lapack/double/dpptrf.f
+extern "C" {
+    void dpptri_(char* uplo, int* n, double* ap, int *info);
+}
+
 namespace lk = likely;
 namespace po = boost::program_options;
 
@@ -172,6 +178,11 @@ public:
     }
     void finalizeCovariance() {
         assert(_dataFinalized);
+        _icov = _cov; // element-by-element copy
+        char uplo('U');
+        int info(0),ndata(getNData());
+        dpptri_(&uplo,&ndata,&_icov[0],&info);
+        assert(0 == info);
         _covarianceFinalized = true;
     }
     int getSize() const { return _data.size(); }
@@ -189,7 +200,7 @@ public:
 private:
     BinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
     cosmo::AbsHomogeneousUniversePtr _cosmology;
-    std::vector<double> _data, _cov, _r3d, _mu;
+    std::vector<double> _data, _cov, _icov, _r3d, _mu;
     std::vector<bool> _initialized, _hasCov;
     std::vector<int> _index;
     int _ndata,_nsep,_nz;
