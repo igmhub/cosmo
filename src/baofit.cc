@@ -503,8 +503,8 @@ int main(int argc, char **argv) {
             for(int tok = 0; tok < nTokens; ++tok) {
                 token[tok] = boost::lexical_cast<double>(std::string(what[tok+1].first,what[tok+1].second));
             }
-            // Add this bin to our dataset.
-            if(0 != token[1]) throw cosmo::RuntimeError("Got unexpected non-zero token.");
+            // Add this bin to our dataset. Second value token[1] might be non-zero, in which case it is
+            // Cinv*d from the quadratic estimator, but we just ignore it.
             data->addData(token[0],token[2],token[3],token[4]);
         }
         paramsIn.close();
