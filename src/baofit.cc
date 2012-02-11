@@ -97,7 +97,8 @@ class LyaData {
 public:
     LyaData(BinningPtr logLambdaBinning, BinningPtr separationBinning, BinningPtr redshiftBinning,
     cosmo::AbsHomogeneousUniversePtr cosmology) : _cosmology(cosmology), _logLambdaBinning(logLambdaBinning),
-    _separationBinning(separationBinning), _redshiftBinning(redshiftBinning)
+    _separationBinning(separationBinning), _redshiftBinning(redshiftBinning),
+    _dataFinalized(false), _covarianceFinalized(false)
     {
         assert(logLambdaBinning);
         assert(separationBinning);
@@ -134,6 +135,9 @@ public:
         // Calculate and save model observables for this bin.
         transform(logLambda,separation,redshift,_ds,_r3d[index],_mu[index]);
     }
+    void finalizeData() {
+        _dataFinalized = true;
+    }
     void transform(double ll, double sep, double z, double ds, double &r3d, double &mu) const {
         double ratio(std::exp(0.5*ll)),zp1(z+1);
         double z1(zp1/ratio-1), z2(zp1*ratio-1);
@@ -148,12 +152,17 @@ public:
         mu = std::abs(drLos)/r3d;
     }
     void addCovariance(int i, int j, double value) {
+        assert(_dataFinalized);
         assert(i >= 0 && i < getNData());
         // assert(j >= 0 && j < getNData());
         assert(i == j && value > 0);
         assert(_hasCov[i] == false);
         _cov[_index[i]] = value;
         _hasCov[i] = true;
+    }
+    void finalizeCovariance() {
+        assert(_dataFinalized);
+        _covarianceFinalized = true;
     }
     int getSize() const { return _data.size(); }
     int getNData() const { return _index.size(); }
@@ -175,6 +184,7 @@ private:
     std::vector<int> _index;
     int _ndata,_nsep,_nz;
     double _ds,_arcminToRad;
+    bool _dataFinalized, _covarianceFinalized;
 }; // LyaData
 
 typedef boost::shared_ptr<LyaData> LyaDataPtr;
@@ -507,6 +517,7 @@ int main(int argc, char **argv) {
             // Cinv*d from the quadratic estimator, but we just ignore it.
             data->addData(token[0],token[2],token[3],token[4]);
         }
+        data->finalizeData();
         paramsIn.close();
         if(verbose) {
             std::cout << "Read " << data->getNData() << " of " << data->getSize()
@@ -536,6 +547,7 @@ int main(int argc, char **argv) {
             // Add this covariance to our dataset.
             data->addCovariance(index1,index2,value);
         }
+        data->finalizeCovariance();
         covIn.close();
         if(verbose) {
             std::cout << "Read " << data->getNCov() << " of " << data->getNData()
