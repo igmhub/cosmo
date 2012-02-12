@@ -70,6 +70,9 @@ private:
 
 typedef boost::shared_ptr<BaoFitPower> BaoFitPowerPtr;
 
+class Binning;
+typedef boost::shared_ptr<const Binning> BinningPtr;
+
 class Binning {
 public:
     Binning(int nBins, double lowEdge, double binSize)
@@ -77,32 +80,33 @@ public:
         assert(nBins > 0);
         assert(binSize > 0);
     }
+    virtual ~Binning() { }
     // Returns the bin index [0,nBins-1] or else -1.
-    int getBinIndex(double value) const {
+    virtual int getBinIndex(double value) const {
         int bin = std::floor((value - _lowEdge)/_binSize);
         assert(bin >= 0 && bin < _nBins);
         return bin;
     }
     // Returns the midpoint value of the specified bin.
-    double getBinCenter(int index) const {
+    virtual double getBinCenter(int index) const {
         assert(index >= 0 && index < _nBins);
         return _lowEdge + (index+0.5)*_binSize;
     }
     int getNBins() const { return _nBins; }
     double getLowEdge() const { return _lowEdge; }
     double getBinSize() const { return _binSize; }
+    virtual void dump(std::ostream &os) const {
+        os << _nBins << ' ' << _lowEdge << ' ' << _binSize << std::endl;
+    }
+    virtual BinningPtr oversample(int factor) const {
+        assert(factor > 0);
+        BinningPtr bptr(new Binning(_nBins*factor,_lowEdge,_binSize/factor));
+        return bptr;
+    }
 private:
     int _nBins;
     double _lowEdge, _binSize;
 }; // Binning
-
-typedef boost::shared_ptr<const Binning> BinningPtr;
-
-BinningPtr oversampleBinning(Binning const &other, int factor) {
-    assert(factor > 0);
-    BinningPtr bptr(new Binning(other.getNBins()*factor,other.getLowEdge(),other.getBinSize()/factor));
-    return bptr;
-}
 
 class LyaData {
 public:
@@ -360,9 +364,9 @@ public:
         // Dump binning info first
         BinningPtr llbins(_data->getLogLambdaBinning()), sepbins(_data->getSeparationBinning()),
             zbins(_data->getRedshiftBinning());
-        out << llbins->getNBins() << ' ' << llbins->getLowEdge() << ' ' << llbins->getBinSize() << std::endl;
-        out << sepbins->getNBins() << ' ' << sepbins->getLowEdge() << ' ' << sepbins->getBinSize() << std::endl;
-        out << zbins->getNBins() << ' ' << zbins->getLowEdge() << ' ' << zbins->getBinSize() << std::endl;
+        llbins->dump(out);
+        sepbins->dump(out);
+        zbins->dump(out);
         // Dump the number of data bins, the model oversampling factor, and the number of contour points.
         int ncontour = (0 == contourData.size()) ? 0 : contourData[0].size();
         out << _data->getNData() << ' ' << oversampling << ' ' << ncontour << std::endl;
@@ -383,8 +387,8 @@ public:
             out << index << ' ' << obs << ' ' << pull << std::endl;
         }
         // Dump oversampled model calculation.
-        sepbins = oversampleBinning(*sepbins,oversampling);
-        llbins = oversampleBinning(*llbins,oversampling);
+        sepbins = sepbins->oversample(oversampling);
+        llbins = llbins->oversample(oversampling);
         double r,mu,ds(sepbins->getBinSize());
         for(int iz = 0; iz < zbins->getNBins(); ++iz) {
             double z = zbins->getBinCenter(iz);
