@@ -381,7 +381,7 @@ public:
         }
     }
     void dump(std::string const &filename, lk::Parameters const &params,
-    std::vector<ContourPoints> const &contourData,int oversampling = 10) {
+    std::vector<ContourPoints> const &contourData, int modelBins) {
         std::ofstream out(filename.c_str());
         // Dump binning info first
         AbsBinningPtr llbins(_data->getLogLambdaBinning()), sepbins(_data->getSeparationBinning()),
@@ -389,9 +389,9 @@ public:
         llbins->dump(out);
         sepbins->dump(out);
         zbins->dump(out);
-        // Dump the number of data bins, the model oversampling factor, and the number of contour points.
+        // Dump the number of data bins, the number of model bins, and the number of contour points.
         int ncontour = (0 == contourData.size()) ? 0 : contourData[0].size();
-        out << _data->getNData() << ' ' << oversampling << ' ' << ncontour << std::endl;
+        out << _data->getNData() << ' ' << modelBins << ' ' << ncontour << std::endl;
         // Dump the number of parameters and their best-fit values.
         out << params.size();
         BOOST_FOREACH(double const &pValue, params) out << ' ' << pValue;
@@ -408,23 +408,27 @@ public:
             int index = _data->getIndex(k);
             out << index << ' ' << obs << ' ' << pull << std::endl;
         }
-        // Dump oversampled model calculation.
-        sepbins = sepbins->oversample(oversampling);
-        llbins = llbins->oversample(oversampling);
+        // Dump high-resolution uniformly-binned model calculation.
+        // Calculate and dump the model binning limits.
+        double sepMin = sepbins->getBinLowEdge(0), sepMax = sepbins->getBinLowEdge(sepbins->getNBins());
+        UniformBinning sepModel(modelBins,sepMin,(sepMax-sepMin)/(modelBins-1.));
+        double llMin = llbins->getBinLowEdge(0), llMax = llbins->getBinLowEdge(llbins->getNBins());
+        UniformBinning llModel(modelBins,llMin,(llMax-llMin)/(modelBins-1.));
         double r,mu;
         for(int iz = 0; iz < zbins->getNBins(); ++iz) {
             double z = zbins->getBinCenter(iz);
-            for(int isep = 0; isep < sepbins->getNBins(); ++isep) {
-                double sep = sepbins->getBinCenter(isep);
-                double ds = sepbins->getBinSize(isep);
-                for(int ill = 0; ill < llbins->getNBins(); ++ill) {
-                    double ll = llbins->getBinCenter(ill);
+            for(int isep = 0; isep < modelBins; ++isep) {
+                double sep = sepModel.getBinCenter(isep);
+                double ds = sepModel.getBinSize(isep);
+                for(int ill = 0; ill < modelBins; ++ill) {
+                    double ll = llModel.getBinCenter(ill);
                     _data->transform(ll,sep,z,ds,r,mu);
                     double pred = _model->evaluate(r,mu,z,params);
                     out << r << ' ' << pred << std::endl;
                 }
             }
         }
+        // Dump 2-parameter contours if we have any.
         if(ncontour) {
             BOOST_FOREACH(ContourPoints const &points, contourData) {
                 BOOST_FOREACH(ContourPoint const &point, points) {
@@ -446,7 +450,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,zref,minll,dll,minsep,dsep,minz,dz;
-    int nll,nsep,nz,ncontour;
+    int nll,nsep,nz,ncontour,modelBins;
     std::string fiducialName,nowigglesName,dataName,dumpName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
@@ -485,6 +489,8 @@ int main(int argc, char **argv) {
             "Filename for dumping fit results.")
         ("ncontour",po::value<int>(&ncontour)->default_value(40),
             "Number of contour points to calculate in BAO parameters.")
+        ("model-bins", po::value<int>(&modelBins)->default_value(200),
+            "Number of high-resolution uniform bins to use for dumping best fit model.")
         ("minos", "Runs MINOS to improve error estimates.")
         ;
 
@@ -695,7 +701,7 @@ int main(int argc, char **argv) {
         
         if(dumpName.length() > 0) {
             if(verbose) std::cout << "Dumping fit results to " << dumpName << std::endl;
-            nll.dump(dumpName,fmin.UserParameters().Params(),contourData);
+            nll.dump(dumpName,fmin.UserParameters().Params(),contourData,modelBins);
         }
     }
     catch(cosmo::RuntimeError const &e) {
