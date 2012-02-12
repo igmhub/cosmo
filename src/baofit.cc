@@ -29,10 +29,15 @@
 #include <vector>
 #include <algorithm>
 
-// Declare a binding to this LAPACK Cholesky decomposition routine:
-// http://www.netlib.org/lapack/double/dpptrf.f
+// Declare bindings to BLAS,LAPACK routines we need
 extern "C" {
-    void dpptri_(char* uplo, int* n, double* ap, int *info);
+    // http://www.netlib.org/lapack/double/dpptrf.f
+    void dpptrf_(char *uplo, int *n, double *ap, int *info);
+    // http://www.netlib.org/lapack/double/dpptri.f
+    void dpptri_(char *uplo, int *n, double *ap, int *info);
+    // http://netlib.org/blas/dspmv.f
+    void dspmv_(char *uplo, int *n, double *alpha, double *ap,
+        double *x, int *incx, double *beta, double *y, int *incy);
 }
 
 namespace lk = likely;
@@ -181,7 +186,9 @@ public:
         _icov = _cov; // element-by-element copy
         char uplo('U');
         int info(0),ndata(getNData());
-        dpptri_(&uplo,&ndata,&_icov[0],&info);
+        dpptrf_(&uplo,&ndata,&_icov[0],&info); // Cholesky decompose
+        assert(0 == info);
+        dpptri_(&uplo,&ndata,&_icov[0],&info); // Calculate inverse
         assert(0 == info);
         _covarianceFinalized = true;
     }
