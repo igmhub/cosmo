@@ -204,10 +204,23 @@ public:
     BinningPtr getLogLambdaBinning() const { return _logLambdaBinning; }
     BinningPtr getSeparationBinning() const { return _separationBinning; }
     BinningPtr getRedshiftBinning() const { return _redshiftBinning; }
+    double calculateChiSquare(std::vector<double> &delta) {
+        std::vector<double>(delta.size(),0).swap(_icovDelta); // zero _icovDelta
+        char uplo('U');
+        double alpha(1),beta(0);
+        int info(0),incr(1),ndata(getNData());
+        // See http://netlib.org/blas/dspmv.f
+        dspmv_(&uplo,&ndata,&alpha,&_icov[0],&delta[0],&incr,&beta,&_icovDelta[0],&incr);
+        double chi2(0);
+        for(int k = 0; k < ndata; ++k) {
+            chi2 += delta[k]*_icovDelta[k];
+        }
+        return chi2;
+    }
 private:
     BinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
     cosmo::AbsHomogeneousUniversePtr _cosmology;
-    std::vector<double> _data, _cov, _icov, _r3d, _mu;
+    std::vector<double> _data, _cov, _icov, _r3d, _mu, _icovDelta;
     std::vector<bool> _initialized, _hasCov;
     std::vector<int> _index;
     int _ndata,_nsep,_nz;
@@ -313,23 +326,21 @@ public:
     }
     double operator()(lk::Parameters const &params) {
         // Loop over the dataset bins.
-        double nll(0);
+        int ndata(_data->getNData());
+        std::vector<double> delta(ndata);
         for(int k= 0; k < _data->getNData(); ++k) {
             int index(_data->getIndex(k));
             double r = _data->getRadius(index);
             double mu = _data->getCosAngle(index);
             double z = _data->getRedshift(index);
             double obs = _data->getData(index);
-            double var = _data->getVariance(k);
             double pred = _model->evaluate(r,mu,z,params);
-            // Update the chi2 = -log(L) for this bin
-            double diff(obs-pred);
-            nll += diff*diff/var;
+            delta[k] = obs - pred;
         }
         // UP=0.5 is already hardcoded so we need a factor of 2 here since we are
         // calculating a chi-square. Apply an additional factor of _errorScale to
         // allow different error contours to be calculated.
-        return 0.5*nll/_errorScale;
+        return 0.5*_data->calculateChiSquare(delta)/_errorScale;
     }
     int getNPar() const { return _params.size(); }
     void initialize(lk::MinuitEngine::StatePtr initialState) {
