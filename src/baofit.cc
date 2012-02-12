@@ -117,11 +117,8 @@ public:
         assert(cosmology);
         _nsep = separationBinning->getNBins();
         _nz = redshiftBinning->getNBins();
-        int nBinsTotal = logLambdaBinning->getNBins()*_nsep*_nz;
-        _data.resize(nBinsTotal,0);
-        _r3d.resize(nBinsTotal,0);
-        _mu.resize(nBinsTotal,0);
-        _initialized.resize(nBinsTotal,false);
+        _nBinsTotal = logLambdaBinning->getNBins()*_nsep*_nz;
+        _initialized.resize(_nBinsTotal,false);
         _ds = separationBinning->getBinSize();
         _arcminToRad = 4*std::atan(1)/(60.*180.);
     }
@@ -138,11 +135,14 @@ public:
         // Check that we have not already filled this bin.
         assert(!_initialized[index]);
         // Remember this bin.
-        _data[index] = value;
+        _data.push_back(value);
         _initialized[index] = true;
         _index.push_back(index);
         // Calculate and save model observables for this bin.
-        transform(logLambda,separation,redshift,_ds,_r3d[index],_mu[index]);
+        double r3d,mu;
+        transform(logLambda,separation,redshift,_ds,r3d,mu);
+        _r3d.push_back(r3d);
+        _mu.push_back(mu);
     }
     void finalizeData() {
         int nData = getNData();
@@ -192,15 +192,15 @@ public:
         assert(0 == info);
         _covarianceFinalized = true;
     }
-    int getSize() const { return _data.size(); }
-    int getNData() const { return _index.size(); }
+    int getSize() const { return _nBinsTotal; }
+    int getNData() const { return _data.size(); }
     int getNCov() const { return (int)std::count(_hasCov.begin(),_hasCov.end(),true); }
     int getIndex(int k) const { return _index[k]; }
-    double getData(int index) const { return _data[index]; }
-    double getVariance(int index) const { return _cov[(index*(index+3))/2]; }
-    double getRadius(int index) const { return _r3d[index]; }
-    double getCosAngle(int index) const { return _mu[index]; }
-    double getRedshift(int index) const { return _redshiftBinning->getBinCenter(index % _nz); }
+    double getData(int k) const { return _data[k]; }
+    double getVariance(int k) const { return _cov[(k*(k+3))/2]; }
+    double getRadius(int k) const { return _r3d[k]; }
+    double getCosAngle(int k) const { return _mu[k]; }
+    double getRedshift(int k) const { return _redshiftBinning->getBinCenter(_index[k] % _nz); }
     BinningPtr getLogLambdaBinning() const { return _logLambdaBinning; }
     BinningPtr getSeparationBinning() const { return _separationBinning; }
     BinningPtr getRedshiftBinning() const { return _redshiftBinning; }
@@ -223,7 +223,7 @@ private:
     std::vector<double> _data, _cov, _icov, _r3d, _mu, _icovDelta;
     std::vector<bool> _initialized, _hasCov;
     std::vector<int> _index;
-    int _ndata,_nsep,_nz;
+    int _ndata,_nsep,_nz,_nBinsTotal;
     double _ds,_arcminToRad;
     bool _dataFinalized, _covarianceFinalized;
 }; // LyaData
@@ -329,11 +329,10 @@ public:
         int ndata(_data->getNData());
         std::vector<double> delta(ndata);
         for(int k= 0; k < _data->getNData(); ++k) {
-            int index(_data->getIndex(k));
-            double r = _data->getRadius(index);
-            double mu = _data->getCosAngle(index);
-            double z = _data->getRedshift(index);
-            double obs = _data->getData(index);
+            double r = _data->getRadius(k);
+            double mu = _data->getCosAngle(k);
+            double z = _data->getRedshift(k);
+            double obs = _data->getData(k);
             double pred = _model->evaluate(r,mu,z,params);
             delta[k] = obs - pred;
         }
@@ -373,14 +372,14 @@ public:
         out << std::endl;
         // Dump binned data and most recent pulls.
         for(int k= 0; k < _data->getNData(); ++k) {
-            int index(_data->getIndex(k));
-            double r = _data->getRadius(index);
-            double mu = _data->getCosAngle(index);
-            double z = _data->getRedshift(index);
-            double obs = _data->getData(index);
+            double r = _data->getRadius(k);
+            double mu = _data->getCosAngle(k);
+            double z = _data->getRedshift(k);
+            double obs = _data->getData(k);
             double var = _data->getVariance(k);
             double pred = _model->evaluate(r,mu,z,params);
             double pull = (obs-pred)/std::sqrt(var);
+            int index = _data->getIndex(k);
             out << index << ' ' << obs << ' ' << pull << std::endl;
         }
         // Dump oversampled model calculation.
