@@ -52,7 +52,7 @@ cosmo3d_LDADD = -lboost_program_options -L. -lcosmo
 
 baofit_SOURCES = src/baofit.cc
 baofit_DEPENDENCIES = $(lib_LIBRARIES)
-baofit_LDADD = -lboost_program_options -L. -lcosmo -lMinuit2
+baofit_LDADD = -lboost_program_options -L. -lcosmo -lMinuit2 -lblas
 
 cosmotest_SOURCES = src/cosmotest.cc
 cosmotest_DEPENDENCIES = $(lib_LIBRARIES)
