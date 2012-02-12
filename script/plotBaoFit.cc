@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <cassert>
 
 void drawLabel(const char *label) {
     TLatex *latex = new TLatex();
@@ -38,6 +39,17 @@ void drawLines(TCanvas *c, int ipad, bool xline, bool yline) {
     }
 }
 
+double *readBinning(std::istream &is, int &nbins, double scale = 1) {
+    is >> nbins;
+    assert(nbins > 0 && nbins < 1000);
+    double *binning = new double[nbins+1];
+    for(int bin = 0; bin <= nbins; ++bin) {
+        is >> binning[bin];
+        binning[bin] *= scale;
+    }
+    return binning;
+}
+
 void plotBaoFit(const char *filename = "fit.dat") {
     // Initialize graphics options.
     gROOT->SetStyle("Plain");
@@ -56,40 +68,46 @@ void plotBaoFit(const char *filename = "fit.dat") {
     Double_t r3dContours[1] = { 108.719 };
     
     std::ifstream in(filename);
+    double cLight = 299.792458; // in units of 1e3 km/s
     // Read the binning parameters.
-    int nll,nsep,nz,ndata,oversampling,ncontour,npar;
-    double minll,minsep,minz,dll,dsep,dz,scale;
-    in >> nll >> minll >> dll;
-    in >> nsep >> minsep >> dsep;
-    in >> nz >> minz >> dz;
-    in >> ndata >> oversampling >> ncontour;
+    int nll,nsep,nz;
+    double *llbins = readBinning(in,nll,cLight); // convert log(lam2/lam1) into 1e3 km/s
+    double *sepbins = readBinning(in,nsep);
+    double *zbins = readBinning(in,nz);
+    // Read the number of data points, the number of model bins, and the number of points per contour.
+    int ndata,modelBins,ncontour;
+    in >> ndata >> modelBins >> ncontour;
+    // Calculate the model binning limits.
+    double sepMin = sepbins[0],sepMax = sepbins[nsep],llMin = llbins[0],llMax = llbins[nll];
+    // Read the best-fit parameter values.
+    int npar;
     in >> npar;
     double *pValue = new double[npar];
-    for(ipar = 0; ipar < npar; ++ipar) in >> pValue[ipar];
+    for(int ipar = 0; ipar < npar; ++ipar) in >> pValue[ipar];
     
-    r3dContours[0] *= pValue[4]; // scale
+    r3dContours[0] *= pValue[4];
     
     // Initialize the drawing canvas.
     TCanvas *canvas = new TCanvas("canvas","canvas",nz*400,800);
     canvas->SetMargin(0.05,0.01,0.05,0.05);
     canvas->Divide(nz,2,0.,0.);
 
+    // Create a 1D redshfit histogram
+    TH1F *zHist = new TH1F("zHist","zHist",nz,zbins);
+
     // Create 2D histograms in (ll,sep) for each redshift.
-    double cLight = 299.792458; // 1e3 km/s
-    double vmin = cLight*minll, vmax = cLight*(minll+nll*dll);
     for(int iz = 0; iz < nz; ++iz) {
-        double z(minz + (iz+0.5)*dz);
+        double z = zHist->GetBinCenter(iz+1);
         TH2F *dataHist = (TH2F *)gDirectory->Get(Form("data%d",iz));
         if(dataHist) continue;
-        TH2F *dataHist = new TH2F(Form("data%d",iz),Form("Fit data for z = %.2f",z),
-            nsep,minsep,minsep+nsep*dsep,nll,vmin,vmax);
+        TH2F *dataHist = new TH2F(Form("data%d",iz),Form("Fit data for z = %.2f",z),nsep,sepbins,nll,llbins);
         dataHist->SetXTitle("Angular separation (arcmin)");
         dataHist->SetYTitle("Relative radial velocity (10^{3}km/s)");
         TH2F *pullHist = dataHist->Clone(Form("pull%d",iz));
         TH2F *modelHist = new TH2F(Form("model%d",iz),Form("Model predictions for z = %.2f",z),
-            oversampling*nsep,minsep,minsep+nsep*dsep,oversampling*nll,vmin,vmax);
+            modelBins,sepMin,sepMax,modelBins,llMin,llMax);
         TH2F *r3dHist = new TH2F(Form("r3d%d",iz),Form("Co-moving 3D separation for z = %.2f",z),
-            oversampling*nsep,minsep,minsep+nsep*dsep,oversampling*nll,vmin,vmax);
+            modelBins,sepMin,sepMax,modelBins,llMin,llMax);
     }
     
     // Loop over bin data in the input file.
@@ -119,8 +137,8 @@ void plotBaoFit(const char *filename = "fit.dat") {
     for(int iz = 0; iz < nz; ++iz) {
         TH2F *modelHist = (TH2F *)gDirectory->Get(Form("model%d",iz));
         TH2F *r3dHist = (TH2F *)gDirectory->Get(Form("r3d%d",iz));
-        for(int isep = 0; isep < oversampling*nsep; ++isep) {
-            for(int ill = 0; ill < oversampling*nll; ++ill) {
+        for(int isep = 0; isep < modelBins; ++isep) {
+            for(int ill = 0; ill < modelBins; ++ill) {
                 in >> r3d >> pred;
                 r3dHist->SetBinContent(isep+1,ill+1,r3d);
                 modelHist->SetBinContent(isep+1,ill+1,pred);
@@ -131,8 +149,8 @@ void plotBaoFit(const char *filename = "fit.dat") {
     // Draw plots.
     double nsig=3;
     for(iz = 0; iz < nz; ++iz) {
-        double zval = minz + (iz+0.5)*dz;
-        double zmax = 0.05*std::sqrt(sumSqData[iz]);
+        double zval = zHist->GetBinCenter(iz+1);
+        double dataPlotLimit = 0.05*std::sqrt(sumSqData[iz]);
         TH2F *dataHist = (TH2F *)gDirectory->Get(Form("data%d",iz));
         TH2F *pullHist = (TH2F *)gDirectory->Get(Form("pull%d",iz));
         TH2F *modelHist = (TH2F *)gDirectory->Get(Form("model%d",iz));
@@ -141,14 +159,14 @@ void plotBaoFit(const char *filename = "fit.dat") {
         canvas->cd(iz+1);
         canvas->GetPad(iz+1)->SetMargin(0.11,0.03,0.10,0.01);
         dataHist->GetYaxis()->SetTitleOffset(1.3);
-        dataHist->SetMaximum(+zmax);
-        dataHist->SetMinimum(-zmax*0.99); // factor of 0.99 ensures that zero is white
+        dataHist->SetMaximum(+dataPlotLimit);
+        dataHist->SetMinimum(-dataPlotLimit*0.99); // factor of 0.99 ensures that zero is white
         // Trunctate bins outside the limits so that they are colored correctly.
         for(int ill = 0; ill < nll; ++ill) {
             for(int isep = 0; isep < nsep; ++isep) {
                 double data = dataHist->GetBinContent(isep+1,ill+1);
-                if(data < -zmax) data = -0.99*zmax;
-                if(data > +zmax) data = +0.99*zmax;
+                if(data < -dataPlotLimit) data = -0.99*dataPlotLimit;
+                if(data > +dataPlotLimit) data = +0.99*dataPlotLimit;
                 dataHist->SetBinContent(isep+1,ill+1,data);
                 double pull = pullHist->GetBinContent(isep+1,ill+1);
                 if(pull < -nsig) pull = -0.98*nsig;
@@ -157,8 +175,8 @@ void plotBaoFit(const char *filename = "fit.dat") {
             }
         }
         dataHist->Draw("col");
-        modelHist->SetMaximum(+zmax);
-        modelHist->SetMinimum(-zmax);
+        modelHist->SetMaximum(+dataPlotLimit);
+        modelHist->SetMinimum(-dataPlotLimit);
         modelHist->Draw("cont3same");
         r3dHist->SetContour(1,r3dContours);
         r3dHist->SetLineWidth(5);
