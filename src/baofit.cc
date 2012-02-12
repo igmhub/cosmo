@@ -83,7 +83,7 @@ public:
     // Returns the lower bound of the specified bin. Use index=nbins for the upper bound of the last bin.
     virtual double getBinLowEdge(int index) const = 0;
     // Returns the midpoint value of the specified bin.
-    double getBinCenter(int index) const { return getBinLowEdge(index) + 0.5*getBinSize(index); }
+    virtual double getBinCenter(int index) const { return getBinLowEdge(index) + 0.5*getBinSize(index); }
     // Dumps this binning to the specified output stream in a standard format.
     void dump(std::ostream &os) const {
         int nbins(getNBins());
@@ -129,11 +129,11 @@ public:
     _binEdge(binEdge) {
         // should check that edges are increasing...
     }
-    virtual ~VariableBinning();
+    virtual ~VariableBinning() { }
     virtual int getBinIndex(double value) const {
         // should use bisection for this, and cache the last bin found...
         if(value < _binEdge[0]) return -1; // underflow
-        for(int bin = 1; bin < _binEdge.size(); ++bin) if(value < _binEdge[bin]) return bin;
+        for(int bin = 1; bin < _binEdge.size(); ++bin) if(value < _binEdge[bin]) return bin-1;
         return -1; // overflow
     }
     virtual int getNBins() const { return _binEdge.size()-1; }
@@ -145,9 +145,40 @@ public:
         assert(index >= 0 && index < _binEdge.size()-1);
         return _binEdge[index];
     }
-private:
+protected:
+    VariableBinning() { }
     std::vector<double> _binEdge;
 }; // VariableBinning
+
+class TwoStepBinning : public VariableBinning {
+public:
+    TwoStepBinning(int nBins, double breakpoint, double dlog, double dlin, double eps = 1e-3) {
+        assert(breakpoint > 0 && dlog > 0 && dlin > 0 && eps > 0);
+        // first bin is centered on zero with almost zero width
+        _binEdge.push_back(-eps*dlin);
+        _binEdge.push_back(+eps*dlin);
+        _binCenter.push_back(0);
+        // next bins are uniformly spaced up to the breakpoint
+        int nUniform = std::floor(breakpoint/dlin);
+        for(int k = 1; k <= nUniform; ++k) {
+            _binEdge.push_back(k*dlin);
+            _binCenter.push_back((k-0.5)*dlin);
+        }
+        // remaining bins are logarithmically spaced, with log-weighted bin centers.
+        double ratio = std::log((breakpoint+dlog)/breakpoint);
+        for(int k = 1; k < nBins-nUniform; ++k) {
+            _binEdge.push_back(breakpoint*std::exp(ratio*k));
+            _binCenter.push_back(breakpoint*std::exp(ratio*(k-0.5)));
+        }
+    }
+    virtual ~TwoStepBinning() { }
+    virtual double getBinCenter(int index) const {
+        assert(index >= 0 && index < _binCenter.size());
+        return _binCenter[index];
+    }
+private:
+    std::vector<double> _binCenter;
+}; // TwoStepBinning
 
 class LyaData {
 public:
@@ -467,7 +498,7 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
-    double OmegaLambda,OmegaMatter,zref,minll,dll,minsep,dsep,minz,dz;
+    double OmegaLambda,OmegaMatter,zref,minll,dll,dll2,minsep,dsep,minz,dz;
     int nll,nsep,nz,ncontour,modelBins;
     std::string fiducialName,nowigglesName,dataName,dumpName;
     cli.add_options()
@@ -489,6 +520,8 @@ int main(int argc, char **argv) {
             "Minimum log(lam2/lam1).")
         ("dll", po::value<double>(&dll)->default_value(0.004),
             "log(lam2/lam1) binsize.")
+        ("dll2", po::value<double>(&dll2)->default_value(0),
+            "log(lam2/lam1) second binsize parameter for two-step binning.")
         ("nll", po::value<int>(&nll)->default_value(14),
             "Maximum number of log(lam2/lam1) bins.")
         ("minsep", po::value<double>(&minsep)->default_value(0),
@@ -568,8 +601,13 @@ int main(int argc, char **argv) {
     LyaDataPtr data;
     try {
         // Initialize the (logLambda,separation,redshift) binning from command-line params.
-        AbsBinningPtr llBins(new UniformBinning(nll,minll,dll)), sepBins(new UniformBinning(nsep,minsep,dsep)),
-            zBins(new UniformBinning(nz,minz,dz));
+        AbsBinningPtr llBins,sepBins(new UniformBinning(nsep,minsep,dsep)), zBins(new UniformBinning(nz,minz,dz));
+        if(0 == dll2) {
+            llBins.reset(new UniformBinning(nll,minll,dll));
+        }
+        else {
+            llBins.reset(new TwoStepBinning(nll,minll,dll,dll2));
+        }
         // Initialize the dataset we will fill.
         data.reset(new LyaData(llBins,sepBins,zBins,cosmology));
         // General stuff we will need for reading both files.
