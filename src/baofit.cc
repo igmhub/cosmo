@@ -70,9 +70,6 @@ private:
 
 typedef boost::shared_ptr<BaoFitPower> BaoFitPowerPtr;
 
-class AbsBinning;
-typedef boost::shared_ptr<const AbsBinning> AbsBinningPtr;
-
 class AbsBinning {
 public:
     AbsBinning() { }
@@ -85,8 +82,6 @@ public:
     virtual double getBinSize(int index) const = 0;
     // Returns the lower bound of the specified bin. Use index=nbins for the upper bound of the last bin.
     virtual double getBinLowEdge(int index) const = 0;
-    // Returns a pointer to a new binning that subdivides each existing bin factor times.
-    virtual AbsBinningPtr oversample(int factor) const = 0;
     // Returns the midpoint value of the specified bin.
     double getBinCenter(int index) const { return getBinLowEdge(index) + 0.5*getBinSize(index); }
     // Dumps this binning to the specified output stream in a standard format.
@@ -97,6 +92,8 @@ public:
         os << std::endl;
     }
 }; // AbsBinning
+
+typedef boost::shared_ptr<const AbsBinning> AbsBinningPtr;
 
 class UniformBinning : public AbsBinning {
 public:
@@ -121,15 +118,36 @@ public:
         assert(index >= 0 && index <= _nBins);
         return _lowEdge + index*_binSize;
     }
-    virtual AbsBinningPtr oversample(int factor) const {
-        assert(factor > 0);
-        AbsBinningPtr bptr(new UniformBinning(_nBins*factor,_lowEdge,_binSize/factor));
-        return bptr;
-    }
 private:
     int _nBins;
     double _lowEdge, _binSize;
 }; // UniformBinning
+
+class VariableBinning : public AbsBinning {
+public:
+    VariableBinning(std::vector<double> &binEdge) :
+    _binEdge(binEdge) {
+        // should check that edges are increasing...
+    }
+    virtual ~VariableBinning();
+    virtual int getBinIndex(double value) const {
+        // should use bisection for this, and cache the last bin found...
+        if(value < _binEdge[0]) return -1; // underflow
+        for(int bin = 1; bin < _binEdge.size(); ++bin) if(value < _binEdge[bin]) return bin;
+        return -1; // overflow
+    }
+    virtual int getNBins() const { return _binEdge.size()-1; }
+    virtual double getBinSize(int index) const {
+        assert(index >= 0 && index < _binEdge.size()-1);
+        return _binEdge[index+1] - _binEdge[index];
+    }
+    virtual double getBinLowEdge(int index) const {
+        assert(index >= 0 && index < _binEdge.size()-1);
+        return _binEdge[index];
+    }
+private:
+    std::vector<double> _binEdge;
+}; // VariableBinning
 
 class LyaData {
 public:
