@@ -146,7 +146,6 @@ public:
         _nz = redshiftBinning->getNBins();
         _nBinsTotal = logLambdaBinning->getNBins()*_nsep*_nz;
         _initialized.resize(_nBinsTotal,false);
-        _ds = separationBinning->getBinSize(0);
         _arcminToRad = 4*std::atan(1)/(60.*180.);
     }
     void addData(double value, double logLambda, double separation, double redshift) {
@@ -166,8 +165,8 @@ public:
         _initialized[index] = true;
         _index.push_back(index);
         // Calculate and save model observables for this bin.
-        double r3d,mu;
-        transform(logLambda,separation,redshift,_ds,r3d,mu);
+        double r3d,mu,ds(_separationBinning->getBinSize(separationBin));
+        transform(logLambda,separation,redshift,ds,r3d,mu);
         _r3d.push_back(r3d);
         _mu.push_back(mu);
     }
@@ -251,7 +250,7 @@ private:
     std::vector<bool> _initialized, _hasCov;
     std::vector<int> _index;
     int _ndata,_nsep,_nz,_nBinsTotal;
-    double _ds,_arcminToRad;
+    double _arcminToRad;
     bool _dataFinalized, _covarianceFinalized;
 }; // LyaData
 
@@ -412,11 +411,12 @@ public:
         // Dump oversampled model calculation.
         sepbins = sepbins->oversample(oversampling);
         llbins = llbins->oversample(oversampling);
-        double r,mu,ds(sepbins->getBinSize(0));
+        double r,mu;
         for(int iz = 0; iz < zbins->getNBins(); ++iz) {
             double z = zbins->getBinCenter(iz);
             for(int isep = 0; isep < sepbins->getNBins(); ++isep) {
                 double sep = sepbins->getBinCenter(isep);
+                double ds = sepbins->getBinSize(isep);
                 for(int ill = 0; ill < llbins->getNBins(); ++ill) {
                     double ll = llbins->getBinCenter(ill);
                     _data->transform(ll,sep,z,ds,r,mu);
