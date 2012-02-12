@@ -382,10 +382,11 @@ private:
 
 class LyaBaoLikelihood {
 public:
-    LyaBaoLikelihood(LyaDataPtr data, LyaBaoModelPtr model)
-    : _data(data), _model(model),_errorScale(1) {
+    LyaBaoLikelihood(LyaDataPtr data, LyaBaoModelPtr model, double rmin, double rmax)
+    : _data(data), _model(model), _rmin(rmin), _rmax(rmax), _errorScale(1) {
         assert(data);
         assert(model);
+        assert(rmax > rmin);
         _params.push_back(Parameter("Alpha",4.0,true));
         _params.push_back(Parameter("Bias",0.2,true));
         _params.push_back(Parameter("Beta",0.8,true));
@@ -402,9 +403,10 @@ public:
     double operator()(lk::Parameters const &params) {
         // Loop over the dataset bins.
         int ndata(_data->getNData());
-        std::vector<double> delta(ndata);
+        std::vector<double> delta(ndata,0);
         for(int k= 0; k < _data->getNData(); ++k) {
             double r = _data->getRadius(k);
+            if(r < _rmin || r > _rmax) continue;
             double mu = _data->getCosAngle(k);
             double z = _data->getRedshift(k);
             double obs = _data->getData(k);
@@ -451,9 +453,12 @@ public:
             double mu = _data->getCosAngle(k);
             double z = _data->getRedshift(k);
             double obs = _data->getData(k);
-            double var = _data->getVariance(k);
-            double pred = _model->evaluate(r,mu,z,params);
-            double pull = (obs-pred)/std::sqrt(var);
+            double pull = 0;
+            if(r >= _rmin && r <= _rmax) {
+                double var = _data->getVariance(k);
+                double pred = _model->evaluate(r,mu,z,params);
+                pull = (obs-pred)/std::sqrt(var);
+            }
             int index = _data->getIndex(k);
             out << index << ' ' << obs << ' ' << pull << std::endl;
         }
@@ -491,14 +496,14 @@ private:
     LyaDataPtr _data;
     LyaBaoModelPtr _model;
     std::vector<Parameter> _params;
-    double _errorScale;
+    double _rmin, _rmax, _errorScale;
 }; // LyaBaoLikelihood
 
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
-    double OmegaLambda,OmegaMatter,zref,minll,dll,dll2,minsep,dsep,minz,dz;
+    double OmegaLambda,OmegaMatter,zref,minll,dll,dll2,minsep,dsep,minz,dz,rmin,rmax;
     int nll,nsep,nz,ncontour,modelBins;
     std::string fiducialName,nowigglesName,dataName,dumpName;
     cli.add_options()
@@ -514,6 +519,10 @@ int main(int argc, char **argv) {
             "No-wiggles correlation functions will be read from <name>.<ell>.dat with ell=0,2,4.")
         ("zref", po::value<double>(&zref)->default_value(2.25),
             "Reference redshift.")
+        ("rmin", po::value<double>(&rmin)->default_value(0),
+            "Minimum 3D comoving separation (Mpc/h) to use in fit.")
+        ("rmax", po::value<double>(&rmax)->default_value(200),
+            "Maximum 3D comoving separation (Mpc/h) to use in fit.")
         ("data", po::value<std::string>(&dataName)->default_value(""),
             "3D covariance data will be read from <data>.params and <data>.cov")
         ("minll", po::value<double>(&minll)->default_value(0.0002),
@@ -691,7 +700,7 @@ int main(int argc, char **argv) {
     // Minimize the -log(Likelihood) function.
     try {
         lk::GradientCalculatorPtr gcptr;
-        LyaBaoLikelihood nll(data,model);
+        LyaBaoLikelihood nll(data,model,rmin,rmax);
         lk::FunctionPtr fptr(new lk::Function(boost::ref(nll)));
 
         int npar(nll.getNPar());
