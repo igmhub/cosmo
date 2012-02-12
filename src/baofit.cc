@@ -70,47 +70,70 @@ private:
 
 typedef boost::shared_ptr<BaoFitPower> BaoFitPowerPtr;
 
-class Binning;
-typedef boost::shared_ptr<const Binning> BinningPtr;
+class AbsBinning;
+typedef boost::shared_ptr<const AbsBinning> AbsBinningPtr;
 
-class Binning {
+class AbsBinning {
 public:
-    Binning(int nBins, double lowEdge, double binSize)
+    AbsBinning() { }
+    virtual ~AbsBinning() { }
+    // Returns the bin index [0,nBins-1] or else -1.
+    virtual int getBinIndex(double value) const = 0;
+    // Returns the total number of bins.
+    virtual int getNBins() const = 0;
+    // Returns the full width of the specified bin.
+    virtual double getBinSize(int index) const = 0;
+    // Returns the lower bound of the specified bin. Use index=nbins for the upper bound of the last bin.
+    virtual double getBinLowEdge(int index) const = 0;
+    // Returns a pointer to a new binning that subdivides each existing bin factor times.
+    virtual AbsBinningPtr oversample(int factor) const = 0;
+    // Returns the midpoint value of the specified bin.
+    double getBinCenter(int index) const { return getBinLowEdge(index) + 0.5*getBinSize(index); }
+    // Dumps this binning to the specified output stream in a standard format.
+    void dump(std::ostream &os) const {
+        int nbins(getNBins());
+        os << nbins;
+        for(int bin = 0; bin <= nbins; ++bin) os << ' ' << getBinLowEdge(bin);
+        os << std::endl;
+    }
+}; // AbsBinning
+
+class UniformBinning : public AbsBinning {
+public:
+    UniformBinning(int nBins, double lowEdge, double binSize)
     : _nBins(nBins), _lowEdge(lowEdge), _binSize(binSize) {
         assert(nBins > 0);
         assert(binSize > 0);
     }
-    virtual ~Binning() { }
+    virtual ~UniformBinning() { }
     // Returns the bin index [0,nBins-1] or else -1.
     virtual int getBinIndex(double value) const {
         int bin = std::floor((value - _lowEdge)/_binSize);
         assert(bin >= 0 && bin < _nBins);
         return bin;
     }
-    // Returns the midpoint value of the specified bin.
-    virtual double getBinCenter(int index) const {
-        assert(index >= 0 && index < _nBins);
-        return _lowEdge + (index+0.5)*_binSize;
+    // Returns the total number of bins.
+    virtual int getNBins() const { return _nBins; }
+    // Returns the full width of the specified bin.
+    virtual double getBinSize(int index) const { return _binSize; }
+    // Returns the lower bound of the specified bin. Use index=nbins for the upper bound of the last bin.
+    virtual double getBinLowEdge(int index) const {
+        assert(index >= 0 && index <= _nBins);
+        return _lowEdge + index*_binSize;
     }
-    int getNBins() const { return _nBins; }
-    double getLowEdge() const { return _lowEdge; }
-    double getBinSize() const { return _binSize; }
-    virtual void dump(std::ostream &os) const {
-        os << _nBins << ' ' << _lowEdge << ' ' << _binSize << std::endl;
-    }
-    virtual BinningPtr oversample(int factor) const {
+    virtual AbsBinningPtr oversample(int factor) const {
         assert(factor > 0);
-        BinningPtr bptr(new Binning(_nBins*factor,_lowEdge,_binSize/factor));
+        AbsBinningPtr bptr(new UniformBinning(_nBins*factor,_lowEdge,_binSize/factor));
         return bptr;
     }
 private:
     int _nBins;
     double _lowEdge, _binSize;
-}; // Binning
+}; // UniformBinning
 
 class LyaData {
 public:
-    LyaData(BinningPtr logLambdaBinning, BinningPtr separationBinning, BinningPtr redshiftBinning,
+    LyaData(AbsBinningPtr logLambdaBinning, AbsBinningPtr separationBinning, AbsBinningPtr redshiftBinning,
     cosmo::AbsHomogeneousUniversePtr cosmology) : _cosmology(cosmology), _logLambdaBinning(logLambdaBinning),
     _separationBinning(separationBinning), _redshiftBinning(redshiftBinning),
     _dataFinalized(false), _covarianceFinalized(false)
@@ -123,7 +146,7 @@ public:
         _nz = redshiftBinning->getNBins();
         _nBinsTotal = logLambdaBinning->getNBins()*_nsep*_nz;
         _initialized.resize(_nBinsTotal,false);
-        _ds = separationBinning->getBinSize();
+        _ds = separationBinning->getBinSize(0);
         _arcminToRad = 4*std::atan(1)/(60.*180.);
     }
     void addData(double value, double logLambda, double separation, double redshift) {
@@ -205,9 +228,9 @@ public:
     double getRadius(int k) const { return _r3d[k]; }
     double getCosAngle(int k) const { return _mu[k]; }
     double getRedshift(int k) const { return _redshiftBinning->getBinCenter(_index[k] % _nz); }
-    BinningPtr getLogLambdaBinning() const { return _logLambdaBinning; }
-    BinningPtr getSeparationBinning() const { return _separationBinning; }
-    BinningPtr getRedshiftBinning() const { return _redshiftBinning; }
+    AbsBinningPtr getLogLambdaBinning() const { return _logLambdaBinning; }
+    AbsBinningPtr getSeparationBinning() const { return _separationBinning; }
+    AbsBinningPtr getRedshiftBinning() const { return _redshiftBinning; }
     double calculateChiSquare(std::vector<double> &delta) {
         std::vector<double>(delta.size(),0).swap(_icovDelta); // zero _icovDelta
         char uplo('U');
@@ -222,7 +245,7 @@ public:
         return chi2;
     }
 private:
-    BinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
+    AbsBinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
     cosmo::AbsHomogeneousUniversePtr _cosmology;
     std::vector<double> _data, _cov, _icov, _r3d, _mu, _icovDelta;
     std::vector<bool> _initialized, _hasCov;
@@ -362,7 +385,7 @@ public:
     std::vector<ContourPoints> const &contourData,int oversampling = 10) {
         std::ofstream out(filename.c_str());
         // Dump binning info first
-        BinningPtr llbins(_data->getLogLambdaBinning()), sepbins(_data->getSeparationBinning()),
+        AbsBinningPtr llbins(_data->getLogLambdaBinning()), sepbins(_data->getSeparationBinning()),
             zbins(_data->getRedshiftBinning());
         llbins->dump(out);
         sepbins->dump(out);
@@ -389,7 +412,7 @@ public:
         // Dump oversampled model calculation.
         sepbins = sepbins->oversample(oversampling);
         llbins = llbins->oversample(oversampling);
-        double r,mu,ds(sepbins->getBinSize());
+        double r,mu,ds(sepbins->getBinSize(0));
         for(int iz = 0; iz < zbins->getNBins(); ++iz) {
             double z = zbins->getBinCenter(iz);
             for(int isep = 0; isep < sepbins->getNBins(); ++isep) {
@@ -521,8 +544,8 @@ int main(int argc, char **argv) {
     LyaDataPtr data;
     try {
         // Initialize the (logLambda,separation,redshift) binning from command-line params.
-        BinningPtr llBins(new Binning(nll,minll,dll)), sepBins(new Binning(nsep,minsep,dsep)),
-            zBins(new Binning(nz,minz,dz));
+        AbsBinningPtr llBins(new UniformBinning(nll,minll,dll)), sepBins(new UniformBinning(nsep,minsep,dsep)),
+            zBins(new UniformBinning(nz,minz,dz));
         // Initialize the dataset we will fill.
         data.reset(new LyaData(llBins,sepBins,zBins,cosmology));
         // General stuff we will need for reading both files.
