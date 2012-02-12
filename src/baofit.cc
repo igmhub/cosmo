@@ -142,7 +142,7 @@ public:
         return _binEdge[index+1] - _binEdge[index];
     }
     virtual double getBinLowEdge(int index) const {
-        assert(index >= 0 && index < _binEdge.size()-1);
+        assert(index >= 0 && index < _binEdge.size());
         return _binEdge[index];
     }
 protected:
