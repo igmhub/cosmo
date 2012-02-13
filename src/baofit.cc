@@ -423,7 +423,8 @@ public:
         BOOST_FOREACH(Parameter const &param, _params) {
             double value(param.getValue());
             if(param.isFloating()) {
-                initialState->Add(param.getName(),value,0.1*value); // error = 0.1*value
+                double error = (0 == value) ? 0.1 : 0.1*std::fabs(value);
+                initialState->Add(param.getName(),value,error);
             }
             else {
                 initialState->Add(param.getName(),value,0);
