@@ -262,8 +262,10 @@ public:
         char uplo('U');
         int info(0),ndata(getNData());
         dpptrf_(&uplo,&ndata,&_icov[0],&info); // Cholesky decompose
+        if(0 != info) std::cout << "Cholesky error: info = " << info << std::endl;
         assert(0 == info);
         dpptri_(&uplo,&ndata,&_icov[0],&info); // Calculate inverse
+        if(0 != info) std::cout << "Inverse error: info = " << info << std::endl;
         assert(0 == info);
         _covarianceFinalized = true;
     }
