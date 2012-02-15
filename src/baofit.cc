@@ -238,6 +238,10 @@ public:
         double rsq = drLos*drLos + drPerp*drPerp;
         r3d = std::sqrt(rsq);
         mu = std::abs(drLos)/r3d;
+/**
+        std::cout << '(' << ll << ',' << sep << ',' << z << ") => ["
+            << z1 << ',' << z2 << ',' << swgt << ';' << drLos << ',' << drPerp << ',' << mu << ']' << std::endl;
+**/
     }
     void addCovariance(int i, int j, double value) {
         int row,col;
@@ -342,6 +346,10 @@ public:
         double fid((*_fid)(r*scale,mu)), nw((*_nw)(r*scale,mu)); // scale cancels in mu
         double xi = ampl*(fid-nw)+nw;
         double broadband = 1e-1*a1/(r*r) + 1e-3*a2/r + 1e-5*a3;
+/**
+        std::cout << "LinXi(" << r << ',' << mu << ',' << z << ';'
+            << alpha << ',' << beta << ',' << bias << ") = " << bias*bias*zfactor*xi << std::endl;
+**/
         return bias*bias*zfactor*xi + broadband;
     }
 private:
