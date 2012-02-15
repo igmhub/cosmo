@@ -382,19 +382,20 @@ private:
 
 class LyaBaoLikelihood {
 public:
-    LyaBaoLikelihood(LyaDataPtr data, LyaBaoModelPtr model, double rmin, double rmax)
+    LyaBaoLikelihood(LyaDataPtr data, LyaBaoModelPtr model, double rmin, double rmax,
+    bool fixBao, bool noBBand)
     : _data(data), _model(model), _rmin(rmin), _rmax(rmax), _errorScale(1) {
         assert(data);
         assert(model);
         assert(rmax > rmin);
-        _params.push_back(Parameter("Alpha",4.0,true));
-        _params.push_back(Parameter("Bias",0.2,true));
-        _params.push_back(Parameter("Beta",0.8,true));
-        _params.push_back(Parameter("BAO Ampl",1,true));
-        _params.push_back(Parameter("BAO Scale",1,true));
-        _params.push_back(Parameter("BB a1",0,true));
-        _params.push_back(Parameter("BB a2",0,true));
-        _params.push_back(Parameter("BB a3",0,true));
+        _params.push_back(Parameter("Alpha",3.8,true));
+        _params.push_back(Parameter("Bias",0.17,true));
+        _params.push_back(Parameter("Beta",1.0,true));
+        _params.push_back(Parameter("BAO Ampl",1,!fixBao));
+        _params.push_back(Parameter("BAO Scale",1,!fixBao));
+        _params.push_back(Parameter("BB a1",0,!noBBand));
+        _params.push_back(Parameter("BB a2",0,false));
+        _params.push_back(Parameter("BB a3",0,false));
     }
     void setErrorScale(double scale) {
         assert(scale > 0);
@@ -553,6 +554,8 @@ int main(int argc, char **argv) {
         ("model-bins", po::value<int>(&modelBins)->default_value(200),
             "Number of high-resolution uniform bins to use for dumping best fit model.")
         ("minos", "Runs MINOS to improve error estimates.")
+        ("fix-bao", "Fix BAO scale and amplitude parameters.")
+        ("no-bband", "Do not add any broadband contribution to the correlation function.")
         ;
 
     // Do the command line parsing now.
@@ -569,7 +572,8 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose")), minos(vm.count("minos"));
+    bool verbose(vm.count("verbose")), minos(vm.count("minos")),
+        fixBao(vm.count("fix-bao")), noBBand(vm.count("no-bband"));
 
     // Check for the required filename parameters.
     if(0 == dataName.length()) {
@@ -701,7 +705,7 @@ int main(int argc, char **argv) {
     // Minimize the -log(Likelihood) function.
     try {
         lk::GradientCalculatorPtr gcptr;
-        LyaBaoLikelihood nll(data,model,rmin,rmax);
+        LyaBaoLikelihood nll(data,model,rmin,rmax,fixBao,noBBand);
         lk::FunctionPtr fptr(new lk::Function(boost::ref(nll)));
 
         int npar(nll.getNPar());
