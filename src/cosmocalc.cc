@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
             double k(kmin*std::pow(kratio,i));
             if(k > kmax) k = kmax; // might happen with rounding
             out << k << ' ' << (*transferPtr)(k) << ' '
-                << fourpi2/(k*k*k)*transferPower(k)*evolSq*norm << ' ' << pi/k*onedZero(k)*evolSq*norm
+                << fourpi2/(k*k*k)*(*power)(k)*evolSq*norm << ' ' << pi/k*onedZero(k)*evolSq*norm
                 << ' ' << pi/k*onedHard(k)*evolSq*norm << ' ' << pi/k*onedSoft(k)*evolSq*norm << std::endl;
         }
         out.close();
