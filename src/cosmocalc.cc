@@ -13,12 +13,14 @@
 #include "boost/program_options.hpp"
 #include "boost/bind.hpp"
 #include "boost/ref.hpp"
+#include "boost/lambda/lambda.hpp"
 
 #include <fstream>
 #include <iostream>
 #include <cmath>
 
 namespace po = boost::program_options;
+namespace k = boost::lambda;
 
 class BaoFitPower {
 public:
@@ -37,12 +39,19 @@ private:
     cosmo::PowerSpectrumPtr _full, _nowiggles;
 }; // BaoFitPower
 
+cosmo::PowerSpectrumPtr createBroadbandPower(double a0, double a1, double a2, double a3) {
+    // k::_1 represents k in Mpc/h below.
+    cosmo::PowerSpectrumPtr ptr(new cosmo::PowerSpectrum((a0 + (a1 + (a2 + a3/k::_1)/k::_1)/k::_1)/(k::_1*k::_1)));
+    return ptr;
+}
+
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology calculator");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,
         zval,kval,kmin,kmax,rval,rmin,rmax,baoAmplitude,baoSigma,baoScale;
+    double bbandA0,bbandA1,bbandA2,bbandA3;
     int nk,nr;
     std::string saveTransferFile,saveCorrelationFile;
     cli.add_options()
@@ -95,7 +104,16 @@ int main(int argc, char **argv) {
         ("bao-sigma", po::value<double>(&baoSigma)->default_value(0),
             "Gaussian smearing of BAO correlation function peak in Mpc/h relative to fiducial model.")
         ("bao-scale", po::value<double>(&baoScale)->default_value(1),
-            "Rescaling of wavenumber relative to fiducial model (>1 means larger acoustic scale)");
+            "Rescaling of wavenumber relative to fiducial model (>1 means larger acoustic scale)")
+        ("broadband-only", "Calculates contribution of broadband power only.")
+        ("broadband-a0", po::value<double>(&bbandA0)->default_value(0),
+            "Coefficient of 1/k^2 in broadband power model.")
+        ("broadband-a1", po::value<double>(&bbandA1)->default_value(0),
+            "Coefficient of 1/k^3 in broadband power model.")
+        ("broadband-a2", po::value<double>(&bbandA2)->default_value(0),
+            "Coefficient of 1/k^4 in broadband power model.")
+        ("broadband-a3", po::value<double>(&bbandA3)->default_value(0),
+            "Coefficient of 1/k^5 in broadband power model.")
         ;
 
     // do the command line parsing now
@@ -114,7 +132,8 @@ int main(int argc, char **argv) {
     }
     bool verbose(vm.count("verbose")), rlog(vm.count("rlog")),
         quad(vm.count("quad")), hexa(vm.count("hexa")), noWiggles(vm.count("no-wiggles")),
-        periodicWiggles(vm.count("periodic-wiggles")), baoFit(vm.count("bao-fit"));
+        periodicWiggles(vm.count("periodic-wiggles")), baoFit(vm.count("bao-fit")),
+        bbandOnly(vm.count("broadband-only"));
 
     // Process the multipole flags.
     if(quad && hexa) {
@@ -223,6 +242,15 @@ int main(int argc, char **argv) {
         noWigglesPowerPtr.reset(new cosmo::PowerSpectrum(boost::ref(*noWigglesTransferPowerPtr)));
         baoFitPowerPtr.reset(new BaoFitPower(baoAmplitude,baoScale,baoSigma,power,noWigglesPowerPtr));
         power.reset(new cosmo::PowerSpectrum(boost::ref(*baoFitPowerPtr)));
+    }
+    
+    // Create broadband power model, if requested.
+    if(0 != bbandA0 || 0 != bbandA1 || 0 != bbandA2 || 0 != bbandA3) {
+        cosmo::PowerSpectrumPtr broadband = createBroadbandPower(bbandA0,bbandA1,bbandA2,bbandA3);     
+    }
+    else if(bbandOnly) {
+        std::cerr << "Must have at least one non-zero broadband coefficient for broadband-only." << std::endl;
+        return -2;
     }
 
     if(0 < saveTransferFile.length()) {
