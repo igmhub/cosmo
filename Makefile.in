@@ -80,7 +80,8 @@ LTLIBRARIES = $(lib_LTLIBRARIES)
 libcosmo_la_LIBADD =
 am_libcosmo_la_OBJECTS = AbsHomogeneousUniverse.lo \
 	HomogeneousUniverseCalculator.lo LambdaCdmUniverse.lo \
-	BaryonPerturbations.lo TransferFunctionPowerSpectrum.lo \
+	BaryonPerturbations.lo BroadbandPower.lo \
+	TransferFunctionPowerSpectrum.lo \
 	PowerSpectrumCorrelationFunction.lo RsdCorrelationFunction.lo \
 	OneDimensionalPowerSpectrum.lo \
 	AbsGaussianRandomFieldGenerator.lo \
@@ -262,6 +263,7 @@ libcosmo_la_SOURCES = \
 	cosmo/HomogeneousUniverseCalculator.cc \
 	cosmo/LambdaCdmUniverse.cc \
 	cosmo/BaryonPerturbations.cc \
+	cosmo/BroadbandPower.cc \
 	cosmo/TransferFunctionPowerSpectrum.cc \
 	cosmo/PowerSpectrumCorrelationFunction.cc \
 	cosmo/RsdCorrelationFunction.cc \
@@ -281,6 +283,7 @@ nobase_include_HEADERS = \
 	cosmo/HomogeneousUniverseCalculator.h \
 	cosmo/LambdaCdmUniverse.h \
 	cosmo/BaryonPerturbations.h \
+	cosmo/BroadbandPower.h \
 	cosmo/TransferFunctionPowerSpectrum.h \
 	cosmo/PowerSpectrumCorrelationFunction.h \
 	cosmo/RsdCorrelationFunction.h \
@@ -465,6 +468,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AbsGaussianRandomFieldGenerator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AbsHomogeneousUniverse.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BaryonPerturbations.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BroadbandPower.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FftGaussianRandomFieldGenerator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HomogeneousUniverseCalculator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/LambdaCdmUniverse.Plo@am__quote@
@@ -525,6 +529,13 @@ BaryonPerturbations.lo: cosmo/BaryonPerturbations.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/BaryonPerturbations.cc' object='BaryonPerturbations.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o BaryonPerturbations.lo `test -f 'cosmo/BaryonPerturbations.cc' || echo '$(srcdir)/'`cosmo/BaryonPerturbations.cc
+
+BroadbandPower.lo: cosmo/BroadbandPower.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT BroadbandPower.lo -MD -MP -MF $(DEPDIR)/BroadbandPower.Tpo -c -o BroadbandPower.lo `test -f 'cosmo/BroadbandPower.cc' || echo '$(srcdir)/'`cosmo/BroadbandPower.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/BroadbandPower.Tpo $(DEPDIR)/BroadbandPower.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/BroadbandPower.cc' object='BroadbandPower.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o BroadbandPower.lo `test -f 'cosmo/BroadbandPower.cc' || echo '$(srcdir)/'`cosmo/BroadbandPower.cc
 
 TransferFunctionPowerSpectrum.lo: cosmo/TransferFunctionPowerSpectrum.cc
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT TransferFunctionPowerSpectrum.lo -MD -MP -MF $(DEPDIR)/TransferFunctionPowerSpectrum.Tpo -c -o TransferFunctionPowerSpectrum.lo `test -f 'cosmo/TransferFunctionPowerSpectrum.cc' || echo '$(srcdir)/'`cosmo/TransferFunctionPowerSpectrum.cc

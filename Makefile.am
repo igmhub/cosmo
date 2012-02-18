@@ -15,6 +15,7 @@ libcosmo_la_SOURCES = \
 	cosmo/HomogeneousUniverseCalculator.cc \
 	cosmo/LambdaCdmUniverse.cc \
 	cosmo/BaryonPerturbations.cc \
+	cosmo/BroadbandPower.cc \
 	cosmo/TransferFunctionPowerSpectrum.cc \
 	cosmo/PowerSpectrumCorrelationFunction.cc \
 	cosmo/RsdCorrelationFunction.cc \
@@ -33,6 +34,7 @@ nobase_include_HEADERS = \
 	cosmo/HomogeneousUniverseCalculator.h \
 	cosmo/LambdaCdmUniverse.h \
 	cosmo/BaryonPerturbations.h \
+	cosmo/BroadbandPower.h \
 	cosmo/TransferFunctionPowerSpectrum.h \
 	cosmo/PowerSpectrumCorrelationFunction.h \
 	cosmo/RsdCorrelationFunction.h \
