@@ -9,7 +9,7 @@ namespace cosmo {
     // Represents a broadband power spectrum P(k) modeled as a polynomial in (1/k).
 	class BroadbandPower {
 	public:
-	    // Creates a new broadband model P(k) = Sum[coefs[n]*PB(k,n),{n,n0,n0+N}] where
+	    // Creates a new broadband model P(k) = Sum[coefs[n]*PB(k,n),{n,nmin,nmin+N}] where
 	    // N is the number of elements in the input coefficient array and PB(k,n)
 	    // equals B(n)*k^(-n) for 1/rmax << k << 1/rmin, with additional terms to
 	    // regulate 3D Fourier integrals beyond this range:
@@ -22,12 +22,16 @@ namespace cosmo {
 	    // be useful to set a "natural" relative normalization for each term but,
 	    // in general, the values B(n) will depend on the choice of rmax (and also
 	    // of rmin unless rmin << r0/100). rmin and rmax are in Mpc/h.
-		BroadbandPower(int n0, std::vector<double> coefs,
+		BroadbandPower(int nmin, std::vector<double> coefs,
 		    double rmin, double rmax, double r0 = 0, double sigmaSq = 0);
 		virtual ~BroadbandPower();
+		// Returns the value of PB(k,n)/B(n) for an input wavenumber k in h/Mpc.
+        double evaluatePB(double k, int n) const;
+        // Returns the value of k^3/(2pi^2) P(k).
+        double operator()(double kMpch) const;
 	private:
-        int _n0;
-        std::vector<double> _coefs;
+        int _nmin, _nmax;
+        std::vector<double> _coefs, _powrmax;
         double _rmin, _rmax;
 	}; // BroadbandPower
 } // cosmo
