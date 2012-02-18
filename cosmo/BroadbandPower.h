@@ -25,14 +25,14 @@ namespace cosmo {
 		BroadbandPower(int nmin, std::vector<double> coefs,
 		    double rmin, double rmax, double r0 = 0, double sigmaSq = 0);
 		virtual ~BroadbandPower();
-		// Returns the value of PB(k,n)/B(n) for an input wavenumber k in h/Mpc.
+		// Returns the value of k^3/(2pi^2) PB(k,n)/B(n) for an input wavenumber k in h/Mpc.
         double evaluatePB(double k, int n) const;
         // Returns the value of k^3/(2pi^2) P(k).
         double operator()(double kMpch) const;
 	private:
         int _nmin, _nmax;
         std::vector<double> _coefs, _powrmax;
-        double _rmin, _rmax;
+        double _rmin, _rmax, _twopi2;
 	}; // BroadbandPower
 } // cosmo
 

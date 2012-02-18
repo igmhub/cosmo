@@ -10,9 +10,6 @@
 
 #include <cmath>
 
-//!!
-#include <iostream>
-
 namespace local = cosmo;
 
 local::BroadbandPower::BroadbandPower(int nmin, std::vector<double> coefs,
@@ -20,6 +17,11 @@ double rmin, double rmax, double r0, double sigmaSq)
 : _nmin(nmin), _nmax(nmin+coefs.size()), _coefs(coefs), _rmin(rmin), _rmax(rmax)
 {
     if(rmax <= rmin) throw RuntimeError("BroadbandPower: expected rmax > rmin.");
+    // Precompute constants
+    double pi(4*std::atan(1));
+    _twopi2 = 2*pi*pi;
+    // Pre-compute values of rmax^n
+    for(int dn = 0; dn < coefs.size(); ++dn) _powrmax.push_back(std::pow(rmax,nmin+dn));
     // Rescale coefficients to include "natural" normalization constants?
     if(r0 > 0) {
         if(sigmaSq <= 0) throw RuntimeError("BroadbandPower: expected sigmaSq > 0.");
@@ -30,19 +32,17 @@ double rmin, double rmax, double r0, double sigmaSq)
             double sigmaOld = getRmsAmplitude(PBptr, r0);
             // Rescale coefs[n] so that a value of one would give the requested sigmaSq.
             double ratio(sigmaSq/(sigmaOld*sigmaOld));
-            std::cout << _nmin + dn << " => " << ratio << std::endl;
             _coefs[dn] *= ratio;            
         }
     }
-    for(int dn = 0; dn < coefs.size(); ++dn) _powrmax.push_back(std::pow(rmax,nmin+dn));
 }
 
 local::BroadbandPower::~BroadbandPower() { }
 
 double local::BroadbandPower::evaluatePB(double k, int n) const {
     if(n < _nmin || n >= _nmax) throw RuntimeError("BroadbandPower: exponent n out of range.");
-    double krmin(k*_rmin), krmin2(krmin*krmin), krmax(k*_rmax);
-    return std::exp(-krmin2)*_powrmax[n-_nmin]/(1+std::pow(krmax,n));
+    double krmin(k*_rmin), krmin2(krmin*krmin), krmax(k*_rmax), k2(k*k);
+    return (k2*k/_twopi2)*std::exp(-krmin2)*_powrmax[n-_nmin]/(1+std::pow(krmax,n));
 }
 
 double local::BroadbandPower::operator()(double kMpch) const {
