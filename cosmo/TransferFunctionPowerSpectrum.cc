@@ -45,7 +45,8 @@ double local::TransferFunctionPowerSpectrum::setSigma(double sigma, double rMpch
     PowerSpectrumPtr self(new cosmo::PowerSpectrum(boost::ref(*this)));
     double sigmaOld = getRmsAmplitude(self, rMpch, gaussian);
     double ratio(sigma/sigmaOld);
-    _deltaHSq *= ratio*ratio;
+    _deltaH *= ratio;
+    _deltaHSq = _deltaH*_deltaH;
     return sigmaOld;
 }
 
