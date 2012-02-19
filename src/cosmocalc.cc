@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
     }
 
     if(0 < savePowerFile.length()) {
-        double pi(4*std::atan(1)),fourpi2(4*pi*pi);
+        double pi(4*std::atan(1)),twopi2(2*pi*pi);
         cosmo::OneDimensionalPowerSpectrum onedZero(power,0,kmin,kmax,nk),
             onedHard(power,+rval,kmin,kmax,nk),onedSoft(power,-rval,kmin,kmax,nk);
         std::ofstream out(savePowerFile.c_str());
@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
         for(int i = 0; i < nk; ++i) {
             double k(kmin*std::pow(kratio,i));
             if(k > kmax) k = kmax; // might happen with rounding
-            out << k << ' ' << fourpi2/(k*k*k)*(*power)(k) << ' ' << pi/k*onedZero(k)
+            out << k << ' ' << twopi2/(k*k*k)*(*power)(k) << ' ' << pi/k*onedZero(k)
                 << ' ' << pi/k*onedHard(k) << ' ' << pi/k*onedSoft(k) << std::endl;
         }
         out.close();
