@@ -204,10 +204,6 @@ int main(int argc, char **argv) {
             &cosmo::TransferFunctionPowerSpectrum::operator(),transferPowerPtr,_1)));
     }
 
-    // Check the normalization at 8 Mpc/h scales.
-    double sig8calc(cosmo::getRmsAmplitude(power,8));
-    std::cout << "sigma(8 Mpc/h) = " << sig8calc << std::endl;
-    
     // Calculate the growth factor from zval to z=0
     double evolSq(growthFactor*growthFactor);
 
