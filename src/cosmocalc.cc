@@ -220,6 +220,10 @@ int main(int argc, char **argv) {
         bbcoefs.push_back(bbandA4);
         boost::shared_ptr<cosmo::BroadbandPower>
             bbPowerPtr(new cosmo::BroadbandPower(1,bbcoefs,0.05,1000,8,0.1));
+        if(bbandOnly) {
+            power.reset(new cosmo::PowerSpectrum(boost::bind(
+                &cosmo::BroadbandPower::operator(),bbPowerPtr,_1)));
+        }
     }
     else if(bbandOnly) {
         std::cerr << "Must have at least one non-zero broadband coefficient for broadband-only." << std::endl;
