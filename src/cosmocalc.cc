@@ -22,29 +22,6 @@
 namespace po = boost::program_options;
 namespace k = boost::lambda;
 
-class BaoFitPower {
-public:
-    BaoFitPower(double amplitude, double scale, double sigma,
-        cosmo::PowerSpectrumPtr full, cosmo::PowerSpectrumPtr nowiggles)
-    : _amplitude(amplitude), _scale(scale), _scale4(scale*scale*scale*scale), _sigsq(sigma*sigma),
-        _full(full), _nowiggles(nowiggles)
-    { }
-    double operator()(double k) const {
-        double ak(k/_scale), smooth(std::exp(-ak*ak*_sigsq/2));
-        double fullPower = (*_full)(ak), nowigglesPower = (*_nowiggles)(ak);
-        return _scale4*(_amplitude*smooth*(fullPower - nowigglesPower) + nowigglesPower);
-    }
-private:
-    double _amplitude, _scale, _scale4, _sigsq;
-    cosmo::PowerSpectrumPtr _full, _nowiggles;
-}; // BaoFitPower
-
-cosmo::PowerSpectrumPtr createBroadbandPower(double a0, double a1, double a2, double a3) {
-    // k::_1 represents k in Mpc/h below.
-    cosmo::PowerSpectrumPtr ptr(new cosmo::PowerSpectrum((a0 + (a1 + (a2 + a3/k::_1)/k::_1)/k::_1)/(k::_1*k::_1)));
-    return ptr;
-}
-
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
@@ -98,7 +75,6 @@ int main(int argc, char **argv) {
         ("hexa", "Calculates the hexedacapole (l=4) correlation function (default is monopole).")
         ("no-wiggles", "Calculates the power spectrum without baryon acoustic oscillations.")
         ("periodic-wiggles", "Calculates the power spectrum with periodic acoustic oscillations.")
-        ("bao-fit", "Calculates a power spectrum parameterized for BAO fitting.")
         ("bao-amplitude", po::value<double>(&baoAmplitude)->default_value(1),
             "Amplitude of baryon acoustic oscillations relative to fiducial model.")
         ("bao-sigma", po::value<double>(&baoSigma)->default_value(0),
@@ -132,8 +108,7 @@ int main(int argc, char **argv) {
     }
     bool verbose(vm.count("verbose")), rlog(vm.count("rlog")),
         quad(vm.count("quad")), hexa(vm.count("hexa")), noWiggles(vm.count("no-wiggles")),
-        periodicWiggles(vm.count("periodic-wiggles")), baoFit(vm.count("bao-fit")),
-        bbandOnly(vm.count("broadband-only"));
+        periodicWiggles(vm.count("periodic-wiggles")), bbandOnly(vm.count("broadband-only"));
 
     // Process the multipole flags.
     if(quad && hexa) {
@@ -236,24 +211,6 @@ int main(int argc, char **argv) {
     // Calculate the growth factor from zval to z=0
     double evolSq(growthFactor*growthFactor);
 
-    // Add BAO fitting parameters if requested
-    boost::shared_ptr<cosmo::BaryonPerturbations> noWigglesBaryonsPtr;
-    cosmo::TransferFunctionPtr noWigglesTransferPtr;
-    boost::shared_ptr<cosmo::TransferFunctionPowerSpectrum> noWigglesTransferPowerPtr;
-    cosmo::PowerSpectrumPtr noWigglesPowerPtr;
-    boost::shared_ptr<BaoFitPower> baoFitPowerPtr;
-    if(baoFit) {
-        noWigglesBaryonsPtr.reset(new cosmo::BaryonPerturbations(
-            OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,cosmo::BaryonPerturbations::NoOscillation));
-        noWigglesTransferPtr.reset(new cosmo::TransferFunction(boost::bind(
-            &cosmo::BaryonPerturbations::getMatterTransfer,noWigglesBaryonsPtr,_1)));
-        noWigglesTransferPowerPtr.reset(new cosmo::TransferFunctionPowerSpectrum(
-            noWigglesTransferPtr,spectralIndex,deltaH));
-        noWigglesPowerPtr.reset(new cosmo::PowerSpectrum(boost::ref(*noWigglesTransferPowerPtr)));
-        baoFitPowerPtr.reset(new BaoFitPower(baoAmplitude,baoScale,baoSigma,power,noWigglesPowerPtr));
-        power.reset(new cosmo::PowerSpectrum(boost::ref(*baoFitPowerPtr)));
-    }
-    
     // Create broadband power model, if requested.
     if(0 != bbandA1 || 0 != bbandA2 || 0 != bbandA3 || 0 != bbandA4) {
         std::vector<double> bbcoefs;
