@@ -160,47 +160,66 @@ int main(int argc, char **argv) {
     if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
     cosmo::AbsHomogeneousUniversePtr cosmology(
         new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
-    std::cout << "curvature = " << cosmology->getCurvature() << std::endl;
+    if(verbose) {
+        // Print homogeneous cosmology info.
+        std::cout << "curvature = " << cosmology->getCurvature() << std::endl;    
+        std::cout << "z = " << zval << std::endl;
+        std::cout << "H(z)/H0 = " << cosmology->getHubbleFunction(zval) << std::endl;
+        std::cout << "Radial D(z) = " << cosmology->getLineOfSightComovingDistance(zval)
+            << " Mpc/h" << std::endl;
+        std::cout << "Transverse DA(z) = " << cosmology->getTransverseComovingScale(zval)
+            << " Mpc/h/rad" << std::endl;
+        double tL(cosmology->getLookbackTime(zval));
+        double conv(1e9*86400*365.25);
+        std::cout << "t(lookback,z) = " << tL << " secs/h = " << tL/conv*hubbleConstant
+            << " Gyr/h" << std::endl;
+        std::cout << "Growth D1(z)/D1(0) = "
+            << cosmology->getGrowthFunction(zval)/cosmology->getGrowthFunction(0)
+            << std::endl;
+    }
     
-    std::cout << "z = " << zval << std::endl;
-    std::cout << "D(z) = " << cosmology->getLineOfSightComovingDistance(zval) << " Mpc/h"
-        << std::endl;
-    std::cout << "DM(z) = " << cosmology->getTransverseComovingScale(zval) << " Mpc/h/rad"
-        << std::endl;
-    double tL(cosmology->getLookbackTime(zval));
-    double conv(1e9*86400*365.25);
-    std::cout << "t(lookback,z) = " << tL << " secs/h = " << tL/conv*hubbleConstant
-        << " Gyr" << std::endl;
-    std::cout << "D1(z) = " << 2.5*OmegaMatter*cosmology->getGrowthFunction(zval)
-        << std::endl;
-    
-    cosmo::BaryonPerturbations baryons(OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,baoOption);
+    // Build the inhomogeneous cosmology we will use, if any.
+    cosmo::PowerSpectrumPtr power;
+    double deltaH;
+    if(!bbandOnly) {
+        boost::shared_ptr<cosmo::BaryonPerturbations> baryonsPtr(
+            new cosmo::BaryonPerturbations(
+            OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,baoOption));
+        if(verbose) {
+            // Print inhomogeneous cosmology info.
+            std::cout << "z(eq) = " << baryonsPtr->getMatterRadiationEqualityRedshift() << std::endl;
+            std::cout << "k(eq) = " << baryonsPtr->getMatterRadiationEqualityScale() << " /(Mpc/h)"
+                << std::endl;
+            std::cout << "sound horizon = " << baryonsPtr->getSoundHorizon() << " Mpc/h at z(drag) = "
+                << baryonsPtr->getDragEpoch() << std::endl;
+            std::cout << "Silk damping scale = " << baryonsPtr->getSilkDampingScale() << " /(Mpc/h)"
+                << std::endl;
+            double Tfc,Tfb,Tf;
+            baryonsPtr->calculateTransferFunctions(kval,Tfc,Tfb,Tf);
+            std::cout << "k = " << kval << " /(Mpc/h)" << std::endl;
+            std::cout << "Tf(CDM,k) = " << Tfc << std::endl;
+            std::cout << "Tf(baryon,k) = " << Tfb << std::endl;
+            std::cout << "Tf(full,k) = " << Tf << std::endl;
+        }
 
-    std::cout << "z(eq) = " << baryons.getMatterRadiationEqualityRedshift() << std::endl;
-    std::cout << "k(eq) = " << baryons.getMatterRadiationEqualityScale() << " /(Mpc/h)"
-        << std::endl;
-    std::cout << "sound horizon = " << baryons.getSoundHorizon() << " Mpc/h at z(drag) = "
-        << baryons.getDragEpoch() << std::endl;
-    std::cout << "Silk damping scale = " << baryons.getSilkDampingScale() << " /(Mpc/h)"
-        << std::endl;
+        // Create a sharable pointer to the matter transfer function (this will
+        // keep baryonsPtr alive)
+        cosmo::TransferFunctionPtr transferPtr(new cosmo::TransferFunction(boost::bind(
+            &cosmo::BaryonPerturbations::getMatterTransfer,baryonsPtr,_1)));
 
-    double Tfc,Tfb,Tf;
-    baryons.calculateTransferFunctions(kval,Tfc,Tfb,Tf);
-    std::cout << "k = " << kval << " /(Mpc/h)" << std::endl;
-    std::cout << "Tf(cmb,k) = " << Tfc << std::endl;
-    std::cout << "Tf(baryon,k) = " << Tfb << std::endl;
-    std::cout << "Tf(full,k) = " << Tf << std::endl;
+        // Use COBE normalization for n=1
+        deltaH = 1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter));
+        std::cout << "deltaH = " << deltaH << std::endl;
 
-    // Create a sharable pointer to the matter transfer function.
-    cosmo::TransferFunctionPtr transferPtr(new cosmo::TransferFunction(boost::bind(
-        &cosmo::BaryonPerturbations::getMatterTransfer,&baryons,_1)));
+        // Create a sharable pointer to a power spectrum for this transfer function
+        // (this will keep transferPtr and therefore also baryonsPtr alive)
+        boost::shared_ptr<cosmo::TransferFunctionPowerSpectrum> transferPowerPtr(
+            new cosmo::TransferFunctionPowerSpectrum(transferPtr,spectralIndex,deltaH));
 
-    // Use COBE normalization for n=1
-    double deltaH(1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter)));
-    std::cout << "deltaH = " << deltaH << std::endl;
-
-    cosmo::TransferFunctionPowerSpectrum transferPower(transferPtr,spectralIndex,deltaH);
-    cosmo::PowerSpectrumPtr power(new cosmo::PowerSpectrum(boost::ref(transferPower)));
+        // Remember this power spectrum (this will keep all of the above alive)
+        power.reset(new cosmo::PowerSpectrum(boost::bind(
+            &cosmo::TransferFunctionPowerSpectrum::operator(),transferPowerPtr,_1)));
+    }
 
     // Calculate the Gaussian RMS amplitude on the Jean's length appropriate for
     // QSO spectra, evolved for z = 3.
@@ -268,9 +287,9 @@ int main(int argc, char **argv) {
         for(int i = 0; i < nk; ++i) {
             double k(kmin*std::pow(kratio,i));
             if(k > kmax) k = kmax; // might happen with rounding
-            out << k << ' ' << (*transferPtr)(k) << ' '
-                << fourpi2/(k*k*k)*(*power)(k)*evolSq*norm << ' ' << pi/k*onedZero(k)*evolSq*norm
-                << ' ' << pi/k*onedHard(k)*evolSq*norm << ' ' << pi/k*onedSoft(k)*evolSq*norm << std::endl;
+            out << k << ' ' << fourpi2/(k*k*k)*(*power)(k)*evolSq*norm << ' '
+                << pi/k*onedZero(k)*evolSq*norm << ' ' << pi/k*onedHard(k)*evolSq*norm << ' '
+                << pi/k*onedSoft(k)*evolSq*norm << std::endl;
         }
         out.close();
     }
