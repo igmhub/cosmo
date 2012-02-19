@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     po::options_description cli("Cosmology calculator");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,
         zval,kval,kmin,kmax,rval,rmin,rmax,baoAmplitude,baoSigma,baoScale;
-    double bbandA0,bbandA1,bbandA2,bbandA3;
+    double bbandA1,bbandA2,bbandA3,bbandA4;
     int nk,nr;
     std::string saveTransferFile,saveCorrelationFile;
     cli.add_options()
@@ -106,14 +106,14 @@ int main(int argc, char **argv) {
         ("bao-scale", po::value<double>(&baoScale)->default_value(1),
             "Rescaling of wavenumber relative to fiducial model (>1 means larger acoustic scale)")
         ("broadband-only", "Calculates contribution of broadband power only.")
-        ("broadband-a0", po::value<double>(&bbandA0)->default_value(0),
-            "Coefficient of 1/k^2 in broadband power model.")
         ("broadband-a1", po::value<double>(&bbandA1)->default_value(0),
-            "Coefficient of 1/k^3 in broadband power model.")
+            "Relative coefficient of 1/k in broadband power model.")
         ("broadband-a2", po::value<double>(&bbandA2)->default_value(0),
-            "Coefficient of 1/k^4 in broadband power model.")
+            "Relative coefficient of 1/k^2 in broadband power model.")
         ("broadband-a3", po::value<double>(&bbandA3)->default_value(0),
-            "Coefficient of 1/k^5 in broadband power model.")
+            "Relative coefficient of 1/k^3 in broadband power model.")
+        ("broadband-a4", po::value<double>(&bbandA4)->default_value(0),
+            "Relative coefficient of 1/k^4 in broadband power model.")
         ;
 
     // do the command line parsing now
@@ -245,8 +245,14 @@ int main(int argc, char **argv) {
     }
     
     // Create broadband power model, if requested.
-    if(0 != bbandA0 || 0 != bbandA1 || 0 != bbandA2 || 0 != bbandA3) {
-        cosmo::PowerSpectrumPtr broadband = createBroadbandPower(bbandA0,bbandA1,bbandA2,bbandA3);     
+    if(0 != bbandA1 || 0 != bbandA2 || 0 != bbandA3 || 0 != bbandA4) {
+        std::vector<double> bbcoefs;
+        bbcoefs.push_back(bbandA1);
+        bbcoefs.push_back(bbandA2);
+        bbcoefs.push_back(bbandA3);
+        bbcoefs.push_back(bbandA4);
+        boost::shared_ptr<cosmo::BroadbandPower>
+            bbPowerPtr(new cosmo::BroadbandPower(1,bbcoefs,0.05,1000,8,0.1));
     }
     else if(bbandOnly) {
         std::cerr << "Must have at least one non-zero broadband coefficient for broadband-only." << std::endl;
