@@ -160,22 +160,21 @@ int main(int argc, char **argv) {
     if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
     cosmo::AbsHomogeneousUniversePtr cosmology(
         new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
+    double growthFactor = cosmology->getGrowthFunction(zval)/cosmology->getGrowthFunction(0);
     if(verbose) {
         // Print homogeneous cosmology info.
         std::cout << "curvature = " << cosmology->getCurvature() << std::endl;    
-        std::cout << "z = " << zval << std::endl;
-        std::cout << "H(z)/H0 = " << cosmology->getHubbleFunction(zval) << std::endl;
-        std::cout << "Radial D(z) = " << cosmology->getLineOfSightComovingDistance(zval)
+        std::cout << "At z = " << zval << ':' << std::endl;
+        std::cout << "  H(z)/H0 = " << cosmology->getHubbleFunction(zval) << std::endl;
+        std::cout << "  Radial D(z) = " << cosmology->getLineOfSightComovingDistance(zval)
             << " Mpc/h" << std::endl;
-        std::cout << "Transverse DA(z) = " << cosmology->getTransverseComovingScale(zval)
+        std::cout << "  Transverse DA(z) = " << cosmology->getTransverseComovingScale(zval)
             << " Mpc/h/rad" << std::endl;
         double tL(cosmology->getLookbackTime(zval));
         double conv(1e9*86400*365.25);
-        std::cout << "t(lookback,z) = " << tL << " secs/h = " << tL/conv*hubbleConstant
+        std::cout << "  t(lookback,z) = " << tL << " secs/h = " << tL/conv*hubbleConstant
             << " Gyr/h" << std::endl;
-        std::cout << "Growth D1(z)/D1(0) = "
-            << cosmology->getGrowthFunction(zval)/cosmology->getGrowthFunction(0)
-            << std::endl;
+        std::cout << "  Growth D1(z)/D1(0) = " << growthFactor << std::endl;
     }
     
     // Build the inhomogeneous cosmology we will use, if any.
@@ -196,10 +195,10 @@ int main(int argc, char **argv) {
                 << std::endl;
             double Tfc,Tfb,Tf;
             baryonsPtr->calculateTransferFunctions(kval,Tfc,Tfb,Tf);
-            std::cout << "k = " << kval << " /(Mpc/h)" << std::endl;
-            std::cout << "Tf(CDM,k) = " << Tfc << std::endl;
-            std::cout << "Tf(baryon,k) = " << Tfb << std::endl;
-            std::cout << "Tf(full,k) = " << Tf << std::endl;
+            std::cout << "At k = " << kval << " /(Mpc/h):" << std::endl;
+            std::cout << "  Tf(CDM,k) = " << Tfc << std::endl;
+            std::cout << "  Tf(baryon,k) = " << Tfb << std::endl;
+            std::cout << "  Tf(full,k) = " << Tf << std::endl;
         }
 
         // Create a sharable pointer to the matter transfer function (this will
@@ -207,43 +206,35 @@ int main(int argc, char **argv) {
         cosmo::TransferFunctionPtr transferPtr(new cosmo::TransferFunction(boost::bind(
             &cosmo::BaryonPerturbations::getMatterTransfer,baryonsPtr,_1)));
 
-        // Use COBE normalization for n=1
+        // Use COBE  n=1 normalization by default
         deltaH = 1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter));
-        std::cout << "deltaH = " << deltaH << std::endl;
+        if(verbose) std::cout << "COBE n=1 deltaH = " << deltaH << std::endl;
 
         // Create a sharable pointer to a power spectrum for this transfer function
         // (this will keep transferPtr and therefore also baryonsPtr alive)
         boost::shared_ptr<cosmo::TransferFunctionPowerSpectrum> transferPowerPtr(
             new cosmo::TransferFunctionPowerSpectrum(transferPtr,spectralIndex,deltaH));
 
+        // Use the requested sigma8 value if there is one.
+        if(sigma8 > 0) {
+            transferPowerPtr->setSigma(sigma8);
+            if(verbose) {
+                std::cout << "Changed deltaH to " << transferPowerPtr->getDeltaH()
+                    << " so that sigma8 = " << sigma8 << std::endl;
+            }
+        }
+
         // Remember this power spectrum (this will keep all of the above alive)
         power.reset(new cosmo::PowerSpectrum(boost::bind(
             &cosmo::TransferFunctionPowerSpectrum::operator(),transferPowerPtr,_1)));
     }
 
-    // Calculate the Gaussian RMS amplitude on the Jean's length appropriate for
-    // QSO spectra, evolved for z = 3.
-    double rQSO(0.0416/std::sqrt(OmegaMatter)); // in Mpc/h
-    double evol(cosmology->getGrowthFunction(3)/cosmology->getGrowthFunction(0));
-    double sigmaQSO(cosmo::getRmsAmplitude(power,rQSO,true));
-    std::cout << "rQSO = " << rQSO << " Mpc/h, sigmaQSO(z=0) = " << sigmaQSO
-        << ", sigmaQSO(z=3) = " << sigmaQSO*evol << std::endl;
-
     // Check the normalization at 8 Mpc/h scales.
-    double sig8pred(0.5*std::pow(OmegaMatter,-0.65));
     double sig8calc(cosmo::getRmsAmplitude(power,8));
-    std::cout << "sigma(8 Mpc/h) = " << sig8calc
-        << " (pred = " << sig8pred << ")" << std::endl;
-    double norm(1);
-    if(sigma8 > 0) {
-        std::cout << "Rescaling to sigma(8 Mpc/h) = " << sigma8 << std::endl;
-        double tmp(sigma8/sig8calc);
-        norm = tmp*tmp;
-    }
+    std::cout << "sigma(8 Mpc/h) = " << sig8calc << std::endl;
     
     // Calculate the growth factor from zval to z=0
-    evol = cosmology->getGrowthFunction(zval)/cosmology->getGrowthFunction(0);
-    double evolSq(evol*evol);
+    double evolSq(growthFactor*growthFactor);
 
     // Add BAO fitting parameters if requested
     boost::shared_ptr<cosmo::BaryonPerturbations> noWigglesBaryonsPtr;
@@ -287,9 +278,9 @@ int main(int argc, char **argv) {
         for(int i = 0; i < nk; ++i) {
             double k(kmin*std::pow(kratio,i));
             if(k > kmax) k = kmax; // might happen with rounding
-            out << k << ' ' << fourpi2/(k*k*k)*(*power)(k)*evolSq*norm << ' '
-                << pi/k*onedZero(k)*evolSq*norm << ' ' << pi/k*onedHard(k)*evolSq*norm << ' '
-                << pi/k*onedSoft(k)*evolSq*norm << std::endl;
+            out << k << ' ' << fourpi2/(k*k*k)*(*power)(k)*evolSq << ' '
+                << pi/k*onedZero(k)*evolSq << ' ' << pi/k*onedHard(k)*evolSq << ' '
+                << pi/k*onedSoft(k)*evolSq << std::endl;
         }
         out.close();
     }
@@ -302,7 +293,7 @@ int main(int argc, char **argv) {
         for(int i = 0; i < nr; ++i) {
             r = rlog ? rmin*std::pow(dr,i) : rmin + dr*i;
             if(r > rmax) r = rmax; // might happen with rounding but xi(r) will complain
-            out << r << ' ' << xi(r)*evolSq*norm << std::endl;
+            out << r << ' ' << xi(r)*evolSq << std::endl;
         }
         out.close();        
     }
