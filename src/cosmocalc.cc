@@ -183,7 +183,6 @@ int main(int argc, char **argv) {
 
         // Use COBE  n=1 normalization by default
         deltaH = 1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter));
-        if(verbose) std::cout << "COBE n=1 deltaH = " << deltaH << std::endl;
 
         // Create a sharable pointer to a power spectrum for this transfer function
         // (this will keep transferPtr and therefore also baryonsPtr alive)
@@ -192,20 +191,25 @@ int main(int argc, char **argv) {
 
         // Use the requested sigma8 value if there is one.
         if(sigma8 > 0) {
+            if(verbose) std::cout << "Renormalizing to sigma8 = " << sigma8 << std::endl;
             transferPowerPtr->setSigma(sigma8);
-            if(verbose) {
-                std::cout << "Changed deltaH to " << transferPowerPtr->getDeltaH()
-                    << " so that sigma8 = " << sigma8 << std::endl;
-            }
         }
-
+        else if(verbose) {
+            std::cout << "Using COBE n=1 deltaH = " << deltaH << std::endl;            
+        }
+        
         // Remember this power spectrum (this will keep all of the above alive)
         power.reset(new cosmo::PowerSpectrum(boost::bind(
             &cosmo::TransferFunctionPowerSpectrum::operator(),transferPowerPtr,_1)));
-    }
 
-    // Calculate the growth factor from zval to z=0
-    double evolSq(growthFactor*growthFactor);
+        if(verbose) {
+            std::cout << "Calculated sigma8(z=0) = " << cosmo::getRmsAmplitude(power,8)
+                << std::endl;
+        }
+
+        // Rescale the power from z=0 to the desired redshift.
+        transferPowerPtr->setDeltaH(growthFactor*transferPowerPtr->getDeltaH());
+    }
 
     // Create broadband power model, if requested.
     if(0 != bbandA1 || 0 != bbandA2 || 0 != bbandA3 || 0 != bbandA4) {
@@ -231,9 +235,8 @@ int main(int argc, char **argv) {
         for(int i = 0; i < nk; ++i) {
             double k(kmin*std::pow(kratio,i));
             if(k > kmax) k = kmax; // might happen with rounding
-            out << k << ' ' << fourpi2/(k*k*k)*(*power)(k)*evolSq << ' '
-                << pi/k*onedZero(k)*evolSq << ' ' << pi/k*onedHard(k)*evolSq << ' '
-                << pi/k*onedSoft(k)*evolSq << std::endl;
+            out << k << ' ' << fourpi2/(k*k*k)*(*power)(k) << ' ' << pi/k*onedZero(k)
+                << ' ' << pi/k*onedHard(k) << ' ' << pi/k*onedSoft(k) << std::endl;
         }
         out.close();
     }
@@ -246,7 +249,7 @@ int main(int argc, char **argv) {
         for(int i = 0; i < nr; ++i) {
             r = rlog ? rmin*std::pow(dr,i) : rmin + dr*i;
             if(r > rmax) r = rmax; // might happen with rounding but xi(r) will complain
-            out << r << ' ' << xi(r)*evolSq << std::endl;
+            out << r << ' ' << xi(r) << std::endl;
         }
         out.close();        
     }
