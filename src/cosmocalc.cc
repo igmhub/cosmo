@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
         zval,kval,kmin,kmax,rval,rmin,rmax,baoAmplitude,baoSigma,baoScale;
     double bbandA1,bbandA2,bbandA3,bbandA4;
     int nk,nr;
-    std::string saveTransferFile,saveCorrelationFile;
+    std::string savePowerFile,saveCorrelationFile;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -54,8 +54,8 @@ int main(int argc, char **argv) {
             "Perturbation wavenumber in 1/(Mpc/h).")
         ("radius,r", po::value<double>(&rval)->default_value(0.04),
             "Radius for 1D power spectrum in Mpc/h.")
-        ("save-transfer", po::value<std::string>(&saveTransferFile)->default_value(""),
-            "Saves the matter transfer function to the specified filename.")
+        ("save-power", po::value<std::string>(&savePowerFile)->default_value(""),
+            "Saves the matter power spectrum to the specified filename.")
         ("kmin", po::value<double>(&kmin)->default_value(0.001),
             "Minimum wavenumber in 1/(Mpc/h) for tabulating transfer function.")
         ("kmax", po::value<double>(&kmax)->default_value(100.),
@@ -222,11 +222,11 @@ int main(int argc, char **argv) {
         return -2;
     }
 
-    if(0 < saveTransferFile.length()) {
+    if(0 < savePowerFile.length()) {
         double pi(4*std::atan(1)),fourpi2(4*pi*pi);
         cosmo::OneDimensionalPowerSpectrum onedZero(power,0,kmin,kmax,nk),
             onedHard(power,+rval,kmin,kmax,nk),onedSoft(power,-rval,kmin,kmax,nk);
-        std::ofstream out(saveTransferFile.c_str());
+        std::ofstream out(savePowerFile.c_str());
         double kratio(std::pow(kmax/kmin,1/(nk-1.)));
         for(int i = 0; i < nk; ++i) {
             double k(kmin*std::pow(kratio,i));
