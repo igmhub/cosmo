@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology calculator");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,
-        zval,kval,kmin,kmax,rval,rmin,rmax,baoAmplitude,baoSigma,baoScale;
+        zval,kval,kmin,kmax,r1d,rmin,rmax,baoAmplitude,baoSigma,baoScale;
     double bbandP,bbandCoef,bbandKmin,bbandRmin,bbandR0,bbandVar;
     int nk,nr;
     std::string savePowerFile,saveCorrelationFile;
@@ -51,11 +51,12 @@ int main(int argc, char **argv) {
         ("redshift,z", po::value<double>(&zval)->default_value(1),
             "Emitter redshift.")
         ("wavenumber,k", po::value<double>(&kval)->default_value(0.1),
-            "Perturbation wavenumber in 1/(Mpc/h).")
-        ("radius,r", po::value<double>(&rval)->default_value(0.04),
-            "Radius for 1D power spectrum in Mpc/h.")
+            "Wavenumber in h/Mpc to use for verbose output.")
         ("save-power", po::value<std::string>(&savePowerFile)->default_value(""),
             "Saves the matter power spectrum to the specified filename.")
+        ("power1d", "Adds 1D power spectrum to save-power output file.")
+        ("r1d,r", po::value<double>(&r1d)->default_value(0.04),
+            "Radius for calculating 1D power spectrum in Mpc/h.")
         ("kmin", po::value<double>(&kmin)->default_value(0.001),
             "Minimum wavenumber in 1/(Mpc/h) for tabulating transfer function.")
         ("kmax", po::value<double>(&kmax)->default_value(100.),
@@ -109,7 +110,7 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose")), rlog(vm.count("rlog")),
+    bool verbose(vm.count("verbose")), power1d(vm.count("power1d")), rlog(vm.count("rlog")),
         quad(vm.count("quad")), hexa(vm.count("hexa")), noWiggles(vm.count("no-wiggles")),
         periodicWiggles(vm.count("periodic-wiggles"));
 
@@ -224,15 +225,22 @@ int main(int argc, char **argv) {
 
     if(0 < savePowerFile.length()) {
         double pi(4*std::atan(1)),twopi2(2*pi*pi);
-        cosmo::OneDimensionalPowerSpectrum onedZero(power,0,kmin,kmax,nk),
-            onedHard(power,+rval,kmin,kmax,nk),onedSoft(power,-rval,kmin,kmax,nk);
+        boost::shared_ptr<cosmo::OneDimensionalPowerSpectrum> onedZero,onedHard,onedSoft;
+        if(power1d) {
+            onedZero.reset(new cosmo::OneDimensionalPowerSpectrum(power,0,kmin,kmax,nk));
+            onedHard.reset(new cosmo::OneDimensionalPowerSpectrum(power,+r1d,kmin,kmax,nk));
+            onedSoft.reset(new cosmo::OneDimensionalPowerSpectrum(power,-r1d,kmin,kmax,nk));
+        }
         std::ofstream out(savePowerFile.c_str());
         double kratio(std::pow(kmax/kmin,1/(nk-1.)));
         for(int i = 0; i < nk; ++i) {
             double k(kmin*std::pow(kratio,i));
             if(k > kmax) k = kmax; // might happen with rounding
-            out << k << ' ' << twopi2/(k*k*k)*(*power)(k) << ' ' << pi/k*onedZero(k)
-                << ' ' << pi/k*onedHard(k) << ' ' << pi/k*onedSoft(k) << std::endl;
+            out << k << ' ' << twopi2/(k*k*k)*(*power)(k);
+            if(power1d) {
+                out << ' ' << pi/k*(*onedZero)(k) << ' ' << pi/k*(*onedHard)(k)
+                    << ' ' << pi/k*(*onedSoft)(k) << std::endl;
+            }
         }
         out.close();
     }
