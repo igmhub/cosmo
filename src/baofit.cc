@@ -316,24 +316,13 @@ public:
     LyaBaoModel(std::string const &fiducialName, std::string const &nowigglesName, double zref)
     : _zref(zref) {
         boost::format fileName("%s.%d.dat");
-        _fid0 = load(boost::str(fileName % fiducialName % 0));
-        _fid2 = load(boost::str(fileName % fiducialName % 2));
-        _fid4 = load(boost::str(fileName % fiducialName % 4));
-        _nw0 = load(boost::str(fileName % nowigglesName % 0));
-        _nw2 = load(boost::str(fileName % nowigglesName % 2));
-        _nw4 = load(boost::str(fileName % nowigglesName % 4));
-        cosmo::CorrelationFunctionPtr fid0(new cosmo::CorrelationFunction(boost::bind(
-            &lk::Interpolator::operator(),_fid0,_1)));
-        cosmo::CorrelationFunctionPtr fid2(new cosmo::CorrelationFunction(boost::bind(
-            &lk::Interpolator::operator(),_fid2,_1)));
-        cosmo::CorrelationFunctionPtr fid4(new cosmo::CorrelationFunction(boost::bind(
-            &lk::Interpolator::operator(),_fid4,_1)));
-        cosmo::CorrelationFunctionPtr nw0(new cosmo::CorrelationFunction(boost::bind(
-            &lk::Interpolator::operator(),_nw0,_1)));
-        cosmo::CorrelationFunctionPtr nw2(new cosmo::CorrelationFunction(boost::bind(
-            &lk::Interpolator::operator(),_nw2,_1)));
-        cosmo::CorrelationFunctionPtr nw4(new cosmo::CorrelationFunction(boost::bind(
-            &lk::Interpolator::operator(),_nw4,_1)));
+        cosmo::CorrelationFunctionPtr
+            fid0 = cosmo::createFunctionPtr(load(boost::str(fileName % fiducialName % 0))),
+            fid2 = cosmo::createFunctionPtr(load(boost::str(fileName % fiducialName % 2))),
+            fid4 = cosmo::createFunctionPtr(load(boost::str(fileName % fiducialName % 4))),
+            nw0 = cosmo::createFunctionPtr(load(boost::str(fileName % nowigglesName % 0))),
+            nw2 = cosmo::createFunctionPtr(load(boost::str(fileName % nowigglesName % 2))),
+            nw4 = cosmo::createFunctionPtr(load(boost::str(fileName % nowigglesName % 4)));
         _fid.reset(new cosmo::RsdCorrelationFunction(fid0,fid2,fid4));
         _nw.reset(new cosmo::RsdCorrelationFunction(nw0,nw2,nw4));
     }

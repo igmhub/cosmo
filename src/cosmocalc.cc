@@ -203,8 +203,7 @@ int main(int argc, char **argv) {
         }
         
         // Remember this power spectrum (this will keep all of the above alive)
-        power.reset(new cosmo::PowerSpectrum(boost::bind(
-            &cosmo::TransferFunctionPowerSpectrum::operator(),transferPowerPtr,_1)));
+        power = createFunctionPtr(transferPowerPtr);
 
         if(verbose) {
             std::cout << "Calculated sigma8(z=0) = " << cosmo::getRmsAmplitude(power,8)
@@ -219,8 +218,7 @@ int main(int argc, char **argv) {
     if(0 != bbandCoef) {
         boost::shared_ptr<cosmo::BroadbandPower> bbPowerPtr(new cosmo::BroadbandPower(
             bbandCoef,bbandP,bbandKmin,bbandRmin,bbandR0,bbandVar));
-        power.reset(new cosmo::PowerSpectrum(boost::bind(
-            &cosmo::BroadbandPower::operator(),bbPowerPtr,_1)));
+        power = createFunctionPtr(bbPowerPtr);
     }
 
     if(0 < savePowerFile.length()) {
