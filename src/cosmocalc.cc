@@ -223,7 +223,15 @@ int main(int argc, char **argv) {
                 std::cout << "Read " << columns[0].size() << " rows from " << loadPowerFile
                     << std::endl;
             }
+            double pi(4*std::atan(1)),twopi2(2*pi*pi);
+            // rescale to k^3/(2pi^2) P(k)
+            for(int row = 0; row < columns[0].size(); ++row) {
+                double k(columns[0][row]);
+                columns[1][row] *= k*k*k/twopi2;
+            }
+            // Create an interpolator of this data.
             lk::InterpolatorPtr iptr(new lk::Interpolator(columns[0],columns[1],"cspline"));
+            // Use the resulting interpolation function for future power calculations.
             power = cosmo::createFunctionPtr(iptr);
         }
     }
