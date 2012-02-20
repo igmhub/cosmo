@@ -258,6 +258,9 @@ int main(int argc, char **argv) {
             }
         }
         out.close();
+        if(verbose) {
+            std::cout << "Wrote power to " << savePowerFile << std::endl;
+        }
     }
     
     if(0 < saveCorrelationFile.length()) {
@@ -271,6 +274,9 @@ int main(int argc, char **argv) {
             out << r << ' ' << xi(r) << std::endl;
         }
         out.close();        
+        if(verbose) {
+            std::cout << "Wrote correlation function to " << saveCorrelationFile << std::endl;
+        }
     }
 
     return 0;
