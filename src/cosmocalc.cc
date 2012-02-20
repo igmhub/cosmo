@@ -2,25 +2,24 @@
 
 // Reproduce bottom-left plot of Fig.3 in astro-ph/9709112 using:
 // cosmocalc --omega-matter 0.2 --omega-baryon 0.1 --hubble-constant 0.5 --cmb-temp 2.728 \
-//   --kmin 0.001 --kmax 1 --nk 500 --save-transfer fig3.dat
+//   --kmin 0.001 --kmax 1 --nk 500 --save-power fig3.dat
 
 // Reproduce Fig.1 of JMLG paper draft (needs an extra factor of pi/2 ??)
 // ./cosmocalc --omega-baryon 0.044 --omega-matter 0.27 --omega-lambda 0.73 \
-//   --hubble-constant 0.71 --save-transfer xfer.dat -r 0.1 --kmax 1
+//   --hubble-constant 0.71 --save-power xfer.dat -r 0.1 --kmax 1
 
 #include "cosmo/cosmo.h"
+#include "likely/likely.h"
 
 #include "boost/program_options.hpp"
 #include "boost/bind.hpp"
-#include "boost/ref.hpp"
-#include "boost/lambda/lambda.hpp"
 
 #include <fstream>
 #include <iostream>
 #include <cmath>
 
 namespace po = boost::program_options;
-namespace k = boost::lambda;
+namespace lk = likely;
 
 int main(int argc, char **argv) {
     
@@ -30,7 +29,7 @@ int main(int argc, char **argv) {
         zval,kval,kmin,kmax,r1d,rmin,rmax,baoAmplitude,baoSigma,baoScale;
     double bbandP,bbandCoef,bbandKmin,bbandRmin,bbandR0,bbandVar;
     int nk,nr;
-    std::string savePowerFile,saveCorrelationFile;
+    std::string loadPowerFile,savePowerFile,saveCorrelationFile;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -52,6 +51,8 @@ int main(int argc, char **argv) {
             "Emitter redshift.")
         ("wavenumber,k", po::value<double>(&kval)->default_value(0.1),
             "Wavenumber in h/Mpc to use for verbose output.")
+        ("load-power", po::value<std::string>(&loadPowerFile)->default_value(""),
+            "Reads k,P(k) values (in h/Mpc units) to interpolate from the specified filename.")
         ("save-power", po::value<std::string>(&savePowerFile)->default_value(""),
             "Saves the matter power spectrum to the specified filename.")
         ("power1d", "Adds 1D power spectrum to save-power output file.")
@@ -156,10 +157,10 @@ int main(int argc, char **argv) {
         std::cout << "  Growth D1(z)/D1(0) = " << growthFactor << std::endl;
     }
     
-    // Build the inhomogeneous cosmology we will use, if any.
+    // Build the inhomogeneous cosmology we will use.
     cosmo::PowerSpectrumPtr power;
-    double deltaH;
     if(0 == bbandCoef) {
+        // Use Eisenstein & Hu 1997 parameterization.
         boost::shared_ptr<cosmo::BaryonPerturbations> baryonsPtr(
             new cosmo::BaryonPerturbations(
             OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,baoOption));
@@ -186,7 +187,7 @@ int main(int argc, char **argv) {
             &cosmo::BaryonPerturbations::getMatterTransfer,baryonsPtr,_1)));
 
         // Use COBE  n=1 normalization by default
-        deltaH = 1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter));
+        double deltaH = 1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter));
 
         // Create a sharable pointer to a power spectrum for this transfer function
         // (this will keep transferPtr and therefore also baryonsPtr alive)
@@ -212,13 +213,29 @@ int main(int argc, char **argv) {
 
         // Rescale the power from z=0 to the desired redshift.
         transferPowerPtr->setDeltaH(growthFactor*transferPowerPtr->getDeltaH());
-    }
 
-    // Create broadband power model, if requested.
-    if(0 != bbandCoef) {
+        if(0 < loadPowerFile.length()) {
+            std::vector<std::vector<double> > columns(2);
+            std::ifstream in(loadPowerFile.c_str());
+            lk::readVectors(in,columns);
+            in.close();
+            if(verbose) {
+                std::cout << "Read " << columns[0].size() << " rows from " << loadPowerFile
+                    << std::endl;
+            }
+            lk::InterpolatorPtr iptr(new lk::Interpolator(columns[0],columns[1],"cspline"));
+            power = cosmo::createFunctionPtr(iptr);
+        }
+    }
+    else {
+        if(0 < loadPowerFile.length()) {
+            std::cerr << "Cannot combine --load-power with broadband options." << std::endl;
+            return -1;
+        }
+        // Use a broadband power model.
         boost::shared_ptr<cosmo::BroadbandPower> bbPowerPtr(new cosmo::BroadbandPower(
             bbandCoef,bbandP,bbandKmin,bbandRmin,bbandR0,bbandVar));
-        power = createFunctionPtr(bbPowerPtr);
+        power = cosmo::createFunctionPtr(bbPowerPtr);
     }
 
     if(0 < savePowerFile.length()) {
