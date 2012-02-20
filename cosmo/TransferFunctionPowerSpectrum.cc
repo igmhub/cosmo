@@ -78,17 +78,20 @@ double local::getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch, bool
 }
 
 template <class P>
-local::PowerSpectrumPtr local::createPowerSpectrumPtr(boost::shared_ptr<P> pimpl) {
-    PowerSpectrumPtr power(new PowerSpectrum(boost::bind(&P::operator(),pimpl,_1)));
-    return power;
+local::GenericFunctionPtr local::createFunctionPtr(boost::shared_ptr<P> pimpl) {
+    GenericFunctionPtr fptr(new GenericFunction(boost::bind(&P::operator(),pimpl,_1)));
+    return fptr;
 }
 
 // explicit template instantiations
 
 #include "cosmo/TransferFunctionPowerSpectrum.h"
 #include "cosmo/BroadbandPower.h"
+#include "likely/Interpolator.h"
 
-template local::PowerSpectrumPtr local::createPowerSpectrumPtr<local::TransferFunctionPowerSpectrum>
-    (boost::shared_ptr<local::TransferFunctionPowerSpectrum> pimpl);
-template local::PowerSpectrumPtr local::createPowerSpectrumPtr<local::BroadbandPower>
-    (boost::shared_ptr<local::BroadbandPower> pimpl);
+template local::PowerSpectrumPtr local::createFunctionPtr<local::TransferFunctionPowerSpectrum>
+    (boost::shared_ptr<TransferFunctionPowerSpectrum> pimpl);
+template local::PowerSpectrumPtr local::createFunctionPtr<local::BroadbandPower>
+    (boost::shared_ptr<BroadbandPower> pimpl);
+template local::GenericFunctionPtr local::createFunctionPtr<likely::Interpolator>
+    (boost::shared_ptr<likely::Interpolator> pimpl);

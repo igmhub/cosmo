@@ -5,6 +5,9 @@
 
 #include "cosmo/types.h"
 
+#include "boost/function.hpp"
+#include "boost/smart_ptr.hpp"
+
 namespace cosmo {
     // Represents an isotropic power spectrum of 3D inhomogeneities based on a model of
     // primordial fluctuations and a transfer function.
@@ -38,10 +41,13 @@ namespace cosmo {
 	
 	// The scoped global functions below provide generic power spectrum utilities...
 	
-	// Creates and returns a generic PowerSpectrumPtr that wraps a shared pointer pimpl to
-	// an instance of a function object class P. The returned shared pointer creates a
-	// new reference to the input shared pointer.
-	template <class P> PowerSpectrumPtr createPowerSpectrumPtr(boost::shared_ptr<P> pimpl);
+	// Creates and returns a shared pointer to a generic function object that wraps a
+	// shared pointer pimpl to an implementation function object of class P. The
+	// returned shared pointer creates a new reference to the input shared pointer so that
+	// the input object is guaranteed to stay alive as long as the returned object does.
+	typedef boost::function<double (double)> GenericFunction;
+    typedef boost::shared_ptr<GenericFunction> GenericFunctionPtr;
+	template <class P> GenericFunctionPtr createFunctionPtr(boost::shared_ptr<P> pimpl);
 	
 	// Returns the RMS amplitude of fluctuations inside a sphere of the specified
 	// radius in Mpc/h for the specified power spectrum function. Use gaussian = true
