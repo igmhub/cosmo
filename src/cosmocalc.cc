@@ -254,8 +254,9 @@ int main(int argc, char **argv) {
             out << k << ' ' << twopi2/(k*k*k)*(*power)(k);
             if(power1d) {
                 out << ' ' << pi/k*(*onedZero)(k) << ' ' << pi/k*(*onedHard)(k)
-                    << ' ' << pi/k*(*onedSoft)(k) << std::endl;
+                    << ' ' << pi/k*(*onedSoft)(k);
             }
+            out << std::endl;
         }
         out.close();
         if(verbose) {
