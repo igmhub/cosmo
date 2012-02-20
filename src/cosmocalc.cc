@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     po::options_description cli("Cosmology calculator");
     double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,
         zval,kval,kmin,kmax,rval,rmin,rmax,baoAmplitude,baoSigma,baoScale;
-    double bbandA1,bbandA2,bbandA3,bbandA4;
+    double bbandP,bbandCoef,bbandKmin,bbandRmin,bbandR0,bbandVar;
     int nk,nr;
     std::string savePowerFile,saveCorrelationFile;
     cli.add_options()
@@ -81,15 +81,18 @@ int main(int argc, char **argv) {
             "Gaussian smearing of BAO correlation function peak in Mpc/h relative to fiducial model.")
         ("bao-scale", po::value<double>(&baoScale)->default_value(1),
             "Rescaling of wavenumber relative to fiducial model (>1 means larger acoustic scale)")
-        ("broadband-only", "Calculates contribution of broadband power only.")
-        ("broadband-a1", po::value<double>(&bbandA1)->default_value(0),
-            "Relative coefficient of 1/k in broadband power model.")
-        ("broadband-a2", po::value<double>(&bbandA2)->default_value(0),
-            "Relative coefficient of 1/k^2 in broadband power model.")
-        ("broadband-a3", po::value<double>(&bbandA3)->default_value(0),
-            "Relative coefficient of 1/k^3 in broadband power model.")
-        ("broadband-a4", po::value<double>(&bbandA4)->default_value(0),
-            "Relative coefficient of 1/k^4 in broadband power model.")
+        ("broadband-p", po::value<double>(&bbandP)->default_value(0),
+            "Broadband exponent (1/k)^p.")
+        ("broadband-coef", po::value<double>(&bbandCoef)->default_value(0),
+            "Coefficient of broadband power.")
+        ("broadband-kmin", po::value<double>(&bbandKmin)->default_value(0),
+            "Small k cutoff for regulating broadband power in h/Mpc.")
+        ("broadband-rmin", po::value<double>(&bbandRmin)->default_value(0),
+            "Small r (large k) cutoff for regulating broadband power in Mpc/h.")
+        ("broadband-r0", po::value<double>(&bbandR0)->default_value(8),
+            "Scale for fixing 'natural normalization' of broadband power.")
+        ("broadband-var", po::value<double>(&bbandVar)->default_value(0.1),
+            "Variance within r0 for fixing 'natural normalization' of broadband power.")
         ;
 
     // do the command line parsing now
@@ -108,7 +111,7 @@ int main(int argc, char **argv) {
     }
     bool verbose(vm.count("verbose")), rlog(vm.count("rlog")),
         quad(vm.count("quad")), hexa(vm.count("hexa")), noWiggles(vm.count("no-wiggles")),
-        periodicWiggles(vm.count("periodic-wiggles")), bbandOnly(vm.count("broadband-only"));
+        periodicWiggles(vm.count("periodic-wiggles"));
 
     // Process the multipole flags.
     if(quad && hexa) {
@@ -155,7 +158,7 @@ int main(int argc, char **argv) {
     // Build the inhomogeneous cosmology we will use, if any.
     cosmo::PowerSpectrumPtr power;
     double deltaH;
-    if(!bbandOnly) {
+    if(0 == bbandCoef) {
         boost::shared_ptr<cosmo::BaryonPerturbations> baryonsPtr(
             new cosmo::BaryonPerturbations(
             OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,baoOption));
@@ -212,22 +215,11 @@ int main(int argc, char **argv) {
     }
 
     // Create broadband power model, if requested.
-    if(0 != bbandA1 || 0 != bbandA2 || 0 != bbandA3 || 0 != bbandA4) {
-        std::vector<double> bbcoefs;
-        bbcoefs.push_back(bbandA1);
-        bbcoefs.push_back(bbandA2);
-        bbcoefs.push_back(bbandA3);
-        bbcoefs.push_back(bbandA4);
-        boost::shared_ptr<cosmo::BroadbandPower>
-            bbPowerPtr(new cosmo::BroadbandPower(1,bbcoefs,0.05,1000,8,0.1));
-        if(bbandOnly) {
-            power.reset(new cosmo::PowerSpectrum(boost::bind(
-                &cosmo::BroadbandPower::operator(),bbPowerPtr,_1)));
-        }
-    }
-    else if(bbandOnly) {
-        std::cerr << "Must have at least one non-zero broadband coefficient for broadband-only." << std::endl;
-        return -2;
+    if(0 != bbandCoef) {
+        boost::shared_ptr<cosmo::BroadbandPower> bbPowerPtr(new cosmo::BroadbandPower(
+            bbandCoef,bbandP,bbandKmin,bbandRmin,bbandR0,bbandVar));
+        power.reset(new cosmo::PowerSpectrum(boost::bind(
+            &cosmo::BroadbandPower::operator(),bbPowerPtr,_1)));
     }
 
     if(0 < savePowerFile.length()) {

@@ -12,43 +12,33 @@
 
 namespace local = cosmo;
 
-local::BroadbandPower::BroadbandPower(int nmin, std::vector<double> coefs,
-double rmin, double rmax, double r0, double sigmaSq)
-: _nmin(nmin), _nmax(nmin+coefs.size()), _coefs(coefs), _rmin(rmin), _rmax(rmax)
+local::BroadbandPower::BroadbandPower(double coef, double p,
+double kmin, double rmin, double r0, double sigmaSq)
+: _coef(coef), _p(p), _kmin(kmin), _rmin(rmin)
 {
-    if(rmax <= rmin) throw RuntimeError("BroadbandPower: expected rmax > rmin.");
+    if(kmin*rmin >= 1) throw RuntimeError("BroadbandPower: kmin*rmin < 1.");
     // Precompute constants
     double pi(4*std::atan(1));
     _twopi2 = 2*pi*pi;
-    // Pre-compute values of rmax^n
-    for(int dn = 0; dn < coefs.size(); ++dn) _powrmax.push_back(std::pow(rmax,nmin+dn));
+    _kminp = std::pow(kmin,p);
     // Rescale coefficients to include "natural" normalization constants?
     if(r0 > 0) {
         if(sigmaSq <= 0) throw RuntimeError("BroadbandPower: expected sigmaSq > 0.");
-        for(int dn = 0; dn < coefs.size(); ++dn) {
-            // Calculate the RMS fluctuations of PB(k,n) within a sphere of radius r0
-            PowerSpectrumPtr PBptr(new PowerSpectrum(boost::bind(
-                &BroadbandPower::evaluatePB,boost::ref(*this),_1,_nmin+dn)));
-            double sigmaOld = getRmsAmplitude(PBptr, r0);
-            // Rescale coefs[n] so that a value of one would give the requested sigmaSq.
-            double ratio(sigmaSq/(sigmaOld*sigmaOld));
-            _coefs[dn] *= ratio;            
-        }
+        // Calculate the RMS fluctuations of PB(k,p)/B(p) within a sphere of radius r0
+        PowerSpectrumPtr self(new PowerSpectrum(boost::bind(
+            &BroadbandPower::operator(),boost::ref(*this),_1)));
+        _coef = 1;
+        double sigmaOld = getRmsAmplitude(self,r0);
+        // Rescale coefs[n] so that a value of one would give the requested sigmaSq.
+        double ratio(sigmaSq/(sigmaOld*sigmaOld));
+        _coef = ratio*coef;
     }
 }
 
 local::BroadbandPower::~BroadbandPower() { }
 
-double local::BroadbandPower::evaluatePB(double k, int n) const {
-    if(n < _nmin || n >= _nmax) throw RuntimeError("BroadbandPower: exponent n out of range.");
-    double krmin(k*_rmin), krmin2(krmin*krmin), krmax(k*_rmax), k2(k*k);
-    return (k2*k/_twopi2)*std::exp(-krmin2)*_powrmax[n-_nmin]/(1+std::pow(krmax,n));
-}
-
 double local::BroadbandPower::operator()(double kMpch) const {
-    double result(0);
-    for(int dn = 0; dn < _coefs.size(); ++dn) {
-        result += _coefs[dn]*evaluatePB(kMpch,_nmin+dn);
-    }
-    return result;
+    if(kMpch < 0) throw RuntimeError("BroadbandPower: expected wavenumber kMpch >= 0.");
+    double krmin(kMpch*_rmin), k2(kMpch*kMpch);
+    return _coef*(k2*kMpch/_twopi2)*std::exp(-krmin*krmin)/(_kminp+std::pow(kMpch,_p));
 }
