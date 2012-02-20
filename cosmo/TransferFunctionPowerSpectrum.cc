@@ -6,6 +6,7 @@
 
 #include "likely/Integrator.h"
 
+#include "boost/bind.hpp"
 #include "boost/ref.hpp"
 
 #include <cmath>
@@ -75,3 +76,19 @@ double local::getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch, bool
     likely::Integrator integrator(integrand,1e-8,1e-6);
     return std::sqrt(integrator.integrateSingular(0,1) + integrator.integrateUp(1));
 }
+
+template <class P>
+local::PowerSpectrumPtr local::createPowerSpectrumPtr(boost::shared_ptr<P> pimpl) {
+    PowerSpectrumPtr power(new PowerSpectrum(boost::bind(&P::operator(),pimpl,_1)));
+    return power;
+}
+
+// explicit template instantiations
+
+#include "cosmo/TransferFunctionPowerSpectrum.h"
+#include "cosmo/BroadbandPower.h"
+
+template local::PowerSpectrumPtr local::createPowerSpectrumPtr<local::TransferFunctionPowerSpectrum>
+    (boost::shared_ptr<local::TransferFunctionPowerSpectrum> pimpl);
+template local::PowerSpectrumPtr local::createPowerSpectrumPtr<local::BroadbandPower>
+    (boost::shared_ptr<local::BroadbandPower> pimpl);

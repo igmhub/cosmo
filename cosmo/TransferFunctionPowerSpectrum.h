@@ -36,6 +36,13 @@ namespace cosmo {
     inline double TransferFunctionPowerSpectrum::getSpectralIndex() const { return _spectralIndex; }
     inline double TransferFunctionPowerSpectrum::getDeltaH() const { return _deltaH; }
 	
+	// The scoped global functions below provide generic power spectrum utilities...
+	
+	// Creates and returns a generic PowerSpectrumPtr that wraps a shared pointer pimpl to
+	// an instance of a function object class P. The returned shared pointer creates a
+	// new reference to the input shared pointer.
+	template <class P> PowerSpectrumPtr createPowerSpectrumPtr(boost::shared_ptr<P> pimpl);
+	
 	// Returns the RMS amplitude of fluctuations inside a sphere of the specified
 	// radius in Mpc/h for the specified power spectrum function. Use gaussian = true
 	// for a Gaussian window function with the specified radius. Otherwise, a step
