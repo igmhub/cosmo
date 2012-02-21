@@ -261,15 +261,16 @@ int main(int argc, char **argv) {
             // Sample up to kmax doubling the node number between samples.
             double k;
             int n(numNodes);
+            double smoothStep(1.25);
             do {
                 k = ks*baryonsPtr->getNode(n);
                 klist.push_back(k);
-                n <<= 1;
+                n = (int)std::ceil(n*smoothStep);
             } while(k < kmax);
             // Sample from k1 down to kmin, halving k each time.
             k = k1;
             do {
-                k /= 2;
+                k /= smoothStep;
                 klist.push_front(k);
             } while(k > kmin);
             // Calculate the power at each k value.
@@ -277,9 +278,12 @@ int main(int argc, char **argv) {
             std::vector<double> kvec(klist.size()), pvec(klist.size());
             for(int i = 0; i < kvec.size(); ++i) {
                 k = kvec[i] = *nextk++;
-                pvec[i] = (2*pi*pi)/(k*k*k)*(*power)(kvec[i]);
-                std::cout << kvec[i] << ' ' << pvec[i] << std::endl;
+                pvec[i] = (*power)(kvec[i]);
             }
+            // Create an interpolator.
+            lk::InterpolatorPtr iptr(new lk::Interpolator(kvec,pvec,"cspline"));
+            // Use the resulting interpolation function for future power calculations.
+            power = cosmo::createFunctionPtr(iptr);
         }
     }
     else {
