@@ -393,8 +393,8 @@ public:
         _params.push_back(Parameter("BAO Ampl",1,!fixBao));
         _params.push_back(Parameter("BAO Scale",1,!fixBao));
         _params.push_back(Parameter("BB a1",0,!noBBand));
-        _params.push_back(Parameter("BB a2",0,false));
-        _params.push_back(Parameter("BB a3",0,false));
+        _params.push_back(Parameter("BB a2",0,!noBBand));
+        _params.push_back(Parameter("BB a3",0,!noBBand));
     }
     void setErrorScale(double scale) {
         assert(scale > 0);
