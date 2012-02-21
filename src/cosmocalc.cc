@@ -17,6 +17,8 @@
 #include <fstream>
 #include <iostream>
 #include <cmath>
+#include <vector>
+#include <list>
 
 namespace po = boost::program_options;
 namespace lk = likely;
@@ -56,6 +58,7 @@ int main(int argc, char **argv) {
         ("save-power", po::value<std::string>(&savePowerFile)->default_value(""),
             "Saves the matter power spectrum to the specified filename.")
         ("power1d", "Adds 1D power spectrum to save-power output file.")
+        ("bao-smooth", "Smooths out any BAO oscillation by sampling only at nodes.")
         ("r1d,r", po::value<double>(&r1d)->default_value(0.04),
             "Radius for calculating 1D power spectrum in Mpc/h.")
         ("kmin", po::value<double>(&kmin)->default_value(0.001),
@@ -113,7 +116,7 @@ int main(int argc, char **argv) {
     }
     bool verbose(vm.count("verbose")), power1d(vm.count("power1d")), rlog(vm.count("rlog")),
         quad(vm.count("quad")), hexa(vm.count("hexa")), noWiggles(vm.count("no-wiggles")),
-        periodicWiggles(vm.count("periodic-wiggles"));
+        periodicWiggles(vm.count("periodic-wiggles")), baoSmooth(vm.count("bao-smooth"));
 
     // Process the multipole flags.
     if(quad && hexa) {
@@ -160,7 +163,7 @@ int main(int argc, char **argv) {
     // Build the inhomogeneous cosmology we will use.
     cosmo::PowerSpectrumPtr power;
     if(0 == bbandCoef) {
-        // Use Eisenstein & Hu 1997 parameterization.
+        // Create an Eisenstein & Hu 1997 parameterization.
         boost::shared_ptr<cosmo::BaryonPerturbations> baryonsPtr(
             new cosmo::BaryonPerturbations(
             OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,baoOption));
@@ -181,40 +184,8 @@ int main(int argc, char **argv) {
             std::cout << "  Tf(full,k) = " << Tf << std::endl;
         }
 
-        // Create a sharable pointer to the matter transfer function (this will
-        // keep baryonsPtr alive)
-        cosmo::TransferFunctionPtr transferPtr(new cosmo::TransferFunction(boost::bind(
-            &cosmo::BaryonPerturbations::getMatterTransfer,baryonsPtr,_1)));
-
-        // Use COBE  n=1 normalization by default
-        double deltaH = 1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter));
-
-        // Create a sharable pointer to a power spectrum for this transfer function
-        // (this will keep transferPtr and therefore also baryonsPtr alive)
-        boost::shared_ptr<cosmo::TransferFunctionPowerSpectrum> transferPowerPtr(
-            new cosmo::TransferFunctionPowerSpectrum(transferPtr,spectralIndex,deltaH));
-
-        // Use the requested sigma8 value if there is one.
-        if(sigma8 > 0) {
-            if(verbose) std::cout << "Renormalizing to sigma8 = " << sigma8 << std::endl;
-            transferPowerPtr->setSigma(sigma8);
-        }
-        else if(verbose) {
-            std::cout << "Using COBE n=1 deltaH = " << deltaH << std::endl;            
-        }
-        
-        // Remember this power spectrum (this will keep all of the above alive)
-        power = createFunctionPtr(transferPowerPtr);
-
-        if(verbose) {
-            std::cout << "Calculated sigma8(z=0) = " << cosmo::getRmsAmplitude(power,8)
-                << std::endl;
-        }
-
-        // Rescale the power from z=0 to the desired redshift.
-        transferPowerPtr->setDeltaH(growthFactor*transferPowerPtr->getDeltaH());
-
         if(0 < loadPowerFile.length()) {
+            // Load a tabulated power spectrum for interpolation.
             std::vector<std::vector<double> > columns(2);
             std::ifstream in(loadPowerFile.c_str());
             lk::readVectors(in,columns);
@@ -234,13 +205,89 @@ int main(int argc, char **argv) {
             // Use the resulting interpolation function for future power calculations.
             power = cosmo::createFunctionPtr(iptr);
         }
+        else {
+            // Create a power spectrum from the EH97 parameterization...
+
+            // Create a sharable pointer to the matter transfer function (this will
+            // keep baryonsPtr alive)
+            cosmo::TransferFunctionPtr transferPtr(new cosmo::TransferFunction(boost::bind(
+                &cosmo::BaryonPerturbations::getMatterTransfer,baryonsPtr,_1)));
+
+            // Use COBE  n=1 normalization by default
+            double deltaH = 1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter));
+
+            // Create a sharable pointer to a power spectrum for this transfer function
+            // (this will keep transferPtr and therefore also baryonsPtr alive)
+            boost::shared_ptr<cosmo::TransferFunctionPowerSpectrum> transferPowerPtr(
+                new cosmo::TransferFunctionPowerSpectrum(transferPtr,spectralIndex,deltaH));
+
+            // Use the requested sigma8 value if there is one.
+            if(sigma8 > 0) {
+                if(verbose) std::cout << "Renormalizing to sigma8 = " << sigma8 << std::endl;
+                transferPowerPtr->setSigma(sigma8);
+            }
+            else if(verbose) {
+                std::cout << "Using COBE n=1 deltaH = " << deltaH << std::endl;            
+            }
+        
+            // Remember this power spectrum (this will keep all of the above alive)
+            power = createFunctionPtr(transferPowerPtr);
+
+            if(verbose) {
+                std::cout << "Calculated sigma8(z=0) = " << cosmo::getRmsAmplitude(power,8)
+                    << std::endl;
+            }
+
+            // Rescale the power from z=0 to the desired redshift.
+            transferPowerPtr->setDeltaH(growthFactor*transferPowerPtr->getDeltaH());
+        }
+        
+        // Resample at BAO nodes if requested
+        if(baoSmooth) {
+            std::list<double> klist;
+            double pi(4*std::atan(1));
+            double ks = pi/baryonsPtr->getSoundHorizon();
+            double k1 = ks*baryonsPtr->getNode(1);
+            if(kmax < k1) {
+                std::cerr << "Cannot smooth with kmax < k1.";
+                return -2;
+            }
+            // Sample at the first 20 nodes.
+            int numNodes(20);
+            for(int n = 1; n < numNodes; ++n) {
+                double k = ks*baryonsPtr->getNode(n);
+                klist.push_back(k);
+            }
+            // Sample up to kmax doubling the node number between samples.
+            double k;
+            int n(numNodes);
+            do {
+                k = ks*baryonsPtr->getNode(n);
+                klist.push_back(k);
+                n <<= 1;
+            } while(k < kmax);
+            // Sample from k1 down to kmin, halving k each time.
+            k = k1;
+            do {
+                k /= 2;
+                klist.push_front(k);
+            } while(k > kmin);
+            // Calculate the power at each k value.
+            std::list<double>::iterator nextk(klist.begin());
+            std::vector<double> kvec(klist.size()), pvec(klist.size());
+            for(int i = 0; i < kvec.size(); ++i) {
+                k = kvec[i] = *nextk++;
+                pvec[i] = (2*pi*pi)/(k*k*k)*(*power)(kvec[i]);
+                std::cout << kvec[i] << ' ' << pvec[i] << std::endl;
+            }
+        }
     }
     else {
+        // Create a broadband power model.
         if(0 < loadPowerFile.length()) {
             std::cerr << "Cannot combine --load-power with broadband options." << std::endl;
             return -1;
         }
-        // Use a broadband power model.
         boost::shared_ptr<cosmo::BroadbandPower> bbPowerPtr(new cosmo::BroadbandPower(
             bbandCoef,bbandP,bbandKmin,bbandRmin,bbandR0,bbandVar));
         power = cosmo::createFunctionPtr(bbPowerPtr);
