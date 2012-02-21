@@ -78,6 +78,15 @@ _hubbleConstant(hubbleConstant), _cmbTemperature(cmbTemperature), _baoOption(bao
 
 local::BaryonPerturbations::~BaryonPerturbations() { }
 
+#include <iostream>
+
+double local::BaryonPerturbations::getNode(int n) const {
+    if(n <= 0) throw RuntimeError("BaryonsPerturbations::getNode: invalid n <= 0.");
+    double n2(n*n), n3(n2*n);
+    return (_baoOption == ShiftedOscillation) ?
+        std::pow((n3+std::sqrt(n3*(n3+4*_beta_node*_beta_node*_beta_node)))/2,1./3.) : n;
+}
+
 double local::BaryonPerturbations::getCdmTransfer(double kMpch) const {
     if(kMpch != _kSave) {
         calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_baoOption);

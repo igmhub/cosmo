@@ -45,6 +45,10 @@ namespace cosmo {
         void calculateTransferFunctions(double kMpch,
             double &Tf_baryon, double &Tf_cdm, double &Tf_full,
             BaoOption baoOption = ShiftedOscillation) const;
+        // Returns the value of k*s/pi for the n-th node of the BAO oscillation (n=1,2,3,...)
+        // where s is the sound horizon. Values approach n for large n but are generally
+        // larger for the first few nodes. See eqn. (22).
+        double getNode(int n) const;
 	private:
         double _omegaMatter, _omegaBaryon, _hubbleConstant, _cmbTemperature;
         BaoOption _baoOption;
