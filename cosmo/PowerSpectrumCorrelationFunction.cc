@@ -71,6 +71,11 @@ double local::PowerSpectrumCorrelationFunction::operator()(double rMpch) const {
     return (*_interpolator)(std::log(rMpch));
 }
 
+double local::PowerSpectrumCorrelationFunction::_rolloff(double kval) const {
+    double krcut(kval*_rmin/10);
+    return std::exp(-krcut*krcut);
+}
+
 double local::PowerSpectrumCorrelationFunction::_integrand1(double kval) const {
     double kr(kval*_radius),kr2(kr*kr);
     double result = (*_powerSpectrum)(kval);
@@ -86,7 +91,7 @@ double local::PowerSpectrumCorrelationFunction::_integrand1(double kval) const {
             std::cos(kr)*(10*kr2 - 105)*kr)/(kr2*kr2*kr*kval);
         break;
     }
-    return result;
+    return result*_rolloff(kval);
 }
 
 double local::PowerSpectrumCorrelationFunction::_integrand2(double kval) const {
@@ -103,7 +108,7 @@ double local::PowerSpectrumCorrelationFunction::_integrand2(double kval) const {
         result *= (kr2*kr2 - 45*kr2 + 105)/(kr2*kr2*kr*kval);
         break;
     }
-    return result;
+    return result*_rolloff(kval);
 }
 
 double local::PowerSpectrumCorrelationFunction::_integrand3(double kval) const {
@@ -120,5 +125,5 @@ double local::PowerSpectrumCorrelationFunction::_integrand3(double kval) const {
         result *= (10*kr2 - 105)/(kr2*kr2*kval);
         break;
     }
-    return result;
+    return result*_rolloff(kval);
 }

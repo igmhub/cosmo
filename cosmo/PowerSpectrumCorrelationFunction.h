@@ -27,6 +27,8 @@ namespace cosmo {
         int _nr;
         mutable likely::InterpolatorPtr _interpolator;
         mutable double _radius;
+        // Rolloff function that goes smoothly from 1 to 0 for k >> 1/rmin.
+        double _rolloff(double kval) const;
         // Integrand for 0 <= k < pi/r which is possibly singular and uses a series
         // expansion of sin(kr)/(kr) for small kr.
         double _integrand1(double kval) const;
