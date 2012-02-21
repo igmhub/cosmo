@@ -82,9 +82,10 @@ local::BaryonPerturbations::~BaryonPerturbations() { }
 
 double local::BaryonPerturbations::getNode(int n) const {
     if(n <= 0) throw RuntimeError("BaryonsPerturbations::getNode: invalid n <= 0.");
-    double n2(n*n), n3(n2*n);
+    double pi(4*atan(1));
+    double n2(n*n), n3(n2*n), bpi(_beta_node/pi);
     return (_baoOption == ShiftedOscillation) ?
-        std::pow((n3+std::sqrt(n3*(n3+4*_beta_node*_beta_node*_beta_node)))/2,1./3.) : n;
+        std::pow((n3+std::sqrt(n3*(n3+4*bpi*bpi*bpi)))/2,1./3.) : n;
 }
 
 double local::BaryonPerturbations::getCdmTransfer(double kMpch) const {
