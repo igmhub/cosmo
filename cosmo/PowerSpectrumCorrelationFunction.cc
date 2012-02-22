@@ -91,7 +91,7 @@ double local::PowerSpectrumCorrelationFunction::_integrand1(double kval) const {
             std::cos(kr)*(10*kr2 - 105)*kr)/(kr2*kr2*kr*kval);
         break;
     }
-    return result*_rolloff(kval);
+    return result;
 }
 
 double local::PowerSpectrumCorrelationFunction::_integrand2(double kval) const {
