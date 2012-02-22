@@ -241,6 +241,11 @@ int main(int argc, char **argv) {
             // Rescale the power from z=0 to the desired redshift.
             transferPowerPtr->setDeltaH(growthFactor*transferPowerPtr->getDeltaH());
         }
+
+        if(verbose) {
+            std::cout << "Calculated sigma8(z=" << zval << ") = " << cosmo::getRmsAmplitude(power,8)
+                << std::endl;
+        }
         
         // Resample at BAO nodes if requested
         if(baoSmooth) {
