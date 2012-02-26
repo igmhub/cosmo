@@ -397,7 +397,7 @@ private:
 class LyaBaoLikelihood {
 public:
     LyaBaoLikelihood(LyaDataPtr data, LyaBaoModelPtr model, double rmin, double rmax,
-    bool fixBao, bool noBBand)
+    bool fixBao, bool noBBand, double initialAmp, double initialScale)
     : _data(data), _model(model), _rmin(rmin), _rmax(rmax), _errorScale(1) {
         assert(data);
         assert(model);
@@ -405,8 +405,8 @@ public:
         _params.push_back(Parameter("Alpha",3.8,true));
         _params.push_back(Parameter("Bias",0.17,true));
         _params.push_back(Parameter("Beta",1.0,true));
-        _params.push_back(Parameter("BAO Ampl",1,!fixBao));
-        _params.push_back(Parameter("BAO Scale",1,!fixBao));
+        _params.push_back(Parameter("BAO Ampl",initialAmp,!fixBao));
+        _params.push_back(Parameter("BAO Scale",initialScale,!fixBao));
         _params.push_back(Parameter("BB xio",0,!noBBand));
         _params.push_back(Parameter("BB a0",0,!noBBand));
         _params.push_back(Parameter("BB a1",0,!noBBand));
@@ -523,6 +523,7 @@ int main(int argc, char **argv) {
     double OmegaLambda,OmegaMatter,zref,minll,dll,dll2,minsep,dsep,minz,dz,rmin,rmax;
     int nll,nsep,nz,ncontour,modelBins;
     std::string fiducialName,nowigglesName,broadbandName,dataName,dumpName;
+    double initialAmp,initialScale;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -573,6 +574,10 @@ int main(int argc, char **argv) {
         ("minos", "Runs MINOS to improve error estimates.")
         ("fix-bao", "Fix BAO scale and amplitude parameters.")
         ("no-bband", "Do not add any broadband contribution to the correlation function.")
+        ("initial-amp", po::value<double>(&initialAmp)->default_value(1),
+            "Initial value for the BAO amplitude parameter.")
+        ("initial-scale", po::value<double>(&initialScale)->default_value(1),
+            "Initial value for the BAO scale parameter.")
         ;
 
     // Do the command line parsing now.
@@ -726,7 +731,7 @@ int main(int argc, char **argv) {
     // Minimize the -log(Likelihood) function.
     try {
         lk::GradientCalculatorPtr gcptr;
-        LyaBaoLikelihood nll(data,model,rmin,rmax,fixBao,noBBand);
+        LyaBaoLikelihood nll(data,model,rmin,rmax,fixBao,noBBand,initialAmp,initialScale);
         lk::FunctionPtr fptr(new lk::Function(boost::ref(nll)));
 
         int npar(nll.getNPar());
