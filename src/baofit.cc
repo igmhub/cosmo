@@ -341,18 +341,21 @@ public:
     }
     double evaluate(double r, double mu, double z, lk::Parameters const &p) const {
         double alpha(p[0]), bias(p[1]), beta(p[2]), ampl(p[3]), scale(p[4]);
-        double a1(p[5]), a2(p[6]), a3(p[7]);
+        double xio(p[5]), a0(p[6]), a1(p[7]), a2(p[8]);
         double zfactor = std::pow((1+z)/(1+_zref),alpha);
         _fid->setDistortion(beta);
         _nw->setDistortion(beta);
+        // Calculate the peak contribution with scaled radius.
         double fid((*_fid)(r*scale,mu)), nw((*_nw)(r*scale,mu)); // scale cancels in mu
-        double xi = ampl*(fid-nw)+nw;
-        double broadband = 1e-1*a1/(r*r) + 1e-3*a2/r + 1e-5*a3;
+        double peak = ampl*(fid-nw);
+        // Calculate the additional broadband contribution with no radius scaling.
+        double bbc((*_bbc)(r,mu)), bb0((*_nw)(r,mu)), bb1((*_bb1)(r,mu)), bb2((*_bb2)(r,mu));
+        double broadband = xio*bbc + (1+a0)*bb0 + a1*bb1 + a2*bb2;
 /**
         std::cout << "LinXi(" << r << ',' << mu << ',' << z << ';'
             << alpha << ',' << beta << ',' << bias << ") = " << bias*bias*zfactor*xi << std::endl;
 **/
-        return bias*bias*zfactor*xi + broadband;
+        return bias*bias*zfactor*(peak + broadband);
     }
 private:
     lk::InterpolatorPtr load(std::string const &fileName) {
@@ -404,9 +407,10 @@ public:
         _params.push_back(Parameter("Beta",1.0,true));
         _params.push_back(Parameter("BAO Ampl",1,!fixBao));
         _params.push_back(Parameter("BAO Scale",1,!fixBao));
+        _params.push_back(Parameter("BB xio",0,!noBBand));
+        _params.push_back(Parameter("BB a0",0,!noBBand));
         _params.push_back(Parameter("BB a1",0,!noBBand));
         _params.push_back(Parameter("BB a2",0,!noBBand));
-        _params.push_back(Parameter("BB a3",0,!noBBand));
     }
     void setErrorScale(double scale) {
         assert(scale > 0);
