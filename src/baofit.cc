@@ -524,6 +524,7 @@ int main(int argc, char **argv) {
     int nll,nsep,nz,ncontour,modelBins;
     std::string fiducialName,nowigglesName,broadbandName,dataName,dumpName;
     double initialAmp,initialScale;
+    std::string platelistName,platerootName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -545,6 +546,10 @@ int main(int argc, char **argv) {
             "Maximum 3D comoving separation (Mpc/h) to use in fit.")
         ("data", po::value<std::string>(&dataName)->default_value(""),
             "3D covariance data will be read from <data>.params and <data>.cov")
+        ("platelist", po::value<std::string>(&platelistName)->default_value(""),
+            "3D covariance data will be read from individual plate datafiles listed in this file.")
+        ("plateroot", po::value<std::string>(&platerootName)->default_value(""),
+            "Common path to prepend to all plate datafiles listed in the platelist.")
         ("minll", po::value<double>(&minll)->default_value(0.0002),
             "Minimum log(lam2/lam1).")
         ("dll", po::value<double>(&dll)->default_value(0.004),
@@ -598,8 +603,8 @@ int main(int argc, char **argv) {
         fixBao(vm.count("fix-bao")), noBBand(vm.count("no-bband"));
 
     // Check for the required filename parameters.
-    if(0 == dataName.length()) {
-        std::cerr << "Missing required parameter --data." << std::endl;
+    if(0 == dataName.length() && 0 == platelistName.length()) {
+        std::cerr << "Missing required parameter --data or --platelist." << std::endl;
         return -1;
     }
     if(0 == fiducialName.length()) {
