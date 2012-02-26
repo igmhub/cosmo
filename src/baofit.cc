@@ -298,6 +298,80 @@ public:
         }
         return chi2;
     }
+    void load(std::string dataName, bool verbose) {
+        // General stuff we will need for reading both files.
+        std::string line;
+        int lineNumber(0);
+        // Capturing regexps for positive integer and signed floating-point constants.
+        std::string ipat("(0|(?:[1-9][0-9]*))"),fpat("([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)");
+        boost::match_results<std::string::const_iterator> what;
+        // Loop over lines in the parameter file.
+        std::string paramsName(dataName + ".params");
+        std::ifstream paramsIn(paramsName.c_str());
+        if(!paramsIn.good()) throw cosmo::RuntimeError("Unable to open " + paramsName);
+        boost::regex paramPattern(
+            boost::str(boost::format("\\s*%s\\s+%s\\s*\\| Lya covariance 3D \\(%s,%s,%s\\)\\s*")
+            % fpat % fpat % fpat % fpat % fpat));
+        while(paramsIn.good() && !paramsIn.eof()) {
+            std::getline(paramsIn,line);
+            if(paramsIn.eof()) break;
+            if(!paramsIn.good()) {
+                throw cosmo::RuntimeError("Unable to read line " + boost::lexical_cast<std::string>(lineNumber));
+            }
+            lineNumber++;
+            // Parse this line with a regexp.
+            if(!boost::regex_match(line,what,paramPattern)) {
+                throw cosmo::RuntimeError("Badly formatted params line " +
+                    boost::lexical_cast<std::string>(lineNumber) + ": '" + line + "'");
+            }
+            int nTokens(5);
+            std::vector<double> token(nTokens);
+            for(int tok = 0; tok < nTokens; ++tok) {
+                token[tok] = boost::lexical_cast<double>(std::string(what[tok+1].first,what[tok+1].second));
+            }
+            // Add this bin to our dataset. Second value token[1] might be non-zero, in which case it is
+            // Cinv*d from the quadratic estimator, but we just ignore it.
+            addData(token[0],token[2],token[3],token[4]);
+        }
+        finalizeData();
+        paramsIn.close();
+        if(verbose) {
+            std::cout << "Read " << getNData() << " of " << getSize()
+                << " data values from " << paramsName << std::endl;
+        }
+        // Loop over lines in the covariance file.
+        std::string covName(dataName + ".cov");
+        std::ifstream covIn(covName.c_str());
+        if(!covIn.good()) throw cosmo::RuntimeError("Unable to open " + covName);
+        boost::regex covPattern(boost::str(boost::format("\\s*%s\\s+%s\\s+%s\\s*") % ipat % ipat % fpat));
+        lineNumber = 0;
+        while(covIn.good() && !covIn.eof()) {
+            std::getline(covIn,line);
+            if(covIn.eof()) break;
+            if(!covIn.good()) {
+                throw cosmo::RuntimeError("Unable to read line " + boost::lexical_cast<std::string>(lineNumber));
+            }
+            lineNumber++;
+            // Parse this line with a regexp.
+            if(!boost::regex_match(line,what,covPattern)) {
+                throw cosmo::RuntimeError("Badly formatted cov line " +
+                    boost::lexical_cast<std::string>(lineNumber) + ": '" + line + "'");
+            }
+            int index1(boost::lexical_cast<int>(std::string(what[1].first,what[1].second)));
+            int index2(boost::lexical_cast<int>(std::string(what[2].first,what[2].second)));
+            double value(boost::lexical_cast<double>(std::string(what[3].first,what[3].second)));
+            // Add this covariance to our dataset.
+            addCovariance(index1,index2,value);
+        }
+        finalizeCovariance();
+        covIn.close();
+        if(verbose) {
+            int ndata = getNData();
+            int ncov = (ndata*(ndata+1))/2;
+            std::cout << "Read " << getNCov() << " of " << ncov
+                << " covariance values from " << covName << std::endl;
+        }
+    }
 private:
     AbsBinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
     cosmo::AbsHomogeneousUniversePtr _cosmology;
@@ -655,78 +729,7 @@ int main(int argc, char **argv) {
         }
         // Initialize the dataset we will fill.
         data.reset(new LyaData(llBins,sepBins,zBins,cosmology));
-        // General stuff we will need for reading both files.
-        std::string line;
-        int lineNumber(0);
-        // Capturing regexps for positive integer and signed floating-point constants.
-        std::string ipat("(0|(?:[1-9][0-9]*))"),fpat("([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)");
-        boost::match_results<std::string::const_iterator> what;
-        // Loop over lines in the parameter file.
-        std::string paramsName(dataName + ".params");
-        std::ifstream paramsIn(paramsName.c_str());
-        if(!paramsIn.good()) throw cosmo::RuntimeError("Unable to open " + paramsName);
-        boost::regex paramPattern(
-            boost::str(boost::format("\\s*%s\\s+%s\\s*\\| Lya covariance 3D \\(%s,%s,%s\\)\\s*")
-            % fpat % fpat % fpat % fpat % fpat));
-        while(paramsIn.good() && !paramsIn.eof()) {
-            std::getline(paramsIn,line);
-            if(paramsIn.eof()) break;
-            if(!paramsIn.good()) {
-                throw cosmo::RuntimeError("Unable to read line " + boost::lexical_cast<std::string>(lineNumber));
-            }
-            lineNumber++;
-            // Parse this line with a regexp.
-            if(!boost::regex_match(line,what,paramPattern)) {
-                throw cosmo::RuntimeError("Badly formatted params line " +
-                    boost::lexical_cast<std::string>(lineNumber) + ": '" + line + "'");
-            }
-            int nTokens(5);
-            std::vector<double> token(nTokens);
-            for(int tok = 0; tok < nTokens; ++tok) {
-                token[tok] = boost::lexical_cast<double>(std::string(what[tok+1].first,what[tok+1].second));
-            }
-            // Add this bin to our dataset. Second value token[1] might be non-zero, in which case it is
-            // Cinv*d from the quadratic estimator, but we just ignore it.
-            data->addData(token[0],token[2],token[3],token[4]);
-        }
-        data->finalizeData();
-        paramsIn.close();
-        if(verbose) {
-            std::cout << "Read " << data->getNData() << " of " << data->getSize()
-                << " data values from " << paramsName << std::endl;
-        }
-        // Loop over lines in the covariance file.
-        std::string covName(dataName + ".cov");
-        std::ifstream covIn(covName.c_str());
-        if(!covIn.good()) throw cosmo::RuntimeError("Unable to open " + covName);
-        boost::regex covPattern(boost::str(boost::format("\\s*%s\\s+%s\\s+%s\\s*") % ipat % ipat % fpat));
-        lineNumber = 0;
-        while(covIn.good() && !covIn.eof()) {
-            std::getline(covIn,line);
-            if(covIn.eof()) break;
-            if(!covIn.good()) {
-                throw cosmo::RuntimeError("Unable to read line " + boost::lexical_cast<std::string>(lineNumber));
-            }
-            lineNumber++;
-            // Parse this line with a regexp.
-            if(!boost::regex_match(line,what,covPattern)) {
-                throw cosmo::RuntimeError("Badly formatted cov line " +
-                    boost::lexical_cast<std::string>(lineNumber) + ": '" + line + "'");
-            }
-            int index1(boost::lexical_cast<int>(std::string(what[1].first,what[1].second)));
-            int index2(boost::lexical_cast<int>(std::string(what[2].first,what[2].second)));
-            double value(boost::lexical_cast<double>(std::string(what[3].first,what[3].second)));
-            // Add this covariance to our dataset.
-            data->addCovariance(index1,index2,value);
-        }
-        data->finalizeCovariance();
-        covIn.close();
-        if(verbose) {
-            int ndata = data->getNData();
-            int ncov = (ndata*(ndata+1))/2;
-            std::cout << "Read " << data->getNCov() << " of " << ncov
-                << " covariance values from " << covName << std::endl;
-        }
+        data->load(dataName,verbose);
     }
     catch(cosmo::RuntimeError const &e) {
         std::cerr << "ERROR while reading data:\n  " << e.what() << std::endl;
