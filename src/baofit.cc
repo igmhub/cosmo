@@ -243,7 +243,7 @@ public:
             << z1 << ',' << z2 << ',' << swgt << ';' << drLos << ',' << drPerp << ',' << mu << ']' << std::endl;
 **/
     }
-    void addCovariance(int i, int j, double value) {
+    void addCovariance(int i, int j, double value, bool icov) {
         int row,col;
          // put into upper-diagonal form col >= row
         if(i >= j) {
@@ -254,14 +254,17 @@ public:
         }
         assert(_dataFinalized);
         assert(row >= 0 && col >= 0 && col < getNData());
-        assert(col > row || value > 0); // diagonal elements must be positive
+        assert(icov || col > row || value > 0); // diagonal elements must be positive for covariance matrix
         int index(row+(col*(col+1))/2); // see http://www.netlib.org/lapack/lug/node123.html
         assert(_hasCov[index] == false);
         _cov[index] = value;
         _hasCov[index] = true;
     }
-    void finalizeCovariance() {
+    void finalizeCovariance(bool icov) {
         assert(_dataFinalized);
+        
+        return;
+        
         _icov = _cov; // element-by-element copy
         char uplo('U');
         int info(0),ndata(getNData());
@@ -272,6 +275,12 @@ public:
         if(0 != info) std::cout << "Inverse error: info = " << info << std::endl;
         assert(0 == info);
         _covarianceFinalized = true;
+    }
+    void add(LyaData const &data) {
+        
+    }
+    void finalize() {
+
     }
     int getSize() const { return _nBinsTotal; }
     int getNData() const { return _data.size(); }
@@ -298,7 +307,7 @@ public:
         }
         return chi2;
     }
-    void load(std::string dataName, bool verbose) {
+    void load(std::string dataName, bool verbose, bool icov = false) {
         // General stuff we will need for reading both files.
         std::string line;
         int lineNumber(0);
@@ -340,7 +349,7 @@ public:
                 << " data values from " << paramsName << std::endl;
         }
         // Loop over lines in the covariance file.
-        std::string covName(dataName + ".cov");
+        std::string covName(dataName + (icov ? ".icov" : ".cov"));
         std::ifstream covIn(covName.c_str());
         if(!covIn.good()) throw cosmo::RuntimeError("Unable to open " + covName);
         boost::regex covPattern(boost::str(boost::format("\\s*%s\\s+%s\\s+%s\\s*") % ipat % ipat % fpat));
@@ -361,9 +370,9 @@ public:
             int index2(boost::lexical_cast<int>(std::string(what[2].first,what[2].second)));
             double value(boost::lexical_cast<double>(std::string(what[3].first,what[3].second)));
             // Add this covariance to our dataset.
-            addCovariance(index1,index2,value);
+            addCovariance(index1,index2,value,icov);
         }
-        finalizeCovariance();
+        finalizeCovariance(icov);
         covIn.close();
         if(verbose) {
             int ndata = getNData();
@@ -729,7 +738,34 @@ int main(int argc, char **argv) {
         }
         // Initialize the dataset we will fill.
         data.reset(new LyaData(llBins,sepBins,zBins,cosmology));
-        data->load(dataName,verbose);
+        if(0 < dataName.length()) {
+            // Load a single dataset.
+            data->load(dataName,verbose);
+        }
+        else {
+            // Load individual plate datasets.
+            std::string plateName;
+            boost::format platefile("%s%s");
+            platelistName = platerootName + platelistName;
+            std::ifstream platelist(platelistName.c_str());
+            if(!platelist.good()) {
+                std::cerr << "Unable to open platelist file " << platelistName << std::endl;
+                return -1;
+            }
+            while(platelist.good() && !platelist.eof()) {
+                platelist >> plateName;
+                if(platelist.eof()) break;
+                if(!platelist.good()) {
+                    std::cerr << "Error while reading platelist from " << platelistName << std::endl;
+                    return -1;
+                }
+                LyaDataPtr plate(new LyaData(llBins,sepBins,zBins,cosmology));
+                plate->load(boost::str(platefile % platerootName % plateName),verbose,true);
+                data->add(*plate);
+            }
+            platelist.close();
+            data->finalize();
+        }
     }
     catch(cosmo::RuntimeError const &e) {
         std::cerr << "ERROR while reading data:\n  " << e.what() << std::endl;
