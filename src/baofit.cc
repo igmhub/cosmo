@@ -313,18 +313,31 @@ typedef boost::shared_ptr<LyaData> LyaDataPtr;
 
 class LyaBaoModel {
 public:
-    LyaBaoModel(std::string const &fiducialName, std::string const &nowigglesName, double zref)
+    LyaBaoModel(std::string const &fiducialName, std::string const &nowigglesName,
+    std::string const &broadbandName, double zref)
     : _zref(zref) {
-        boost::format fileName("%s.%d.dat");
+        boost::format fileName("%s.%d.dat"),bbandName("%s%c.%d.dat");
         cosmo::CorrelationFunctionPtr
             fid0 = cosmo::createFunctionPtr(load(boost::str(fileName % fiducialName % 0))),
             fid2 = cosmo::createFunctionPtr(load(boost::str(fileName % fiducialName % 2))),
             fid4 = cosmo::createFunctionPtr(load(boost::str(fileName % fiducialName % 4))),
             nw0 = cosmo::createFunctionPtr(load(boost::str(fileName % nowigglesName % 0))),
             nw2 = cosmo::createFunctionPtr(load(boost::str(fileName % nowigglesName % 2))),
-            nw4 = cosmo::createFunctionPtr(load(boost::str(fileName % nowigglesName % 4)));
+            nw4 = cosmo::createFunctionPtr(load(boost::str(fileName % nowigglesName % 4))),
+            bbc0 = cosmo::createFunctionPtr(load(boost::str(bbandName % broadbandName % 'c' % 0))),
+            bbc2 = cosmo::createFunctionPtr(load(boost::str(bbandName % broadbandName % 'c' % 2))),
+            bbc4 = cosmo::createFunctionPtr(load(boost::str(bbandName % broadbandName % 'c' % 4))),
+            bb10 = cosmo::createFunctionPtr(load(boost::str(bbandName % broadbandName % '1' % 0))),
+            bb12 = cosmo::createFunctionPtr(load(boost::str(bbandName % broadbandName % '1' % 2))),
+            bb14 = cosmo::createFunctionPtr(load(boost::str(bbandName % broadbandName % '1' % 4))),
+            bb20 = cosmo::createFunctionPtr(load(boost::str(bbandName % broadbandName % '2' % 0))),
+            bb22 = cosmo::createFunctionPtr(load(boost::str(bbandName % broadbandName % '2' % 2))),
+            bb24 = cosmo::createFunctionPtr(load(boost::str(bbandName % broadbandName % '2' % 4)));
         _fid.reset(new cosmo::RsdCorrelationFunction(fid0,fid2,fid4));
         _nw.reset(new cosmo::RsdCorrelationFunction(nw0,nw2,nw4));
+        _bbc.reset(new cosmo::RsdCorrelationFunction(bbc0,bbc2,bbc4));
+        _bb1.reset(new cosmo::RsdCorrelationFunction(bb10,bb12,bb14));
+        _bb2.reset(new cosmo::RsdCorrelationFunction(bb20,bb22,bb24));
     }
     double evaluate(double r, double mu, double z, lk::Parameters const &p) const {
         double alpha(p[0]), bias(p[1]), beta(p[2]), ampl(p[3]), scale(p[4]);
@@ -351,8 +364,7 @@ private:
         return iptr;
     }
     double _zref, _growth;
-    lk::InterpolatorPtr _fid0, _fid2, _fid4, _nw0, _nw2, _nw4;
-    boost::scoped_ptr<cosmo::RsdCorrelationFunction> _fid, _nw;
+    boost::scoped_ptr<cosmo::RsdCorrelationFunction> _fid, _nw, _bbc, _bb1, _bb2;
 }; // LyaBaoModel
 
 typedef boost::shared_ptr<LyaBaoModel> LyaBaoModelPtr;
@@ -506,7 +518,7 @@ int main(int argc, char **argv) {
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,zref,minll,dll,dll2,minsep,dsep,minz,dz,rmin,rmax;
     int nll,nsep,nz,ncontour,modelBins;
-    std::string fiducialName,nowigglesName,dataName,dumpName;
+    std::string fiducialName,nowigglesName,broadbandName,dataName,dumpName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -518,6 +530,8 @@ int main(int argc, char **argv) {
             "Fiducial correlation functions will be read from <name>.<ell>.dat with ell=0,2,4.")
         ("nowiggles", po::value<std::string>(&nowigglesName)->default_value(""),
             "No-wiggles correlation functions will be read from <name>.<ell>.dat with ell=0,2,4.")
+        ("broadband", po::value<std::string>(&broadbandName)->default_value(""),
+            "Broadband correlation functions will be read from <name>bb<x>.<ell>.dat with x=c,1,2 and ell=0,2,4.")
         ("zref", po::value<double>(&zref)->default_value(2.25),
             "Reference redshift.")
         ("rmin", po::value<double>(&rmin)->default_value(0),
@@ -587,6 +601,10 @@ int main(int argc, char **argv) {
         std::cerr << "Missing required parameter --nowiggles." << std::endl;
         return -1;
     }
+    if(0 == broadbandName.length()) {
+        std::cerr << "Missing required parameter --broadband." << std::endl;
+        return -1;
+    }
 
     // Initialize the cosmology calculations we will need.
     cosmo::AbsHomogeneousUniversePtr cosmology;
@@ -597,7 +615,7 @@ int main(int argc, char **argv) {
         cosmology.reset(new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
         
          // Build our fit model from tabulated ell=0,2,4 correlation functions on disk.
-         model.reset(new LyaBaoModel(fiducialName,nowigglesName,zref));
+         model.reset(new LyaBaoModel(fiducialName,nowigglesName,broadbandName,zref));
 
         if(verbose) std::cout << "Cosmology initialized." << std::endl;
     }
