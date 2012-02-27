@@ -246,7 +246,7 @@ public:
             << z1 << ',' << z2 << ',' << swgt << ';' << drLos << ',' << drPerp << ',' << mu << ']' << std::endl;
 **/
     }
-    void addCovariance(int i, int j, double value, bool icov) {
+    void addCovariance(int i, int j, double value) {
         int row,col;
          // put into upper-diagonal form col >= row
         if(i >= j) {
@@ -257,26 +257,45 @@ public:
         }
         assert(_dataFinalized);
         assert(row >= 0 && col >= 0 && col < getNData());
-        assert(icov || col > row || value > 0); // diagonal elements must be positive for covariance matrix
+        assert(col > row || value > 0); // diagonal elements must be positive for covariance matrix
         int index(row+(col*(col+1))/2); // see http://www.netlib.org/lapack/lug/node123.html
         assert(_hasCov[index] == false);
         _cov[index] = value;
         _hasCov[index] = true;
     }
-    void finalizeCovariance(bool icov) {
+    void finalizeCovariance(bool cov_is_icov) {
         assert(_dataFinalized);
-        
-        return;
-        
-        _icov = _cov; // element-by-element copy
+        // Check for zero values on the diagonal
+        int nData = getNData();
+        for(int k = 0; k < nData; ++k) {
+            if(0 == getVariance(k)) {
+                setVariance(k,cov_is_icov ? 1e-30 : 1e+40);
+            }
+        }
+        if(cov_is_icov) {
+            // The values we read into cov actually belong in icov.
+            std::swap(_cov,_icov);            
+        }
+        else {
+            // Calculate icov by inverting cov.
+            _icov = _cov; // element-by-element copy
+            char uplo('U');
+            int info(0),ndata(getNData());
+            dpptrf_(&uplo,&ndata,&_icov[0],&info); // Cholesky decompose
+            if(0 != info) std::cout << "Cholesky error: info = " << info << std::endl;
+            assert(0 == info);
+            dpptri_(&uplo,&ndata,&_icov[0],&info); // Calculate inverse
+            if(0 != info) std::cout << "Inverse error: info = " << info << std::endl;
+            assert(0 == info);
+        }
+        // Fill _icovData.
+        _icovData.resize(nData,0);
+        double alpha(1),beta(0);
+        int info(0),incr(1);
         char uplo('U');
-        int info(0),ndata(getNData());
-        dpptrf_(&uplo,&ndata,&_icov[0],&info); // Cholesky decompose
-        if(0 != info) std::cout << "Cholesky error: info = " << info << std::endl;
-        assert(0 == info);
-        dpptri_(&uplo,&ndata,&_icov[0],&info); // Calculate inverse
-        if(0 != info) std::cout << "Inverse error: info = " << info << std::endl;
-        assert(0 == info);
+        // See http://netlib.org/blas/dspmv.f
+        dspmv_(&uplo,&nData,&alpha,&_icov[0],&_data[0],&incr,&beta,&_icovData[0],&incr);
+        // All done.
         _covarianceFinalized = true;
     }
     void add(LyaData const &data) {
@@ -291,6 +310,7 @@ public:
     int getIndex(int k) const { return _index[k]; }
     double getData(int k) const { return _data[k]; }
     double getVariance(int k) const { return _cov[(k*(k+3))/2]; }
+    void setVariance(int k, double value) { _cov[(k*(k+3))/2] = value; }
     double getRadius(int k) const { return _r3d[k]; }
     double getCosAngle(int k) const { return _mu[k]; }
     double getRedshift(int k) const { return _redshiftBinning->getBinCenter(_index[k] % _nz); }
@@ -398,7 +418,7 @@ public:
 private:
     AbsBinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
     cosmo::AbsHomogeneousUniversePtr _cosmology;
-    std::vector<double> _data, _cov, _icov, _r3d, _mu, _icovDelta;
+    std::vector<double> _data, _cov, _icov, _r3d, _mu, _icovDelta, _icovData;
     std::vector<bool> _initialized, _hasCov;
     std::vector<int> _index;
     int _ndata,_nsep,_nz,_nBinsTotal;
