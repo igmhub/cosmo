@@ -345,12 +345,18 @@ public:
         std::string tokenString(begin,end);
         value = std::atoi(tokenString.c_str());        
     }
-    void load(std::string dataName, bool verbose, bool icov = false) {
+    // The fast option disables regexp checks for valid numeric inputs.
+    void load(std::string dataName, bool verbose, bool icov = false, bool fast = false) {
         // General stuff we will need for reading both files.
         std::string line;
         int lineNumber(0);
         // Capturing regexps for positive integer and signed floating-point constants.
         std::string ipat("(0|(?:[1-9][0-9]*))"),fpat("([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)");
+        if(fast) {
+            // Replace validation patterns with simple non-whitespace groups.
+            ipat = "(\\S+)";
+            fpat = "(\\S+)";
+        }
         boost::match_results<std::string::const_iterator> what;
         // Loop over lines in the parameter file.
         std::string paramsName(dataName + ".params");
@@ -674,6 +680,7 @@ int main(int argc, char **argv) {
             "3D covariance data will be read from individual plate datafiles listed in this file.")
         ("plateroot", po::value<std::string>(&platerootName)->default_value(""),
             "Common path to prepend to all plate datafiles listed in the platelist.")
+        ("fast-load", "Bypasses numeric input validation when reading data.")
         ("minll", po::value<double>(&minll)->default_value(0.0002),
             "Minimum log(lam2/lam1).")
         ("dll", po::value<double>(&dll)->default_value(0.004),
@@ -723,7 +730,7 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose")), minos(vm.count("minos")),
+    bool verbose(vm.count("verbose")), minos(vm.count("minos")), fastLoad(vm.count("fast-load")),
         fixBao(vm.count("fix-bao")), noBBand(vm.count("no-bband"));
 
     // Check for the required filename parameters.
@@ -781,7 +788,7 @@ int main(int argc, char **argv) {
         data.reset(new LyaData(llBins,sepBins,zBins,cosmology));
         if(0 < dataName.length()) {
             // Load a single dataset.
-            data->load(dataName,verbose);
+            data->load(dataName,verbose,false,fastLoad);
         }
         else {
             // Load individual plate datasets.
@@ -801,7 +808,7 @@ int main(int argc, char **argv) {
                     return -1;
                 }
                 LyaDataPtr plate(new LyaData(llBins,sepBins,zBins,cosmology));
-                plate->load(boost::str(platefile % platerootName % plateName),verbose,true);
+                plate->load(boost::str(platefile % platerootName % plateName),verbose,true,fastLoad);
                 data->add(*plate);
             }
             platelist.close();
