@@ -28,6 +28,7 @@
 #include <fstream>
 #include <iostream>
 #include <cmath>
+#include <cstdlib>
 #include <cassert>
 #include <vector>
 #include <algorithm>
@@ -330,7 +331,7 @@ public:
         }
         return chi2;
     }
-    double getDouble(std::string::const_iterator const &begin, std::string::const_iterator const &end,
+    void getDouble(std::string::const_iterator const &begin, std::string::const_iterator const &end,
         double &value) const {
         // Use boost::spirit::parse instead of the easier boost::lexical_cast since this is a bottleneck
         // when reading many files. For details, see:
@@ -338,6 +339,11 @@ public:
         std::string tokenString(begin,end);
         char const *tokenPtr = tokenString.c_str();
         boost::spirit::qi::parse(tokenPtr, &tokenPtr[tokenString.size()], boost::spirit::qi::double_, value);    
+    }
+    void getInt(std::string::const_iterator const &begin, std::string::const_iterator const &end,
+        int &value) const {
+        std::string tokenString(begin,end);
+        value = std::atoi(tokenString.c_str());        
     }
     void load(std::string dataName, bool verbose, bool icov = false) {
         // General stuff we will need for reading both files.
@@ -387,6 +393,7 @@ public:
         boost::regex covPattern(boost::str(boost::format("\\s*%s\\s+%s\\s+%s\\s*") % ipat % ipat % fpat));
         lineNumber = 0;
         double value;
+        int index1,index2;
         while(covIn.good() && !covIn.eof()) {
             std::getline(covIn,line);
             if(covIn.eof()) break;
@@ -399,8 +406,8 @@ public:
                 throw cosmo::RuntimeError("Badly formatted cov line " +
                     boost::lexical_cast<std::string>(lineNumber) + ": '" + line + "'");
             }
-            int index1(boost::lexical_cast<int>(std::string(what[1].first,what[1].second)));
-            int index2(boost::lexical_cast<int>(std::string(what[2].first,what[2].second)));
+            getInt(what[1].first,what[1].second,index1);
+            getInt(what[2].first,what[2].second,index2);
             getDouble(what[3].first,what[3].second,value);
             // Add this covariance to our dataset.
             if(icov) value = -value; // !?! see line #388 of Observed2Point.cpp
