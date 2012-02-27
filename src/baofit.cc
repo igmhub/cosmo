@@ -189,7 +189,7 @@ public:
     LyaData(AbsBinningPtr logLambdaBinning, AbsBinningPtr separationBinning, AbsBinningPtr redshiftBinning,
     cosmo::AbsHomogeneousUniversePtr cosmology) : _cosmology(cosmology), _logLambdaBinning(logLambdaBinning),
     _separationBinning(separationBinning), _redshiftBinning(redshiftBinning),
-    _dataFinalized(false), _covarianceFinalized(false)
+    _dataFinalized(false), _covarianceFinalized(false), _compressed(false)
     {
         assert(logLambdaBinning);
         assert(separationBinning);
@@ -302,9 +302,27 @@ public:
     void reset() {
         _dataFinalized = _covarianceFinalized = false;
         _data.clear();
+        _compressed = false;
+    }
+    // A compressed object can only be added to another object.
+    void compress() {
+        int nData(getNData());
+        int nCov = (nData*(nData+1))/2;
+        _zicov.clear();
+        _zicovIndex.clear();
+        for(int k = 0; k < nCov; ++k) {
+            double value(_icov[k]);
+            if(0 == value) continue;
+            _zicov.push_back(value);
+            _zicovIndex.push_back(k);
+        }
+        _icov.clear();
+        _cov.clear();
+        _compressed = true;
     }
     void add(LyaData const &other) {
-        assert(!_dataFinalized && !_covarianceFinalized);
+        assert(!_dataFinalized && !_covarianceFinalized && !_compressed);
+        assert(other._dataFinalized && other._covarianceFinalized);
         int nData(other.getNData());
         int nCov = (nData*(nData+1))/2;
         if(0 == _data.size()) {
@@ -324,11 +342,21 @@ public:
         for(int k = 0; k < nData; ++k) {
             _icovData[k] += other._icovData[k];
         }
-        for(int k = 0; k < nCov; ++k) {
-            _icov[k] += other._icov[k];
+        if(other._compressed) {
+            int nz(other._zicov.size());
+            for(int iz = 0; iz < nz; ++iz) {
+                int k = other._zicovIndex[iz];
+                _icov[k] += other._zicov[iz];
+            }
+        }
+        else {
+            for(int k = 0; k < nCov; ++k) {
+                _icov[k] += other._icov[k];
+            }
         }
     }
     void finalize() {
+        assert(!_dataFinalized && !_covarianceFinalized && !_compressed);
         // Calculate cov from icov.
         _cov = _icov; // element-by-element copy
         char uplo('U');
@@ -473,12 +501,12 @@ public:
 private:
     AbsBinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
     cosmo::AbsHomogeneousUniversePtr _cosmology;
-    std::vector<double> _data, _cov, _icov, _r3d, _mu, _icovDelta, _icovData;
+    std::vector<double> _data, _cov, _icov, _r3d, _mu, _icovDelta, _icovData, _zicov;
     std::vector<bool> _initialized, _hasCov;
-    std::vector<int> _index;
+    std::vector<int> _index, _zicovIndex;
     int _ndata,_nsep,_nz,_nBinsTotal;
     double _arcminToRad;
-    bool _dataFinalized, _covarianceFinalized;
+    bool _dataFinalized, _covarianceFinalized, _compressed;
 }; // LyaData
 
 typedef boost::shared_ptr<LyaData> LyaDataPtr;
@@ -858,9 +886,10 @@ int main(int argc, char **argv) {
                 }
                 LyaDataPtr plate(new LyaData(llBins,sepBins,zBins,cosmology));
                 plate->load(boost::str(platefile % platerootName % plateName),verbose,true,fastLoad);
+                plate->compress();
                 plateData.push_back(plate);
                 data->add(*plate);
-                //!!if(plateData.size() == 10) break;
+                if(plateData.size() == 10) break;
             }
             platelist.close();
             data->finalize();
