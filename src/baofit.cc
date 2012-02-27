@@ -889,7 +889,7 @@ int main(int argc, char **argv) {
                 plate->compress();
                 plateData.push_back(plate);
                 data->add(*plate);
-                if(plateData.size() == 10) break;
+                //!!if(plateData.size() == 10) break;
             }
             platelist.close();
             data->finalize();
@@ -981,12 +981,10 @@ int main(int argc, char **argv) {
             boost::scoped_array<lk::WeightedAccumulator> accumulators(new lk::WeightedAccumulator[npar+1]);
             if(0 == bootstrapSize) bootstrapSize = nplates;
             for(int k = 0; k < bootstrapTrials; ++k) {
-                if(verbose) std::cout << "=== BOOTSTRAP SAMPLE " << k << " ===" << std::endl;
                 data->reset();
                 for(int p = 0; p < bootstrapSize; ++p) {
                     // Pick a random plate to use in this trial
                     int index = (int)std::floor(random.getUniform()*nplates);
-                    std::cout << "  +" << index << std::endl;
                     data->add(*plateData[index]);
                 }
                 data->finalize();
