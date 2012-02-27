@@ -21,6 +21,9 @@
 #include "boost/regex.hpp"
 #include "boost/format.hpp"
 #include "boost/foreach.hpp"
+#include "boost/spirit/include/qi.hpp"
+#include "boost/spirit/include/phoenix_core.hpp"
+#include "boost/spirit/include/phoenix_operator.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -307,6 +310,15 @@ public:
         }
         return chi2;
     }
+    double getDouble(std::string::const_iterator const &begin, std::string::const_iterator const &end,
+        double &value) const {
+        // Use boost::spirit::parse instead of the easier boost::lexical_cast since this is a bottleneck
+        // when reading many files. For details, see:
+        // http://tinodidriksen.com/2011/05/28/cpp-convert-string-to-double-speed/
+        std::string tokenString(begin,end);
+        char const *tokenPtr = tokenString.c_str();
+        boost::spirit::qi::parse(tokenPtr, &tokenPtr[tokenString.size()], boost::spirit::qi::double_, value);    
+    }
     void load(std::string dataName, bool verbose, bool icov = false) {
         // General stuff we will need for reading both files.
         std::string line;
@@ -336,7 +348,7 @@ public:
             int nTokens(5);
             std::vector<double> token(nTokens);
             for(int tok = 0; tok < nTokens; ++tok) {
-                token[tok] = boost::lexical_cast<double>(std::string(what[tok+1].first,what[tok+1].second));
+                getDouble(what[tok+1].first,what[tok+1].second,token[tok]);
             }
             // Add this bin to our dataset. Second value token[1] might be non-zero, in which case it is
             // Cinv*d from the quadratic estimator, but we just ignore it.
@@ -354,6 +366,7 @@ public:
         if(!covIn.good()) throw cosmo::RuntimeError("Unable to open " + covName);
         boost::regex covPattern(boost::str(boost::format("\\s*%s\\s+%s\\s+%s\\s*") % ipat % ipat % fpat));
         lineNumber = 0;
+        double value;
         while(covIn.good() && !covIn.eof()) {
             std::getline(covIn,line);
             if(covIn.eof()) break;
@@ -368,9 +381,10 @@ public:
             }
             int index1(boost::lexical_cast<int>(std::string(what[1].first,what[1].second)));
             int index2(boost::lexical_cast<int>(std::string(what[2].first,what[2].second)));
-            double value(boost::lexical_cast<double>(std::string(what[3].first,what[3].second)));
+            getDouble(what[3].first,what[3].second,value);
             // Add this covariance to our dataset.
-            addCovariance(index1,index2,value,icov);
+            if(icov) value = -value; // !?! see line #388 of Observed2Point.cpp
+            addCovariance(index1,index2,value);
         }
         finalizeCovariance(icov);
         covIn.close();
