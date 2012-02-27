@@ -292,18 +292,47 @@ public:
         // Fill _icovData.
         _icovData.resize(nData,0);
         double alpha(1),beta(0);
-        int info(0),incr(1);
+        int incr(1);
         char uplo('U');
         // See http://netlib.org/blas/dspmv.f
         dspmv_(&uplo,&nData,&alpha,&_icov[0],&_data[0],&incr,&beta,&_icovData[0],&incr);
         // All done.
         _covarianceFinalized = true;
     }
-    void add(LyaData const &data) {
-        
+    void add(LyaData const &other) {
+        assert(!_dataFinalized && !_covarianceFinalized);
+        int nData(other.getNData());
+        int nCov = (nData*(nData+1))/2;
+        if(0 == _icov.size()) {
+            // Allocate empty arrays if this is the first data added.
+            _icovData.resize(nData,0);
+            _icov.resize(nCov,0);
+        }
+        for(int k = 0; k < nData; ++k) {
+            _icovData[k] += other._icovData[k];
+        }
+        for(int k = 0; k < nCov; ++k) {
+            _icov[k] += other._icov[k];
+        }
     }
     void finalize() {
-
+        // Calculate cov from icov.
+        _cov = _icov; // element-by-element copy
+        char uplo('U');
+        int info(0),ndata(getNData());
+        dpptrf_(&uplo,&ndata,&_cov[0],&info); // Cholesky decompose
+        if(0 != info) std::cout << "Cholesky error: info = " << info << std::endl;
+        assert(0 == info);
+        dpptri_(&uplo,&ndata,&_cov[0],&info); // Calculate inverse
+        if(0 != info) std::cout << "Inverse error: info = " << info << std::endl;
+        assert(0 == info);
+        // Multiply _icovData by _cov to get final _data.
+        double alpha(1),beta(0);
+        int incr(1);
+        _data.resize(ndata,0);
+        dspmv_(&uplo,&ndata,&alpha,&_cov[0],&_icovData[0],&incr,&beta,&_data[0],&incr);        
+        // All done.
+        _dataFinalized = _covarianceFinalized = true;
     }
     int getSize() const { return _nBinsTotal; }
     int getNData() const { return _data.size(); }
