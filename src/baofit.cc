@@ -299,15 +299,19 @@ public:
         // All done.
         _covarianceFinalized = true;
     }
+    void reset() {
+        _dataFinalized = _covarianceFinalized = false;
+        _data.clear();
+    }
     void add(LyaData const &other) {
         assert(!_dataFinalized && !_covarianceFinalized);
         int nData(other.getNData());
         int nCov = (nData*(nData+1))/2;
-        if(0 == _icov.size()) {
+        if(0 == _data.size()) {
             // Allocate empty arrays if this is the first data added.
-            _data.resize(nData,0);
-            _icovData.resize(nData,0);
-            _icov.resize(nCov,0);
+            std::vector<double>(nData,0).swap(_data);
+            std::vector<double>(nData,0).swap(_icovData);
+            std::vector<double>(nCov,0).swap(_icov);
             // Copy cached data.
             _nBinsTotal = other._nBinsTotal;
             _index = other._index;
@@ -356,6 +360,7 @@ public:
     AbsBinningPtr getSeparationBinning() const { return _separationBinning; }
     AbsBinningPtr getRedshiftBinning() const { return _redshiftBinning; }
     double calculateChiSquare(std::vector<double> &delta) {
+        assert(delta.size() == getNData());
         std::vector<double>(delta.size(),0).swap(_icovDelta); // zero _icovDelta
         char uplo('U');
         double alpha(1),beta(0);
@@ -688,7 +693,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,zref,minll,dll,dll2,minsep,dsep,minz,dz,rmin,rmax;
-    int nll,nsep,nz,ncontour,modelBins;
+    int nll,nsep,nz,ncontour,modelBins,nbootstrap;
     std::string fiducialName,nowigglesName,broadbandName,dataName,dumpName;
     double initialAmp,initialScale;
     std::string platelistName,platerootName;
@@ -718,6 +723,8 @@ int main(int argc, char **argv) {
         ("plateroot", po::value<std::string>(&platerootName)->default_value(""),
             "Common path to prepend to all plate datafiles listed in the platelist.")
         ("fast-load", "Bypasses numeric input validation when reading data.")
+        ("nbootstrap", po::value<int>(&nbootstrap)->default_value(0),
+            "Number of bootstrap samples to run if a platelist was provided.")
         ("minll", po::value<double>(&minll)->default_value(0.0002),
             "Minimum log(lam2/lam1).")
         ("dll", po::value<double>(&dll)->default_value(0.004),
@@ -812,6 +819,7 @@ int main(int argc, char **argv) {
     
     // Load the data we will fit.
     LyaDataPtr data;
+    std::vector<LyaDataPtr> plateData;
     try {
         // Initialize the (logLambda,separation,redshift) binning from command-line params.
         AbsBinningPtr llBins,sepBins(new UniformBinning(nsep,minsep,dsep)), zBins(new UniformBinning(nz,minz,dz));
@@ -846,7 +854,9 @@ int main(int argc, char **argv) {
                 }
                 LyaDataPtr plate(new LyaData(llBins,sepBins,zBins,cosmology));
                 plate->load(boost::str(platefile % platerootName % plateName),verbose,true,fastLoad);
+                plateData.push_back(plate);
                 data->add(*plate);
+                if(plateData.size() == 10) break;
             }
             platelist.close();
             data->finalize();
@@ -922,6 +932,23 @@ int main(int argc, char **argv) {
             contourData.push_back(contours68(5,2,ncontour));
             contourData.push_back(contours68(4,2,ncontour));
             contourData.push_back(contours68(1,2,ncontour));
+            // reset
+            nll.setErrorScale(1);
+        }
+        
+        int nplates(plateData.size());
+        if(0 < nbootstrap && 0 < nplates) {
+            for(int k = 0; k < nbootstrap; ++k) {
+                if(verbose) std::cout << "=== BOOTSTRAP SAMPLE " << k << " ===" << std::endl;
+                data->reset();
+                for(int p = 0; p < nplates; ++p) {
+                    std::cout << "  +" << p << std::endl;
+                    data->add(*plateData[p]);
+                }
+                data->finalize();
+                fmin = fitter(maxfcn,edmtol);
+                std::cout << fmin;
+            }
         }
         
         if(dumpName.length() > 0) {
