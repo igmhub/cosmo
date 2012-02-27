@@ -693,7 +693,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,zref,minll,dll,dll2,minsep,dsep,minz,dz,rmin,rmax;
-    int nll,nsep,nz,ncontour,modelBins,nbootstrap;
+    int nll,nsep,nz,ncontour,modelBins,bootstrapTrials,bootstrapSize,randomSeed;
     std::string fiducialName,nowigglesName,broadbandName,dataName,dumpName;
     double initialAmp,initialScale;
     std::string platelistName,platerootName;
@@ -723,8 +723,12 @@ int main(int argc, char **argv) {
         ("plateroot", po::value<std::string>(&platerootName)->default_value(""),
             "Common path to prepend to all plate datafiles listed in the platelist.")
         ("fast-load", "Bypasses numeric input validation when reading data.")
-        ("nbootstrap", po::value<int>(&nbootstrap)->default_value(0),
-            "Number of bootstrap samples to run if a platelist was provided.")
+        ("bootstrap-trials", po::value<int>(&bootstrapTrials)->default_value(0),
+            "Number of bootstrap trials to run if a platelist was provided.")
+        ("bootstrap-size", po::value<int>(&bootstrapSize)->default_value(0),
+            "Size of each bootstrap trial or zero to use the number of plates.")
+        ("random-seed", po::value<int>(&randomSeed)->default_value(1966),
+            "Random seed to use for generating bootstrap samples.")
         ("minll", po::value<double>(&minll)->default_value(0.0002),
             "Minimum log(lam2/lam1).")
         ("dll", po::value<double>(&dll)->default_value(0.004),
@@ -936,19 +940,31 @@ int main(int argc, char **argv) {
             nll.setErrorScale(1);
         }
         
-        int nplates(plateData.size());
-        if(0 < nbootstrap && 0 < nplates) {
-            for(int k = 0; k < nbootstrap; ++k) {
+        int nplates(plateData.size()), nInvalid(0);
+        if(0 < bootstrapTrials && 0 < nplates) {
+            lk::Random &random(lk::Random::instance());
+            random.setSeed(randomSeed);
+            if(0 == bootstrapSize) bootstrapSize = nplates;
+            for(int k = 0; k < bootstrapTrials; ++k) {
                 if(verbose) std::cout << "=== BOOTSTRAP SAMPLE " << k << " ===" << std::endl;
                 data->reset();
-                for(int p = 0; p < nplates; ++p) {
-                    std::cout << "  +" << p << std::endl;
-                    data->add(*plateData[p]);
+                for(int p = 0; p < bootstrapSize; ++p) {
+                    // Pick a random plate to use in this trial
+                    int index = (int)std::floor(random.getUniform()*nplates);
+                    std::cout << "  +" << index << std::endl;
+                    data->add(*plateData[index]);
                 }
                 data->finalize();
                 fmin = fitter(maxfcn,edmtol);
-                std::cout << fmin;
+                if(fmin.HasValidParameters()) {
+                    ROOT::Minuit2::MnUserParameters const &params = fmin.UserParameters();
+                }
+                else {
+                    nInvalid++;
+                }
             }
+            std::cout << "Completed " << bootstrapTrials << " bootstrap trials (" << nInvalid
+                << " invalid)" << std::endl;
         }
         
         if(dumpName.length() > 0) {
