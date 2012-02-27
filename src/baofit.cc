@@ -305,8 +305,17 @@ public:
         int nCov = (nData*(nData+1))/2;
         if(0 == _icov.size()) {
             // Allocate empty arrays if this is the first data added.
+            _data.resize(nData,0);
             _icovData.resize(nData,0);
             _icov.resize(nCov,0);
+            // Copy cached data.
+            _nBinsTotal = other._nBinsTotal;
+            _index = other._index;
+            _r3d = other._r3d;
+            _mu= other._mu;
+        }
+        else {
+            assert(nData == getNData());
         }
         for(int k = 0; k < nData; ++k) {
             _icovData[k] += other._icovData[k];
@@ -329,7 +338,6 @@ public:
         // Multiply _icovData by _cov to get final _data.
         double alpha(1),beta(0);
         int incr(1);
-        _data.resize(ndata,0);
         dspmv_(&uplo,&ndata,&alpha,&_cov[0],&_icovData[0],&incr,&beta,&_data[0],&incr);        
         // All done.
         _dataFinalized = _covarianceFinalized = true;
