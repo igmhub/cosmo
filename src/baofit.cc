@@ -308,16 +308,19 @@ public:
     void compress() {
         int nData(getNData());
         int nCov = (nData*(nData+1))/2;
-        _zicov.clear();
-        _zicovIndex.clear();
+        // The following swaps are to force the memory to be free'd.
+        std::vector<float>().swap(_zicov);
+        std::vector<int>().swap(_zicovIndex);
         for(int k = 0; k < nCov; ++k) {
-            double value(_icov[k]);
+            float value(_icov[k]);
             if(0 == value) continue;
             _zicov.push_back(value);
             _zicovIndex.push_back(k);
         }
-        _icov.clear();
-        _cov.clear();
+        std::vector<double>().swap(_icov);
+        std::vector<double>().swap(_cov);
+        std::vector<bool>().swap(_hasCov);
+        std::vector<bool>().swap(_initialized);
         _compressed = true;
     }
     void add(LyaData const &other) {
@@ -501,7 +504,8 @@ public:
 private:
     AbsBinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
     cosmo::AbsHomogeneousUniversePtr _cosmology;
-    std::vector<double> _data, _cov, _icov, _r3d, _mu, _icovDelta, _icovData, _zicov;
+    std::vector<double> _data, _cov, _icov, _r3d, _mu, _icovDelta, _icovData;
+    std::vector<float> _zicov;
     std::vector<bool> _initialized, _hasCov;
     std::vector<int> _index, _zicovIndex;
     int _ndata,_nsep,_nz,_nBinsTotal;
