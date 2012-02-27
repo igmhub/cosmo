@@ -860,7 +860,7 @@ int main(int argc, char **argv) {
                 plate->load(boost::str(platefile % platerootName % plateName),verbose,true,fastLoad);
                 plateData.push_back(plate);
                 data->add(*plate);
-                if(plateData.size() == 10) break;
+                //!!if(plateData.size() == 10) break;
             }
             platelist.close();
             data->finalize();
@@ -957,7 +957,11 @@ int main(int argc, char **argv) {
                 data->finalize();
                 fmin = fitter(maxfcn,edmtol);
                 if(fmin.HasValidParameters()) {
-                    ROOT::Minuit2::MnUserParameters const &params = fmin.UserParameters();
+                    std::cout << fmin.Fval();
+                    BOOST_FOREACH(double value, fmin.UserParameters().Params()) {
+                        std::cout << ' ' << value;
+                    }
+                    std::cout << std::endl;
                 }
                 else {
                     nInvalid++;
