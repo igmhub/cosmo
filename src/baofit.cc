@@ -904,6 +904,11 @@ int main(int argc, char **argv) {
         std::cout << fmin.UserCovariance();
         std::cout << fmin.UserState().GlobalCC();
         
+        // Remember the best-fit parameters and errors.
+        std::vector<double> bestParams = fmin.UserParameters().Params(),
+            bestErrors = fmin.UserParameters().Errors();
+        double bestFval = fmin.Fval();
+        
         std::vector<ContourPoints> contourData;
         if(ncontour > 0) {
             if(verbose) std::cout << "Calculating contours with " << ncontour << " points..." << std::endl;
@@ -944,6 +949,7 @@ int main(int argc, char **argv) {
         if(0 < bootstrapTrials && 0 < nplates) {
             lk::Random &random(lk::Random::instance());
             random.setSeed(randomSeed);
+            boost::scoped_array<lk::WeightedAccumulator> accumulators(new lk::WeightedAccumulator[npar+1]);
             if(0 == bootstrapSize) bootstrapSize = nplates;
             for(int k = 0; k < bootstrapTrials; ++k) {
                 if(verbose) std::cout << "=== BOOTSTRAP SAMPLE " << k << " ===" << std::endl;
@@ -957,11 +963,14 @@ int main(int argc, char **argv) {
                 data->finalize();
                 fmin = fitter(maxfcn,edmtol);
                 if(fmin.HasValidParameters()) {
-                    std::cout << fmin.Fval();
-                    BOOST_FOREACH(double value, fmin.UserParameters().Params()) {
-                        std::cout << ' ' << value;
+                    std::vector<double> params = fmin.UserParameters().Params();
+                    for(int i = 0; i < npar; ++i) {
+                        double value = params[i];
+                        accumulators[i].accumulate(value);
+                        std::cout << value << ' ';
                     }
-                    std::cout << std::endl;
+                    std::cout << fmin.Fval() << std::endl;
+                    accumulators[npar].accumulate(fmin.Fval());
                 }
                 else {
                     nInvalid++;
@@ -969,6 +978,13 @@ int main(int argc, char **argv) {
             }
             std::cout << "Completed " << bootstrapTrials << " bootstrap trials (" << nInvalid
                 << " invalid)" << std::endl;
+            for(int i = 0; i < npar; ++i) {
+                std::cout << i << ' ' << accumulators[i].mean() << " +/- "
+                    << accumulators[i].error() << "\t\t[ " << bestParams[i] << " +/- "
+                    << bestErrors[i] << " ]" << std::endl;
+            }
+            std::cout << "minChiSq = " << accumulators[npar].mean() << " +/- "
+                << accumulators[npar].error() << "\t\t[ " << bestFval << " ]" << std::endl;
         }
         
         if(dumpName.length() > 0) {
