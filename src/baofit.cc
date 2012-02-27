@@ -728,7 +728,7 @@ int main(int argc, char **argv) {
     int nll,nsep,nz,ncontour,modelBins,bootstrapTrials,bootstrapSize,randomSeed;
     std::string fiducialName,nowigglesName,broadbandName,dataName,dumpName;
     double initialAmp,initialScale;
-    std::string platelistName,platerootName;
+    std::string platelistName,platerootName,bootstrapSaveName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -759,6 +759,8 @@ int main(int argc, char **argv) {
             "Number of bootstrap trials to run if a platelist was provided.")
         ("bootstrap-size", po::value<int>(&bootstrapSize)->default_value(0),
             "Size of each bootstrap trial or zero to use the number of plates.")
+        ("bootstrap-save", po::value<std::string>(&bootstrapSaveName)->default_value("bstrials.txt"),
+            "Name of file to write with results of each bootstrap trial.")
         ("random-seed", po::value<int>(&randomSeed)->default_value(1966),
             "Random seed to use for generating bootstrap samples.")
         ("minll", po::value<double>(&minll)->default_value(0.0002),
@@ -984,6 +986,7 @@ int main(int argc, char **argv) {
             random.setSeed(randomSeed);
             boost::scoped_array<lk::WeightedAccumulator> accumulators(new lk::WeightedAccumulator[npar+1]);
             if(0 == bootstrapSize) bootstrapSize = nplates;
+            std::ofstream out(bootstrapSaveName.c_str());
             for(int k = 0; k < bootstrapTrials; ++k) {
                 data->reset();
                 for(int p = 0; p < bootstrapSize; ++p) {
@@ -994,21 +997,25 @@ int main(int argc, char **argv) {
                 data->finalize();
                 fmin = fitter(maxfcn,edmtol);
                 if(fmin.HasValidParameters()) {
+                    out << k << ' ';
                     std::vector<double> params = fmin.UserParameters().Params();
                     for(int i = 0; i < npar; ++i) {
                         double value = params[i];
                         accumulators[i].accumulate(value);
-                        std::cout << value << ' ';
+                        out << value << ' ';
                     }
-                    std::cout << fmin.Fval() << std::endl;
+                    out << fmin.Fval() << std::endl;
                     accumulators[npar].accumulate(fmin.Fval());
                 }
                 else {
                     nInvalid++;
                 }
+                if(verbose && (0 == (k+1)%10)) {
+                    std::cout << "Completed " << (k+1) << " bootstrap trials (" << nInvalid
+                        << " invalid)" << std::endl;
+                }
             }
-            std::cout << "Completed " << bootstrapTrials << " bootstrap trials (" << nInvalid
-                << " invalid)" << std::endl;
+            out.close();
             for(int i = 0; i < npar; ++i) {
                 std::cout << i << ' ' << accumulators[i].mean() << " +/- "
                     << accumulators[i].error() << "\t\t[ " << bestParams[i] << " +/- "
