@@ -582,7 +582,7 @@ typedef std::vector<ContourPoint> ContourPoints;
 class Parameter {
 public:
     Parameter(std::string const &name, double value, bool floating = false)
-    : _name(name), _value(value), _floating(floating)
+    : _name(name), _value(value), _initialValue(value), _floating(floating)
     { }
     void fix(double value) {
         _value = value;
@@ -592,9 +592,10 @@ public:
     bool isFloating() const { return _floating; }
     double getValue() const { return _value; }
     std::string getName() const { return _name; }
+    void reset() { _value = _initialValue; }
 private:
     std::string _name;
-    double _value;
+    double _value, _initialValue;
     bool _floating;
 }; // Parameter
 
@@ -615,6 +616,9 @@ public:
         _params.push_back(Parameter("BB a0",0,!noBBand));
         _params.push_back(Parameter("BB a1",0,!noBBand));
         _params.push_back(Parameter("BB a2",0,!noBBand));
+    }
+    void reset() {
+        
     }
     void setErrorScale(double scale) {
         assert(scale > 0);
