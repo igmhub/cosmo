@@ -186,8 +186,9 @@ private:
 
 class LyaData {
 public:
-    LyaData(AbsBinningPtr logLambdaBinning, AbsBinningPtr separationBinning, AbsBinningPtr redshiftBinning,
-    cosmo::AbsHomogeneousUniversePtr cosmology) : _cosmology(cosmology), _logLambdaBinning(logLambdaBinning),
+    LyaData(AbsBinningPtr logLambdaBinning, AbsBinningPtr separationBinning,
+    AbsBinningPtr redshiftBinning, cosmo::AbsHomogeneousUniversePtr cosmology)
+    : _cosmology(cosmology), _logLambdaBinning(logLambdaBinning),
     _separationBinning(separationBinning), _redshiftBinning(redshiftBinning),
     _dataFinalized(false), _covarianceFinalized(false), _compressed(false)
     {
@@ -244,7 +245,8 @@ public:
         mu = std::abs(drLos)/r3d;
 /**
         std::cout << '(' << ll << ',' << sep << ',' << z << ") => ["
-            << z1 << ',' << z2 << ',' << swgt << ';' << drLos << ',' << drPerp << ',' << mu << ']' << std::endl;
+            << z1 << ',' << z2 << ',' << swgt << ';' << drLos << ','
+            << drPerp << ',' << mu << ']' << std::endl;
 **/
     }
     void addCovariance(int i, int j, double value) {
@@ -406,12 +408,13 @@ public:
     }
     void getDouble(std::string::const_iterator const &begin, std::string::const_iterator const &end,
         double &value) const {
-        // Use boost::spirit::parse instead of the easier boost::lexical_cast since this is a bottleneck
-        // when reading many files. For details, see:
+        // Use boost::spirit::parse instead of the easier boost::lexical_cast since this is
+        // a bottleneck when reading many files. For details, see:
         // http://tinodidriksen.com/2011/05/28/cpp-convert-string-to-double-speed/
         std::string tokenString(begin,end);
         char const *tokenPtr = tokenString.c_str();
-        boost::spirit::qi::parse(tokenPtr, &tokenPtr[tokenString.size()], boost::spirit::qi::double_, value);    
+        boost::spirit::qi::parse(tokenPtr, &tokenPtr[tokenString.size()],
+            boost::spirit::qi::double_, value);    
     }
     void getInt(std::string::const_iterator const &begin, std::string::const_iterator const &end,
         int &value) const {
@@ -442,7 +445,8 @@ public:
             std::getline(paramsIn,line);
             if(paramsIn.eof()) break;
             if(!paramsIn.good()) {
-                throw cosmo::RuntimeError("Unable to read line " + boost::lexical_cast<std::string>(lineNumber));
+                throw cosmo::RuntimeError("Unable to read line " +
+                    boost::lexical_cast<std::string>(lineNumber));
             }
             lineNumber++;
             // Parse this line with a regexp.
@@ -455,8 +459,8 @@ public:
             for(int tok = 0; tok < nTokens; ++tok) {
                 getDouble(what[tok+1].first,what[tok+1].second,token[tok]);
             }
-            // Add this bin to our dataset. Second value token[1] might be non-zero, in which case it is
-            // Cinv*d from the quadratic estimator, but we just ignore it.
+            // Add this bin to our dataset. Second value token[1] might be non-zero, in which case
+            //  it is Cinv*d from the quadratic estimator, but we just ignore it.
             addData(token[0],token[2],token[3],token[4]);
         }
         finalizeData();
@@ -469,7 +473,8 @@ public:
         std::string covName(dataName + (icov ? ".icov" : ".cov"));
         std::ifstream covIn(covName.c_str());
         if(!covIn.good()) throw cosmo::RuntimeError("Unable to open " + covName);
-        boost::regex covPattern(boost::str(boost::format("\\s*%s\\s+%s\\s+%s\\s*") % ipat % ipat % fpat));
+        boost::regex covPattern(boost::str(boost::format("\\s*%s\\s+%s\\s+%s\\s*")
+            % ipat % ipat % fpat));
         lineNumber = 0;
         double value;
         int index1,index2;
@@ -477,7 +482,8 @@ public:
             std::getline(covIn,line);
             if(covIn.eof()) break;
             if(!covIn.good()) {
-                throw cosmo::RuntimeError("Unable to read line " + boost::lexical_cast<std::string>(lineNumber));
+                throw cosmo::RuntimeError("Unable to read line " +
+                    boost::lexical_cast<std::string>(lineNumber));
             }
             lineNumber++;
             // Parse this line with a regexp.
@@ -745,7 +751,7 @@ int main(int argc, char **argv) {
         ("nowiggles", po::value<std::string>(&nowigglesName)->default_value(""),
             "No-wiggles correlation functions will be read from <name>.<ell>.dat with ell=0,2,4.")
         ("broadband", po::value<std::string>(&broadbandName)->default_value(""),
-            "Broadband correlation functions will be read from <name>bb<x>.<ell>.dat with x=c,1,2 and ell=0,2,4.")
+            "Broadband models will be read from <name>bb<x>.<ell>.dat with x=c,1,2 and ell=0,2,4.")
         ("zref", po::value<double>(&zref)->default_value(2.25),
             "Reference redshift.")
         ("rmin", po::value<double>(&rmin)->default_value(0),
@@ -864,7 +870,8 @@ int main(int argc, char **argv) {
     std::vector<LyaDataPtr> plateData;
     try {
         // Initialize the (logLambda,separation,redshift) binning from command-line params.
-        AbsBinningPtr llBins,sepBins(new UniformBinning(nsep,minsep,dsep)), zBins(new UniformBinning(nz,minz,dz));
+        AbsBinningPtr llBins,sepBins(new UniformBinning(nsep,minsep,dsep)),
+            zBins(new UniformBinning(nz,minz,dz));
         if(0 == dll2) {
             llBins.reset(new UniformBinning(nll,minll,dll));
         }
@@ -950,7 +957,9 @@ int main(int argc, char **argv) {
         
         std::vector<ContourPoints> contourData;
         if(ncontour > 0) {
-            if(verbose) std::cout << "Calculating contours with " << ncontour << " points..." << std::endl;
+            if(verbose) {
+                std::cout << "Calculating contours with " << ncontour << " points..." << std::endl;
+            }
             // 95% CL (see http://wwwasdoc.web.cern.ch/wwwasdoc/minuit/node33.html)
             // Calculate in mathematica using:
             // Solve[CDF[ChiSquareDistribution[2], x] == 0.95, x]
@@ -988,7 +997,8 @@ int main(int argc, char **argv) {
         if(0 < bootstrapTrials && 0 < nplates) {
             lk::Random &random(lk::Random::instance());
             random.setSeed(randomSeed);
-            boost::scoped_array<lk::WeightedAccumulator> accumulators(new lk::WeightedAccumulator[npar+1]);
+            boost::scoped_array<lk::WeightedAccumulator>
+                accumulators(new lk::WeightedAccumulator[npar+1]);
             if(0 == bootstrapSize) bootstrapSize = nplates;
             std::ofstream out(bootstrapSaveName.c_str());
             for(int k = 0; k < bootstrapTrials; ++k) {
