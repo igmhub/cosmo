@@ -623,8 +623,14 @@ public:
         _params.push_back(Parameter("BB a1",0,!noBBand));
         _params.push_back(Parameter("BB a2",0,!noBBand));
     }
-    void reset() {
-        
+    void reset(ROOT::Minuit2::MnApplication &fitter) {
+        // Loop over our parameters
+        BOOST_FOREACH(Parameter &param, _params) {
+            // Reset to the initial parameter value.
+            param.reset();
+            // Propagate the reset value to the fitter.
+            fitter.SetValue(param.getName().c_str(), param.getValue());
+        }
     }
     void setErrorScale(double scale) {
         assert(scale > 0);
@@ -1001,6 +1007,7 @@ int main(int argc, char **argv) {
                 accumulators(new lk::WeightedAccumulator[npar+1]);
             if(0 == bootstrapSize) bootstrapSize = nplates;
             std::ofstream out(bootstrapSaveName.c_str());
+            out << "trial alpha bias beta amp scale xio a0 a1 a2 chisq" << std::endl;
             for(int k = 0; k < bootstrapTrials; ++k) {
                 data->reset();
                 for(int p = 0; p < bootstrapSize; ++p) {
@@ -1009,6 +1016,9 @@ int main(int argc, char **argv) {
                     data->add(*plateData[index]);
                 }
                 data->finalize();
+                // Reset parameters to their initial values.
+                nll.reset(fitter);
+                // Do the fit.
                 fmin = fitter(maxfcn,edmtol);
                 if(fmin.HasValidParameters()) {
                     out << k << ' ';
