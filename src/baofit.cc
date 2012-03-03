@@ -912,7 +912,7 @@ int main(int argc, char **argv) {
                 plate->compress();
                 plateData.push_back(plate);
                 data->add(*plate);
-                //!!if(plateData.size() == 10) break;
+                //!!if(plateData.size() == 100) break;
             }
             platelist.close();
             data->finalize();
@@ -1007,21 +1007,27 @@ int main(int argc, char **argv) {
                 accumulators(new lk::WeightedAccumulator[npar+1]);
             if(0 == bootstrapSize) bootstrapSize = nplates;
             std::ofstream out(bootstrapSaveName.c_str());
-            out << "trial alpha bias beta amp scale xio a0 a1 a2 chisq" << std::endl;
+            out << "trial nuniq alpha bias beta amp scale xio a0 a1 a2 chisq" << std::endl;
             for(int k = 0; k < bootstrapTrials; ++k) {
                 data->reset();
+                std::vector<double> counter(nplates,0);
                 for(int p = 0; p < bootstrapSize; ++p) {
-                    // Pick a random plate to use in this trial
+                    // Pick a random plate to use in this trial.
                     int index = (int)std::floor(random.getUniform()*nplates);
+                    // Keep track of how many times we use this plate.
+                    counter[index]++;
+                    // Add this plate to the data we will fit.
                     data->add(*plateData[index]);
                 }
                 data->finalize();
+                // Count total number of different plates used.
+                int nuniq = nplates - std::count(counter.begin(),counter.end(),0);
                 // Reset parameters to their initial values.
                 nll.reset(fitter);
                 // Do the fit.
                 fmin = fitter(maxfcn,edmtol);
                 if(fmin.HasValidParameters()) {
-                    out << k << ' ';
+                    out << k << ' ' << nuniq << ' ';
                     std::vector<double> params = fmin.UserParameters().Params();
                     for(int i = 0; i < npar; ++i) {
                         double value = params[i];
