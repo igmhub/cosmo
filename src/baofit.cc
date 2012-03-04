@@ -36,12 +36,12 @@
 // Declare bindings to BLAS,LAPACK routines we need
 extern "C" {
     // http://www.netlib.org/lapack/double/dpptrf.f
-    void dpptrf_(char *uplo, int *n, double *ap, int *info);
+    void dpptrf_(char const *uplo, int const *n, double *ap, int *info);
     // http://www.netlib.org/lapack/double/dpptri.f
-    void dpptri_(char *uplo, int *n, double *ap, int *info);
+    void dpptri_(char const *uplo, int const *n, double *ap, int *info);
     // http://netlib.org/blas/dspmv.f
-    void dspmv_(char *uplo, int *n, double *alpha, double *ap,
-        double *x, int *incx, double *beta, double *y, int *incy);
+    void dspmv_(char const *uplo, int const *n, double const *alpha, double const *ap,
+        double const *x, int const *incx, double const *beta, double *y, int const *incy);
 }
 
 namespace lk = likely;
