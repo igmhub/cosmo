@@ -363,22 +363,41 @@ public:
             }
         }
     }
+    // Inverts an n by n symmetric matrix in BLAS upper diagonal form
+    void invert(std::vector<double> const &original, std::vector<double> &inverse, int n) {
+        // Copy original to inverse, element by element.
+        inverse = original;
+        // Setup LAPACK/BLAS parameters.
+        char uplo('U');
+        int info(0);
+        // Do the Cholesky decomposition of inverse.
+        dpptrf_(&uplo,&n,&inverse[0],&info);
+        if(0 != info) std::cout << "Cholesky error: info = " << info << std::endl;
+        assert(0 == info);
+        dpptri_(&uplo,&n,&inverse[0],&info); // Calculate inverse
+        if(0 != info) std::cout << "Inverse error: info = " << info << std::endl;
+        assert(0 == info);
+    }
+    // Multiplies a symmetric matrix in BLAS upper diagonal form by invec,
+    // storing the result in outvec.
+    void multiply(std::vector<double> const &matrix, std::vector<double> const &invec,
+    std::vector<double> &outvec) {
+        // Get the size from the input vector.
+        int n(invec.size());
+        // Zero output vector.
+        std::vector<double>(n,0).swap(outvec);
+        // Setup LAPACK/BLAS parameters.
+        char uplo('U');
+        int incr(1);
+        double alpha(1),beta(0);
+        dspmv_(&uplo,&n,&alpha,&matrix[0],&invec[0],&incr,&beta,&outvec[0],&incr);        
+    }
     void finalize() {
         assert(!_dataFinalized && !_covarianceFinalized && !_compressed);
         // Calculate cov from icov.
-        _cov = _icov; // element-by-element copy
-        char uplo('U');
-        int info(0),ndata(getNData());
-        dpptrf_(&uplo,&ndata,&_cov[0],&info); // Cholesky decompose
-        if(0 != info) std::cout << "Cholesky error: info = " << info << std::endl;
-        assert(0 == info);
-        dpptri_(&uplo,&ndata,&_cov[0],&info); // Calculate inverse
-        if(0 != info) std::cout << "Inverse error: info = " << info << std::endl;
-        assert(0 == info);
+        invert(_icov,_cov,getNData());
         // Multiply _icovData by _cov to get final _data.
-        double alpha(1),beta(0);
-        int incr(1);
-        dspmv_(&uplo,&ndata,&alpha,&_cov[0],&_icovData[0],&incr,&beta,&_data[0],&incr);        
+        multiply(_cov,_icovData,_data);
         // Delete temporary storage
         std::vector<double>().swap(_icovTilde);
         // All done.
