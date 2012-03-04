@@ -325,7 +325,7 @@ public:
         std::vector<bool>().swap(_initialized);
         _compressed = true;
     }
-    void add(LyaData const &other) {
+    void add(LyaData const &other, int repeat = 1) {
         assert(!_dataFinalized && !_covarianceFinalized && !_compressed);
         assert(other._dataFinalized && other._covarianceFinalized);
         int nData(other.getNData());
@@ -345,18 +345,21 @@ public:
             assert(nData == getNData());
         }
         for(int k = 0; k < nData; ++k) {
-            _icovData[k] += other._icovData[k];
+            _icovData[k] += repeat*other._icovData[k];
         }
+        double nk(repeat), nk2(repeat*repeat);
         if(other._compressed) {
             int nz(other._zicov.size());
             for(int iz = 0; iz < nz; ++iz) {
                 int k = other._zicovIndex[iz];
-                _icov[k] += other._zicov[iz];
+                _icovTilde[k] += nk*other._zicov[iz];
+                _icov[k] += nk2*other._zicov[iz];
             }
         }
         else {
             for(int k = 0; k < nCov; ++k) {
-                _icov[k] += other._icov[k];
+                _icovTilde[k] += nk*other._icov[k];
+                _icov[k] += nk2*other._icov[k];
             }
         }
     }
@@ -376,6 +379,8 @@ public:
         double alpha(1),beta(0);
         int incr(1);
         dspmv_(&uplo,&ndata,&alpha,&_cov[0],&_icovData[0],&incr,&beta,&_data[0],&incr);        
+        // Delete temporary storage
+        std::vector<double>().swap(_icovTilde);
         // All done.
         _dataFinalized = _covarianceFinalized = true;
     }
@@ -510,7 +515,7 @@ public:
 private:
     AbsBinningPtr _logLambdaBinning, _separationBinning, _redshiftBinning;
     cosmo::AbsHomogeneousUniversePtr _cosmology;
-    std::vector<double> _data, _cov, _icov, _r3d, _mu, _icovDelta, _icovData;
+    std::vector<double> _data, _cov, _icov, _icovTilde, _r3d, _mu, _icovDelta, _icovData;
     std::vector<float> _zicov;
     std::vector<bool> _initialized, _hasCov;
     std::vector<int> _index, _zicovIndex;
@@ -1009,15 +1014,19 @@ int main(int argc, char **argv) {
             std::ofstream out(bootstrapSaveName.c_str());
             out << "trial nuniq alpha bias beta amp scale xio a0 a1 a2 chisq" << std::endl;
             for(int k = 0; k < bootstrapTrials; ++k) {
-                data->reset();
+                // First, decide how many copies of each plate to use in this trial.
                 std::vector<double> counter(nplates,0);
                 for(int p = 0; p < bootstrapSize; ++p) {
                     // Pick a random plate to use in this trial.
                     int index = (int)std::floor(random.getUniform()*nplates);
                     // Keep track of how many times we use this plate.
                     counter[index]++;
-                    // Add this plate to the data we will fit.
-                    data->add(*plateData[index]);
+                }
+                // Next, build the dataset for this trial.
+                data->reset();
+                for(int index = 0; index < nplates; ++index) {
+                    int repeat = counter[index];
+                    if(0 < repeat) data->add(*plateData[index],repeat);
                 }
                 data->finalize();
                 // Count total number of different plates used.
