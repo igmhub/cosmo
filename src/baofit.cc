@@ -412,7 +412,10 @@ public:
         int index(row+(col*(col+1))/2);
         return matrix[index];
     }
-    void finalize(bool fixCovariance = true) {
+    // Use fixCovariance to calculate the correct covariance for a bootstrap sample with
+    // repetitions. With no repetitions, fixCovariance = false gives the same answer
+    // and is faster.
+    void finalize(bool fixCovariance) {
         assert(!_dataFinalized && !_covarianceFinalized && !_compressed);
         // Invert _icovTilde into _cov
         invert(_icovTilde,_cov,getNData());
