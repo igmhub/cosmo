@@ -870,6 +870,7 @@ int main(int argc, char **argv) {
             "Size of each bootstrap trial or zero to use the number of plates.")
         ("bootstrap-save", po::value<std::string>(&bootstrapSaveName)->default_value("bstrials.txt"),
             "Name of file to write with results of each bootstrap trial.")
+        ("naive-covariance", "Uses the naive covariance matrix for each bootstrap trial.")
         ("random-seed", po::value<int>(&randomSeed)->default_value(1966),
             "Random seed to use for generating bootstrap samples.")
         ("minll", po::value<double>(&minll)->default_value(0.0002),
@@ -922,7 +923,8 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose")), minos(vm.count("minos")), fastLoad(vm.count("fast-load")),
-        fixBao(vm.count("fix-bao")), noBBand(vm.count("no-bband"));
+        fixBao(vm.count("fix-bao")), noBBand(vm.count("no-bband")),
+        naiveCovariance(vm.count("naive-covariance"));
 
     // Check for the required filename parameters.
     if(0 == dataName.length() && 0 == platelistName.length()) {
@@ -1009,7 +1011,7 @@ int main(int argc, char **argv) {
                 if(plateData.size() == 100) break;
             }
             platelist.close();
-            data->finalize();
+            data->finalize(false);
         }
     }
     catch(cosmo::RuntimeError const &e) {
@@ -1117,7 +1119,7 @@ int main(int argc, char **argv) {
                     int repeat = counter[index];
                     if(0 < repeat) data->add(*plateData[index],repeat);
                 }
-                data->finalize();
+                data->finalize(!naiveCovariance);
                 // Count total number of different plates used.
                 int nuniq = nplates - std::count(counter.begin(),counter.end(),0);
                 // Reset parameters to their initial values.
