@@ -655,10 +655,7 @@ public:
         // Calculate the additional broadband contribution with no radius scaling.
         double bbc((*_bbc)(r,mu)), bb0((*_nw)(r,mu)), bb1((*_bb1)(r,mu)), bb2((*_bb2)(r,mu));
         double broadband = xio*bbc + (1+a0)*bb0 + a1*bb1 + a2*bb2;
-/**
-        std::cout << "LinXi(" << r << ',' << mu << ',' << z << ';'
-            << alpha << ',' << beta << ',' << bias << ") = " << bias*bias*zfactor*xi << std::endl;
-**/
+        // Combine the peak and broadband components, with bias and redshift evolution.
         return bias*bias*zfactor*(peak + broadband);
     }
 private:
