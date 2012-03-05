@@ -42,6 +42,10 @@ extern "C" {
     // http://netlib.org/blas/dspmv.f
     void dspmv_(char const *uplo, int const *n, double const *alpha, double const *ap,
         double const *x, int const *incx, double const *beta, double *y, int const *incy);
+    // http://www.netlib.org/blas/dsymm.f
+    void dsymm_(char const *side, char const *uplo, int const *m, int const *n,
+        double const *alpha, double const *a, int const *lda, double const *b,
+        int const *ldb, double const *beta, double *c, int const *ldc);
 }
 
 namespace lk = likely;
@@ -414,21 +418,44 @@ public:
             // Invert the nk^2 weighted inverse-covariance in _icov and save in _cov
             int n(getNData());
             invert(_icov,_cov,n);
-            // Multiply _icovTilde * _cov * _icovTilde and store the result in _icov
-            for(int a = 0; a < n; ++a) { // rows of result
-                for(int d = 0; d <= a; ++d) { // columns of result
-                    double result = 0;
-                    for(int b = 0; b < n; ++b) {
-                        for(int c = 0; c < n; ++c) {
-                            result += getSymmetric(_icovTilde,a,b)*getSymmetric(_icovTilde,c,d)*
-                                getSymmetric(_cov,b,c);
-                        }
-                    }
-                    int index(a+(d*(d+1))/2);
-                    _icov[index] = result;
-                    std::cout << a << ' ' << d << ' ' << index << ' ' << result << std::endl;
+            // Multiply _icovTilde * _cov * _icovTilde and store the result in _icov...
+            // First, unpack _cov and _icovTilde.
+            std::vector<double> covUnpacked(n*n), icovTildeUnpacked(n*n);
+            int index(0);
+            for(int col = 0; col < n; ++col) {
+                for(int row = 0; row <= col; ++row) {
+                    int index2 = row*n + col, index3 = col*n + row;
+                    covUnpacked[index2] = covUnpacked[index3] = _cov[index];
+                    icovTildeUnpacked[index2] = icovTildeUnpacked[index3] = _icovTilde[index];
+                    index++;
                 }
             }
+            std::cout << "ready to multiply..." << std::endl;
+            // Multiply covUnpacked by icovTildeUnpacked, saving result in tmp
+            char side('L'),uplo('U');
+            double alpha(1),beta(0);
+            std::vector<double> tmp(n*n); // do not need to initialize values when beta=0
+            dsymm_(&side,&uplo,&n,&n,&alpha,&covUnpacked[0],&n,&icovTildeUnpacked[0],&n,&beta,
+                &tmp[0],&n);
+            std::cout << "done first multiply" << std::endl;
+            // Multiply icovTildeUnpacked by tmp, saving result in covUnpacked
+            dsymm_(&side,&uplo,&n,&n,&alpha,&icovTildeUnpacked[0],&n,&tmp[0],&n,&beta,
+                &covUnpacked[0],&n);
+            std::cout << "done second multiply" << std::endl;
+            // Pack covUnpacked back into _icov
+            index = 0;
+            for(int col = 0; col < n; ++col) {
+                for(int row = 0; row <= col; ++row) {
+                    if(std::fabs(_icov[index] - covUnpacked[row*n + col]) > 1e-6*std::fabs(_icov[index])) {
+                        std::cout << index << ' ' << _icov[index] - covUnpacked[row*n + col] << ' '
+                            << _icov[index] << ' ' << covUnpacked[row*n + col] << ' '
+                            << covUnpacked[col*n + row] << std::endl;
+                    }
+                    _icov[index] = covUnpacked[row*n + col];
+                    index++;
+                }
+            }
+            std::cout << "all done" << std::endl;
         }
         else {
             _icov.swap(_icovTilde);
