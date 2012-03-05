@@ -335,6 +335,7 @@ public:
             std::vector<double>(nData,0).swap(_data);
             std::vector<double>(nData,0).swap(_icovData);
             std::vector<double>(nCov,0).swap(_icov);
+            std::vector<double>(nCov,0).swap(_icovTilde);
             // Copy cached data.
             _nBinsTotal = other._nBinsTotal;
             _index = other._index;
@@ -392,8 +393,46 @@ public:
         double alpha(1),beta(0);
         dspmv_(&uplo,&n,&alpha,&matrix[0],&invec[0],&incr,&beta,&outvec[0],&incr);        
     }
-    void finalize() {
+    // Returns element [i,j] of a symmetric matrix stored in BLAS upper-diagonal form.
+    // see http://www.netlib.org/lapack/lug/node123.html
+    double getSymmetric(std::vector<double> const &matrix, int i, int j) const {
+        int row,col;
+         // put into upper-diagonal form col >= row
+        if(i >= j) {
+            col = i; row = j;
+        }
+        else {
+            row = i; col = j;
+        }
+        assert(row >= 0 && col >= 0 && col < getNData());
+        int index(row+(col*(col+1))/2);
+        return matrix[index];
+    }
+    void finalize(bool fixCovariance = true) {
         assert(!_dataFinalized && !_covarianceFinalized && !_compressed);
+        if(fixCovariance) {
+            // Invert the nk^2 weighted inverse-covariance in _icov and save in _cov
+            int n(getNData());
+            invert(_icov,_cov,n);
+            // Multiply _icovTilde * _cov * _icovTilde and store the result in _icov
+            for(int a = 0; a < n; ++a) { // rows of result
+                for(int d = 0; d <= a; ++d) { // columns of result
+                    double result = 0;
+                    for(int b = 0; b < n; ++b) {
+                        for(int c = 0; c < n; ++c) {
+                            result += getSymmetric(_icovTilde,a,b)*getSymmetric(_icovTilde,c,d)*
+                                getSymmetric(_cov,b,c);
+                        }
+                    }
+                    int index(a+(d*(d+1))/2);
+                    _icov[index] = result;
+                    std::cout << a << ' ' << d << ' ' << index << ' ' << result << std::endl;
+                }
+            }
+        }
+        else {
+            _icov.swap(_icovTilde);
+        }
         // Calculate cov from icov.
         invert(_icov,_cov,getNData());
         // Multiply _icovData by _cov to get final _data.
@@ -936,7 +975,8 @@ int main(int argc, char **argv) {
                 plate->compress();
                 plateData.push_back(plate);
                 data->add(*plate);
-                //!!if(plateData.size() == 100) break;
+                //!!
+                if(plateData.size() == 100) break;
             }
             platelist.close();
             data->finalize();
