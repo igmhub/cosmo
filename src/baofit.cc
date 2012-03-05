@@ -719,6 +719,7 @@ public:
             param.reset();
             // Propagate the reset value to the fitter.
             fitter.SetValue(param.getName().c_str(), param.getValue());
+            if(param.isFloating()) fitter.SetError(param.getName().c_str(),param.getError());
         }
     }
     void setErrorScale(double scale) {
@@ -748,7 +749,7 @@ public:
         BOOST_FOREACH(Parameter const &param, _params) {
             double value(param.getValue());
             if(param.isFloating()) {
-                double error = (0 == value) ? 0.1 : 0.1*std::fabs(value);
+                double error = param.getError();
                 initialState->Add(param.getName(),value,error);
             }
             else {
