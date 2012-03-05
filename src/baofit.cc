@@ -448,13 +448,6 @@ public:
             index = 0;
             for(int col = 0; col < n; ++col) {
                 for(int row = 0; row <= col; ++row) {
-                    /*
-                    if(std::fabs(_icov[index] - covUnpacked[row*n + col]) > 1e-6*std::fabs(_icov[index])) {
-                        std::cout << index << ' ' << _icov[index] - covUnpacked[row*n + col] << ' '
-                            << _icov[index] << ' ' << covUnpacked[row*n + col] << ' '
-                            << covUnpacked[col*n + row] << std::endl;
-                    }
-                    */
                     _icov[index] = covUnpacked[row*n + col];
                     index++;
                 }
