@@ -414,6 +414,11 @@ public:
     }
     void finalize(bool fixCovariance = true) {
         assert(!_dataFinalized && !_covarianceFinalized && !_compressed);
+        // Invert _icovTilde into _cov
+        invert(_icovTilde,_cov,getNData());
+        // Multiply _icovData by this to get final data.
+        multiply(_cov,_icovData,_data);
+        // Do we want to get the covariance right?
         if(fixCovariance) {
             // Invert the nk^2 weighted inverse-covariance in _icov and save in _cov
             int n(getNData());
@@ -430,40 +435,38 @@ public:
                     index++;
                 }
             }
-            std::cout << "ready to multiply..." << std::endl;
             // Multiply covUnpacked by icovTildeUnpacked, saving result in tmp
             char side('L'),uplo('U');
             double alpha(1),beta(0);
             std::vector<double> tmp(n*n); // do not need to initialize values when beta=0
             dsymm_(&side,&uplo,&n,&n,&alpha,&covUnpacked[0],&n,&icovTildeUnpacked[0],&n,&beta,
                 &tmp[0],&n);
-            std::cout << "done first multiply" << std::endl;
             // Multiply icovTildeUnpacked by tmp, saving result in covUnpacked
             dsymm_(&side,&uplo,&n,&n,&alpha,&icovTildeUnpacked[0],&n,&tmp[0],&n,&beta,
                 &covUnpacked[0],&n);
-            std::cout << "done second multiply" << std::endl;
             // Pack covUnpacked back into _icov
             index = 0;
             for(int col = 0; col < n; ++col) {
                 for(int row = 0; row <= col; ++row) {
+                    /*
                     if(std::fabs(_icov[index] - covUnpacked[row*n + col]) > 1e-6*std::fabs(_icov[index])) {
                         std::cout << index << ' ' << _icov[index] - covUnpacked[row*n + col] << ' '
                             << _icov[index] << ' ' << covUnpacked[row*n + col] << ' '
                             << covUnpacked[col*n + row] << std::endl;
                     }
+                    */
                     _icov[index] = covUnpacked[row*n + col];
                     index++;
                 }
             }
-            std::cout << "all done" << std::endl;
+            // Calculate _cov from _icov.
+            invert(_icov,_cov,getNData());
         }
         else {
+            // We have already inverted _icovTilde into _cov so we only need to
+            // copy _icovTilde into _icov.
             _icov.swap(_icovTilde);
         }
-        // Calculate cov from icov.
-        invert(_icov,_cov,getNData());
-        // Multiply _icovData by _cov to get final _data.
-        multiply(_cov,_icovData,_data);
         // Delete temporary storage
         std::vector<double>().swap(_icovTilde);
         // All done.
