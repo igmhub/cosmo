@@ -641,9 +641,14 @@ public:
     double evaluate(double r, double mu, double z, lk::Parameters const &p) const {
         double alpha(p[0]), bias(p[1]), beta(p[2]), ampl(p[3]), scale(p[4]);
         double xio(p[5]), a0(p[6]), a1(p[7]), a2(p[8]);
+        // Calculate redshift evolution factor.
         double zfactor = std::pow((1+z)/(1+_zref),alpha);
+        // Apply redshift-space distortion to each model component.
         _fid->setDistortion(beta);
         _nw->setDistortion(beta);
+        _bbc->setDistortion(beta);
+        _bb1->setDistortion(beta);
+        _bb2->setDistortion(beta);
         // Calculate the peak contribution with scaled radius.
         double fid((*_fid)(r*scale,mu)), nw((*_nw)(r*scale,mu)); // scale cancels in mu
         double peak = ampl*(fid-nw);
