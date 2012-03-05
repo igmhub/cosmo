@@ -836,7 +836,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("BAO fitting");
     double OmegaLambda,OmegaMatter,zref,minll,dll,dll2,minsep,dsep,minz,dz,rmin,rmax;
-    int nll,nsep,nz,ncontour,modelBins,bootstrapTrials,bootstrapSize,randomSeed;
+    int nll,nsep,nz,ncontour,modelBins,maxPlates,bootstrapTrials,bootstrapSize,randomSeed;
     std::string fiducialName,nowigglesName,broadbandName,dataName,dumpName;
     double initialAmp,initialScale;
     std::string platelistName,platerootName,bootstrapSaveName;
@@ -865,6 +865,8 @@ int main(int argc, char **argv) {
             "3D covariance data will be read from individual plate datafiles listed in this file.")
         ("plateroot", po::value<std::string>(&platerootName)->default_value(""),
             "Common path to prepend to all plate datafiles listed in the platelist.")
+        ("max-plates", po::value<int>(&maxPlates)->default_value(0),
+            "Maximum number of plates to load (zero uses all available plates).")
         ("fast-load", "Bypasses numeric input validation when reading data.")
         ("bootstrap-trials", po::value<int>(&bootstrapTrials)->default_value(0),
             "Number of bootstrap trials to run if a platelist was provided.")
@@ -1009,8 +1011,7 @@ int main(int argc, char **argv) {
                 plate->compress();
                 plateData.push_back(plate);
                 data->add(*plate);
-                //!!
-                if(plateData.size() == 100) break;
+                if(plateData.size() == maxPlates) break;
             }
             platelist.close();
             data->finalize(false);
