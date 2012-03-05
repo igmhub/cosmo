@@ -673,8 +673,9 @@ typedef std::vector<ContourPoint> ContourPoints;
 
 class Parameter {
 public:
-    Parameter(std::string const &name, double value, bool floating = false)
-    : _name(name), _value(value), _initialValue(value), _floating(floating)
+    Parameter(std::string const &name, double value, double error, bool floating = false)
+    : _name(name), _value(value), _initialValue(value),
+    _error(error), _initialError(error), _floating(floating)
     { }
     void fix(double value) {
         _value = value;
@@ -683,11 +684,13 @@ public:
     void setValue(double value) { _value = value; }
     bool isFloating() const { return _floating; }
     double getValue() const { return _value; }
+    void setError(double error) { _error = error; }
+    double getError() const { return _error; }
     std::string getName() const { return _name; }
-    void reset() { _value = _initialValue; }
+    void reset() { _value = _initialValue; _error = _initialError; }
 private:
     std::string _name;
-    double _value, _initialValue;
+    double _value, _initialValue, _error, _initialError;
     bool _floating;
 }; // Parameter
 
@@ -699,15 +702,15 @@ public:
         assert(data);
         assert(model);
         assert(rmax > rmin);
-        _params.push_back(Parameter("Alpha",3.8,true));
-        _params.push_back(Parameter("Bias",0.17,true));
-        _params.push_back(Parameter("Beta",1.0,true));
-        _params.push_back(Parameter("BAO Ampl",initialAmp,!fixBao));
-        _params.push_back(Parameter("BAO Scale",initialScale,!fixBao));
-        _params.push_back(Parameter("BB xio",0,!noBBand));
-        _params.push_back(Parameter("BB a0",0,!noBBand));
-        _params.push_back(Parameter("BB a1",0,!noBBand));
-        _params.push_back(Parameter("BB a2",0,!noBBand));
+        _params.push_back(Parameter("Alpha",3.8,0,true));
+        _params.push_back(Parameter("Bias",0.17,0,true));
+        _params.push_back(Parameter("Beta",1.0,0,true));
+        _params.push_back(Parameter("BAO Ampl",initialAmp,0,!fixBao));
+        _params.push_back(Parameter("BAO Scale",initialScale,0,!fixBao));
+        _params.push_back(Parameter("BB xio",0,0,!noBBand));
+        _params.push_back(Parameter("BB a0",0,0,!noBBand));
+        _params.push_back(Parameter("BB a1",0,0,!noBBand));
+        _params.push_back(Parameter("BB a2",0,0,!noBBand));
     }
     void reset(ROOT::Minuit2::MnApplication &fitter) {
         // Loop over our parameters
