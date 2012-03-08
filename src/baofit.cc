@@ -830,7 +830,7 @@ int main(int argc, char **argv) {
     int nll,nsep,nz,ncontour,modelBins,maxPlates,bootstrapTrials,bootstrapSize,randomSeed;
     std::string fiducialName,nowigglesName,broadbandName,dataName,dumpName;
     double initialAmp,initialScale;
-    std::string platelistName,platerootName,bootstrapSaveName;
+    std::string platelistName,platerootName,bootstrapSaveName,bootstrapCurvesName;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
@@ -865,6 +865,8 @@ int main(int argc, char **argv) {
             "Size of each bootstrap trial or zero to use the number of plates.")
         ("bootstrap-save", po::value<std::string>(&bootstrapSaveName)->default_value("bstrials.txt"),
             "Name of file to write with results of each bootstrap trial.")
+        ("bootstrap-curves", po::value<std::string>(&bootstrapCurvesName)->default_value(""),
+            "Name of file to write individual bootstrap fit multipole curves to.")
         ("naive-covariance", "Uses the naive covariance matrix for each bootstrap trial.")
         ("random-seed", po::value<int>(&randomSeed)->default_value(1966),
             "Random seed to use for generating bootstrap samples.")
