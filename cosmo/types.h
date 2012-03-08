@@ -28,4 +28,4 @@ namespace cosmo {
     
 } // cosmo
 
-#endif COSMO_TYPES
+#endif // COSMO_TYPES
