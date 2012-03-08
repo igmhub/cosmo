@@ -717,16 +717,6 @@ public:
         _params.push_back(Parameter("BB a1",0,2,!noBBand));
         _params.push_back(Parameter("BB a2",0,2,!noBBand));
     }
-    void reset(ROOT::Minuit2::MnApplication &fitter) {
-        // Loop over our parameters
-        BOOST_FOREACH(Parameter &param, _params) {
-            // Reset to the initial parameter value.
-            param.reset();
-            // Propagate the reset value to the fitter.
-            fitter.SetValue(param.getName().c_str(), param.getValue());
-            if(param.isFloating()) fitter.SetError(param.getName().c_str(),param.getError());
-        }
-    }
     void setErrorScale(double scale) {
         assert(scale > 0);
         _errorScale = scale;
@@ -751,7 +741,8 @@ public:
     }
     int getNPar() const { return _params.size(); }
     void initialize(lk::MinuitEngine::StatePtr initialState) {
-        BOOST_FOREACH(Parameter const &param, _params) {
+        BOOST_FOREACH(Parameter &param, _params) {
+            param.reset();
             double value(param.getValue());
             if(param.isFloating()) {
                 double error = param.getError();
@@ -1126,10 +1117,13 @@ int main(int argc, char **argv) {
                 // Count total number of different plates used.
                 int nuniq = nplates - std::count(counter.begin(),counter.end(),0);
                 // Reset parameters to their initial values.
-                nll.reset(fitter);
+                initialState.reset(new ROOT::Minuit2::MnUserParameterState());
+                nll.initialize(initialState);
                 // Do the fit.
-                fmin = fitter(maxfcn,edmtol);
-                if(fmin.HasValidParameters()) {
+                ROOT::Minuit2::MnMigrad
+                    bsFitter((ROOT::Minuit2::FCNBase const&)minuit,*initialState,strategy);
+                fmin = bsFitter(maxfcn,edmtol);
+                if(fmin.IsValid()) {
                     out << k << ' ' << nuniq << ' ';
                     std::vector<double> params = fmin.UserParameters().Params();
                     for(int i = 0; i < npar; ++i) {
