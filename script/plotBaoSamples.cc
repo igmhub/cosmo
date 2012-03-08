@@ -8,9 +8,9 @@ int colors[15] = { 1,2,3,4,5,6,7,8,9,46,28,30,33,38,41 };
 
 char name[9][16] = { "alpha", "bias", "beta", "amp", "scale", "xio", "a0", "a1", "a2" };
 
-int bins[9] =  {     50,    50,  50,  50,   50,     50,  50,  50,    50  };
-double xlo[9]   = { -0.5, -0.05, -1., -1., 0.65, -1e-3, -3., -10., -10. };
-double xhi[9]   = {  9.5,  0.50, 10.,  5., 1.35,  1e-3,  3.,  10.,  10. };
+int bins[9]   = {   50,    50,  50,  50,   50,    50,  50,  50,  50   };
+double xlo[9] = { -0.5, -0.05, -1., -1., 0.65, -1e-3, -3., -10., -10. };
+double xhi[9] = {  9.5,  0.50, 10.,  5., 1.35,  1e-3,  9.,  10.,  10. };
 
 TH1F *scaleAll, *ampAll;
 
@@ -77,6 +77,15 @@ void analyze(int index, const char *pattern, int p1, int p2) {
 }
 
 /**
+Pattern is a printf string with a single %d field that will be substituted with 1-15 to
+read results for each realization, e.g.
+
+  results/delta_diag_%d.root
+  results/delta_diag_n_%d.root
+  results/fix_bao_no_noise_%d.root
+
+Select parameter indices p1,p2 according to:
+
 0   ||     Alpha
 1   ||      Bias
 2   ||      Beta
@@ -86,8 +95,9 @@ void analyze(int index, const char *pattern, int p1, int p2) {
 6   ||     BB a0
 7   ||     BB a1
 8   ||     BB a2
+
 **/
-void plotBaoSamples(int p1 = 4, int p2 = 3) {
+void plotBaoSamples(const char *pattern, int p1 = 4, int p2 = 3) {
     // Initialize graphics options.
     gROOT->SetStyle("Plain");
     gStyle->SetOptStat(0);
@@ -111,7 +121,7 @@ void plotBaoSamples(int p1 = 4, int p2 = 3) {
     const char *with_noise = "results/delta_diag_n_%d.root";
 
     for(int index = 1; index <= 15; ++index) {
-        analyze(index, with_noise, p1, p2);
+        analyze(index, "results/fix_bao_no_noise_%d.root", p1, p2);
     }
     
     canvas->cd(2);
