@@ -638,6 +638,30 @@ public:
         _bb1.reset(new cosmo::RsdCorrelationFunction(bb10,bb12,bb14));
         _bb2.reset(new cosmo::RsdCorrelationFunction(bb20,bb22,bb24));
     }
+    // Returns a vector of ell=0,2,4 multipoles for the specified co-moving distance r in Mpc/h
+    // and fit parameters. In order to avoid duplicating the code in evaluate(), we call
+    // evaluate() with three different values of beta and solve for the multipoles.
+    std::vector<double> evaluateMultipoles(double r, lk::Parameters const &p) const {
+        lk::Parameters pcopy(p);
+        pcopy[0] = 0; // alpha = 0 to fix z = zref
+        //pcopy[1] = 1; // fix bias = 1
+
+        pcopy[2] = 0; // mu=0, beta = 0 gives xi = xi0
+        double xia = evaluate(r,0,0,pcopy);
+        
+        pcopy[2] = +1; // mu=0, beta = +1 gives xi = (28/15)xi0 - (20/21)xi2 +(3/35)xi4
+        double xib = evaluate(r,0,0,pcopy);
+
+        pcopy[2] = -1; // mu=0, beta = -1 gives xi = (8/15)xi0 + (8/21)xi2 + (3/35)xi4
+        double xic = evaluate(r,0,0,pcopy);
+        
+        // Solve for xi0,xi2,xi4
+        std::vector<double> xi(3);
+        xi[0] = xia;
+        xi[1] = xia - (3./4.)*(xib - xic);
+        xi[2] = (-32*xia + 10*xib + 25*xic)/3;
+        return xi;
+    }
     double evaluate(double r, double mu, double z, lk::Parameters const &p) const {
         double alpha(p[0]), bias(p[1]), beta(p[2]), ampl(p[3]), scale(p[4]);
         double xio(p[5]), a0(p[6]), a1(p[7]), a2(p[8]);
