@@ -1124,6 +1124,10 @@ int main(int argc, char **argv) {
             if(0 == bootstrapSize) bootstrapSize = nplates;
             std::ofstream out(bootstrapSaveName.c_str());
             out << "trial nuniq alpha bias beta amp scale xio a0 a1 a2 chisq" << std::endl;
+            boost::scoped_ptr<std::ofstream> curvesOut;
+            if(0 < bootstrapCurvesName.length()) {
+                curvesOut.reset(new std::ofstream(bootstrapCurvesName.c_str()));
+            }
             for(int k = 0; k < bootstrapTrials; ++k) {
                 // First, decide how many copies of each plate to use in this trial.
                 std::vector<double> counter(nplates,0);
@@ -1150,6 +1154,7 @@ int main(int argc, char **argv) {
                     bsFitter((ROOT::Minuit2::FCNBase const&)minuit,*initialState,strategy);
                 fmin = bsFitter(maxfcn,edmtol);
                 if(fmin.IsValid()) {
+                    // Save the fit results and accumulate bootstrap stats for each parameter.
                     out << k << ' ' << nuniq << ' ';
                     std::vector<double> params = fmin.UserParameters().Params();
                     for(int i = 0; i < npar; ++i) {
@@ -1159,6 +1164,18 @@ int main(int argc, char **argv) {
                     }
                     out << fmin.Fval() << std::endl;
                     accumulators[npar].accumulate(fmin.Fval());
+                    // Output curves of the best-fit multipoles if requested.
+                    if(curvesOut) {
+                        boost::format fmt(" %.3e %.3e %.3e");
+                        double dr(1); // Mpc/h
+                        int nr = 1+std::floor((rmax-rmin)/dr);
+                        for(int i = 0; i < nr; ++i) {
+                            double r = rmin + i*dr;
+                            std::vector<double> xi = model->evaluateMultipoles(r,params);
+                            *curvesOut << fmt % xi[0] % xi[1] % xi[2];
+                        }
+                        *curvesOut << std::endl;
+                    }
                 }
                 else {
                     nInvalid++;
@@ -1168,6 +1185,7 @@ int main(int argc, char **argv) {
                         << " invalid)" << std::endl;
                 }
             }
+            if(curvesOut) curvesOut->close();
             out.close();
             for(int i = 0; i < npar; ++i) {
                 std::cout << i << ' ' << accumulators[i].mean() << " +/- "
