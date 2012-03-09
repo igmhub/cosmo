@@ -8,11 +8,26 @@ int colors[15] = { 1,2,3,4,5,6,7,8,9,46,28,30,33,38,41 };
 
 char name[9][16] = { "alpha", "bias", "beta", "amp", "scale", "xio", "a0", "a1", "a2" };
 
-int bins[9]   = {   50,    50,  50,  50,   50,    50,  50,  50,  50   };
-double xlo[9] = { -0.5, -0.05, -1., -1., 0.65, -1e-3, -3., -10., -10. };
-double xhi[9] = {  9.5,  0.50, 10.,  5., 1.35,  1e-3,  9.,  10.,  10. };
+int bins[9]   =   {   50,    50,  50,  50,   50,    50,  50,  50,   50  };
+double xlo[9] =   { -0.5, -0.05, -1., -1., 0.65, -1e-3, -3., -10., -10. };
+double xhi[9] =   {  9.5,  0.50, 10.,  5., 1.35,  1e-3,  9.,  10.,  10. };
+double xtrue[9] = {  3.8,  0.17,  1.,  1.,   1.,     0,   0,    0,   0  };
 
 TH1F *scaleAll, *ampAll;
+
+void drawTruth(TVirtualPad *pad, int p) {
+    pad->Update();
+    double ymin = pad->GetUymin(), ymax = pad->GetUymax();
+    double x = xtrue[p];
+    TLine *line = new TLine(x,ymin,x,ymax);
+    line->SetLineColor(kGray+2);
+    line->SetLineWidth(2);
+    line->Draw();
+    TLine *alt = (TLine*)line->Clone();
+    alt->SetLineColor(kWhite);
+    alt->SetLineStyle(kDashed);
+    alt->Draw();
+}
 
 void analyze(int index, const char *pattern, int p1, int p2) {
     
@@ -30,7 +45,7 @@ void analyze(int index, const char *pattern, int p1, int p2) {
     scaleAmpHist->SetMarkerStyle(4);
     scaleAmpHist->SetMarkerSize(0.4);
     tree->Draw(Form("%s:%s>>%s%s%d",name[p2],name[p1],name[p1],name[p2],count),"","goff");
-    scaleAmpHist->Draw((count ? "same":""));
+    scaleAmpHist->Draw("same"); //(count ? "same":""));
     
     // Plot a histogram of bootstrap scale values (not plotted)
     TH1F *scaleHist = new TH1F(Form("%s%d",name[p1],count),Form(";%s;Bootstrap Trials",name[p1]),
@@ -43,12 +58,15 @@ void analyze(int index, const char *pattern, int p1, int p2) {
     tree->Draw(Form("%s>>%s%d",name[p2],name[p2],count),"","goff");
     
     // Plot per-realization bootstrap distributions of scale and amplitude.
-    canvas2->cd(count+1);
+    int pad = count+1;
+    canvas2->cd(pad);
     scaleHist->SetFillColor(color);
     scaleHist->Draw();
-    canvas3->cd(count+1);
+    drawTruth(canvas2->GetPad(pad),p1);
+    canvas3->cd(pad);
     ampHist->SetFillColor(color);
     ampHist->Draw();
+    drawTruth(canvas3->GetPad(pad),p2);
     
     // Accumulate histograms of bootstrap scale and amplitude for plotting at the end.
     if(0 == count) {
@@ -111,17 +129,28 @@ void plotBaoSamples(const char *pattern, int p1 = 4, int p2 = 3) {
     canvas3 = new TCanvas("canvas3","canvas3",1500,900);
     canvas3->Divide(5,3,0,0);
     
-    canvas->cd(4);
-    TH2F *frame4 = new TH2F("frame4",Form(";%s;%s",name[p1],name[p2]),
+    canvas->cd(1);
+    TH2F *frame1 = new TH2F("frame1",Form(";%s;%s",name[p1],name[p2]),
         1,xlo[p1],xhi[p1],1,xlo[p2],xhi[p2]);
-    frame4->Draw();
-    
-    count = 0;    
-    const char *no_noise = "results/delta_diag_%d.root";
-    const char *with_noise = "results/delta_diag_n_%d.root";
+    frame1->Draw();
+    TLine *line1 = new TLine(xlo[p1],xtrue[p2],xhi[p1],xtrue[p2]);
+    line1->SetLineColor(kGray);
+    line1->SetLineWidth(2);
+    line1->Draw();
+    TLine *line2 = new TLine(xtrue[p1],xlo[p2],xtrue[p1],xhi[p2]);
+    line2->SetLineColor(kGray);
+    line2->SetLineWidth(2);
+    line2->Draw();
 
+    canvas->cd(4);
+    TH2F *frame4 = (TH2F *)frame1->Clone("frame4");
+    frame4->Draw();
+    line1->Draw();
+    line2->Draw();
+    
+    count = 0;
     for(int index = 1; index <= 15; ++index) {
-        analyze(index, "results/fix_bao_no_noise_%d.root", p1, p2);
+        analyze(index, pattern, p1, p2);
     }
     
     canvas->cd(2);
@@ -129,16 +158,16 @@ void plotBaoSamples(const char *pattern, int p1 = 4, int p2 = 3) {
     ampAll->SetFillColor(kBlue-8);
     ampAll->Draw();
     TText *ampLabel = new TLatex(0.55,0.8,Form("%.3f #pm %.3f",ampAll->GetMean(),ampAll->GetRMS()));
-    ampLabel->SetTextColor(kBlue-8);
     ampLabel->SetNDC();
     ampLabel->Draw();
+    drawTruth(canvas->GetPad(2),p2);
 
     canvas->cd(3);
     scaleAll->SetLineWidth(1.5);
     scaleAll->SetFillColor(kBlue-8);
     scaleAll->Draw();    
     TText *scaleLabel = new TLatex(0.15,0.8,Form("%.3f #pm %.3f",scaleAll->GetMean(),scaleAll->GetRMS()));
-    scaleLabel->SetTextColor(kBlue-8);
     scaleLabel->SetNDC();
     scaleLabel->Draw();
+    drawTruth(canvas->GetPad(3),p1);
 }
