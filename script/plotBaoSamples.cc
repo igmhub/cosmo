@@ -13,7 +13,7 @@ double xlo[9] =   { -0.5, -0.05, -1., -1., 0.65, -1e-3, -3., -10., -10. };
 double xhi[9] =   {  9.5,  0.50, 10.,  5., 1.35,  1e-3,  9.,  10.,  10. };
 double xtrue[9] = {  3.8,  0.17,  1.,  1.,   1.,     0,   0,    0,   0  };
 
-TH1F *scaleAll, *ampAll;
+TH1F *p1All, *p2All;
 
 void drawTruth(TVirtualPad *pad, int p) {
     pad->Update();
@@ -37,55 +37,55 @@ void analyze(int index, const char *pattern, int p1, int p2) {
     TFile *file = new TFile(Form(pattern,index),"READ");
     TTree *tree = (TTree*)file->Get("bs");
 
-    // Plot a scatter plot of each bootstrap sample in (scale,amp)
+    // Plot a scatter plot of each bootstrap sample in (p1,p2)
     canvas->cd(1);
-    TH2F *scaleAmpHist = new TH2F(Form("%s%s%d",name[p1],name[p2],count),Form(";%s;%s",name[p1],name[p2]),
+    TH2F *p1p2Hist = new TH2F(Form("%s%s%d",name[p1],name[p2],count),Form(";%s;%s",name[p1],name[p2]),
         100,xlo[p1],xhi[p1],100,xlo[p2],xhi[p2]);
-    scaleAmpHist->SetMarkerColor(color);
-    scaleAmpHist->SetMarkerStyle(4);
-    scaleAmpHist->SetMarkerSize(0.4);
+    p1p2Hist->SetMarkerColor(color);
+    p1p2Hist->SetMarkerStyle(4);
+    p1p2Hist->SetMarkerSize(0.4);
     tree->Draw(Form("%s:%s>>%s%s%d",name[p2],name[p1],name[p1],name[p2],count),"","goff");
-    scaleAmpHist->Draw("same"); //(count ? "same":""));
+    p1p2Hist->Draw("same"); //(count ? "same":""));
     
-    // Plot a histogram of bootstrap scale values (not plotted)
-    TH1F *scaleHist = new TH1F(Form("%s%d",name[p1],count),Form(";%s;Bootstrap Trials",name[p1]),
+    // Plot a histogram of bootstrap p1 values (not plotted)
+    TH1F *p1Hist = new TH1F(Form("%s%d",name[p1],count),Form(";%s;Bootstrap Trials",name[p1]),
         bins[p1],xlo[p1],xhi[p1]);
     tree->Draw(Form("%s>>%s%d",name[p1],name[p1],count),"","goff");
     
-    // Plot a histogram of bootstrap amplitude values (not plotted)
-    TH1F *ampHist = new TH1F(Form("%s%d",name[p2],count),Form(";%s;Bootstrap Trials",name[p2]),
+    // Plot a histogram of bootstrap p2 values (not plotted)
+    TH1F *p2Hist = new TH1F(Form("%s%d",name[p2],count),Form(";%s;Bootstrap Trials",name[p2]),
         bins[p2],xlo[p2],xhi[p2]);
     tree->Draw(Form("%s>>%s%d",name[p2],name[p2],count),"","goff");
     
-    // Plot per-realization bootstrap distributions of scale and amplitude.
+    // Plot per-realization bootstrap distributions of p1 and p2.
     int pad = count+1;
     canvas2->cd(pad);
-    scaleHist->SetFillColor(color);
-    scaleHist->Draw();
+    p1Hist->SetFillColor(color);
+    p1Hist->Draw();
     drawTruth(canvas2->GetPad(pad),p1);
     canvas3->cd(pad);
-    ampHist->SetFillColor(color);
-    ampHist->Draw();
+    p2Hist->SetFillColor(color);
+    p2Hist->Draw();
     drawTruth(canvas3->GetPad(pad),p2);
     
-    // Accumulate histograms of bootstrap scale and amplitude for plotting at the end.
+    // Accumulate histograms of bootstrap p1 and p2 for plotting at the end.
     if(0 == count) {
-        scaleAll = (TH1F*)scaleHist->Clone("scaleAll");
-        ampAll = (TH1F*)ampHist->Clone("ampAll");
+        p1All = (TH1F*)p1Hist->Clone("p1All");
+        p2All = (TH1F*)p2Hist->Clone("p2All");
     }
     else {
-        scaleAll->Add(scaleHist);
-        ampAll->Add(ampHist);
+        p1All->Add(p1Hist);
+        p2All->Add(p2Hist);
     }
     
-    // Plot a marker with error bars in (scale,amp) showing the mean and sigma of this sample.
+    // Plot a marker with error bars in (p1,p2) showing the mean and sigma of this sample.
     canvas->cd(4);
-    double ampMean[1],scaleMean[1],ampRms[1],scaleRms[1];
-    ampMean[0] = ampHist->GetMean();
-    scaleMean[0] = scaleHist->GetMean();
-    ampRms[0] = ampHist->GetRMS();
-    scaleRms[0] = scaleHist->GetRMS();
-    TGraphErrors *graph = new TGraphErrors(1,scaleMean,ampMean,scaleRms,ampRms);
+    double p2Mean[1],p1Mean[1],p2Rms[1],p1Rms[1];
+    p2Mean[0] = p2Hist->GetMean();
+    p1Mean[0] = p1Hist->GetMean();
+    p2Rms[0] = p2Hist->GetRMS();
+    p1Rms[0] = p1Hist->GetRMS();
+    TGraphErrors *graph = new TGraphErrors(1,p1Mean,p2Mean,p1Rms,p2Rms);
     graph->SetMarkerColor(color);
     graph->SetMarkerStyle(4);
     graph->SetLineColor(color);
@@ -154,20 +154,20 @@ void plotBaoSamples(const char *pattern, int p1 = 4, int p2 = 3) {
     }
     
     canvas->cd(2);
-    ampAll->SetLineWidth(1.5);
-    ampAll->SetFillColor(kBlue-8);
-    ampAll->Draw();
-    TText *ampLabel = new TLatex(0.55,0.8,Form("%.3f #pm %.3f",ampAll->GetMean(),ampAll->GetRMS()));
-    ampLabel->SetNDC();
-    ampLabel->Draw();
+    p2All->SetLineWidth(1.5);
+    p2All->SetFillColor(kBlue-8);
+    p2All->Draw();
+    TText *p2Label = new TLatex(0.55,0.8,Form("%.3f #pm %.3f",p2All->GetMean(),p2All->GetRMS()));
+    p2Label->SetNDC();
+    p2Label->Draw();
     drawTruth(canvas->GetPad(2),p2);
 
     canvas->cd(3);
-    scaleAll->SetLineWidth(1.5);
-    scaleAll->SetFillColor(kBlue-8);
-    scaleAll->Draw();    
-    TText *scaleLabel = new TLatex(0.15,0.8,Form("%.3f #pm %.3f",scaleAll->GetMean(),scaleAll->GetRMS()));
-    scaleLabel->SetNDC();
-    scaleLabel->Draw();
+    p1All->SetLineWidth(1.5);
+    p1All->SetFillColor(kBlue-8);
+    p1All->Draw();    
+    TText *p1Label = new TLatex(0.15,0.8,Form("%.3f #pm %.3f",p1All->GetMean(),p1All->GetRMS()));
+    p1Label->SetNDC();
+    p1Label->Draw();
     drawTruth(canvas->GetPad(3),p1);
 }
