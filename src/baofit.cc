@@ -582,6 +582,15 @@ public:
         }
         return chi2;
     }
+    void applyTheoryOffsets(LyaBaoModelPtr model,
+    std::vector<double> const &pfit, std::vector<double> const &pnew) {
+        assert(model);
+        for(int k = 0; k < getNData(); ++k) {
+            double r = getRadius(k), mu = getCosAngle(k), z = getRedshift(k);
+            double offset = model->evaluate(r,mu,z,pnew) - model->evaluate(r,mu,z,pfit);
+            _data[k] += offset;
+        }
+    }
     void getDouble(std::string::const_iterator const &begin, std::string::const_iterator const &end,
         double &value) const {
         // Use boost::spirit::parse instead of the easier boost::lexical_cast since this is
