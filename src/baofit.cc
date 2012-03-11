@@ -1098,6 +1098,15 @@ int main(int argc, char **argv) {
             nll.setErrorScale(1);
         }
         
+        // Simulate the null hypothesis by applying theory offsets to each plate, if requested.
+        if(nullHypothesis) {
+            std::vector<double> nullParams(bestParams);
+            nullParams[3] = 0; // BAO peak amplitude
+            BOOST_FOREACH(LyaDataPtr plate, plateData) {
+                plate->applyTheoryOffsets(model,bestParams,nullParams);
+            }
+        }
+        
         int nplates(plateData.size()), nInvalid(0);
         if(0 < bootstrapTrials && 0 < nplates) {
             lk::Random &random(lk::Random::instance());
