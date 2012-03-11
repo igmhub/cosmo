@@ -51,33 +51,6 @@ extern "C" {
 namespace lk = likely;
 namespace po = boost::program_options;
 
-class BaoFitPower {
-public:
-    BaoFitPower(cosmo::PowerSpectrumPtr fiducial, cosmo::PowerSpectrumPtr nowiggles)
-    : _fiducial(fiducial), _nowiggles(nowiggles) {
-        assert(fiducial);
-        assert(nowiggles);
-        setAmplitude(1);
-        setScale(1);
-        setSigma(0);
-    }
-    // Setter methods
-    void setAmplitude(double value) { _amplitude = value; }
-    void setScale(double value) { _scale = value; double tmp(value*value); _scale4 = tmp*tmp; }
-    void setSigma(double value) { _sigma = value; _sigma2 = value*value; }
-    // Returns the hybrid power k^3/(2pi^2) P(k) at the specified wavenumber k in Mpc/h.
-    double operator()(double k) const {
-        double ak(k/_scale), smooth(std::exp(-ak*ak*_sigma2/2));
-        double fiducialPower = (*_fiducial)(ak), nowigglesPower = (*_nowiggles)(ak);
-        return _scale4*(_amplitude*smooth*(fiducialPower - nowigglesPower) + nowigglesPower);
-    }
-private:
-    double _amplitude, _scale, _scale4, _sigma, _sigma2;
-    cosmo::PowerSpectrumPtr _fiducial, _nowiggles;
-}; // BaoFitPower
-
-typedef boost::shared_ptr<BaoFitPower> BaoFitPowerPtr;
-
 class LyaBaoModel {
 public:
     LyaBaoModel(std::string const &fiducialName, std::string const &nowigglesName,
