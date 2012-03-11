@@ -901,6 +901,7 @@ int main(int argc, char **argv) {
         ("bootstrap-curves", po::value<std::string>(&bootstrapCurvesName)->default_value(""),
             "Name of file to write individual bootstrap fit multipole curves to.")
         ("naive-covariance", "Uses the naive covariance matrix for each bootstrap trial.")
+        ("null-hypothesis", "Applies theory offsets to simulate the null hypothesis.")
         ("random-seed", po::value<int>(&randomSeed)->default_value(1966),
             "Random seed to use for generating bootstrap samples.")
         ("minll", po::value<double>(&minll)->default_value(0.0002),
@@ -954,7 +955,7 @@ int main(int argc, char **argv) {
     }
     bool verbose(vm.count("verbose")), minos(vm.count("minos")), fastLoad(vm.count("fast-load")),
         fixBao(vm.count("fix-bao")), noBBand(vm.count("no-bband")),
-        naiveCovariance(vm.count("naive-covariance"));
+        naiveCovariance(vm.count("naive-covariance")), nullHypothesis(vm.count("null-hypothesis"));
 
     // Check for the required filename parameters.
     if(0 == dataName.length() && 0 == platelistName.length()) {
