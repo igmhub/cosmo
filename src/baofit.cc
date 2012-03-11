@@ -542,10 +542,26 @@ public:
     void applyTheoryOffsets(LyaBaoModelPtr model,
     std::vector<double> const &pfit, std::vector<double> const &pnew) {
         assert(model);
-        for(int k = 0; k < getNData(); ++k) {
+        int nData(getNData());
+        for(int k = 0; k < nData; ++k) {
             double r = getRadius(k), mu = getCosAngle(k), z = getRedshift(k);
             double offset = model->evaluate(r,mu,z,pnew) - model->evaluate(r,mu,z,pfit);
             _data[k] += offset;
+        }
+        // Uncompress _icov if necessary
+        if(_compressed) {
+            int nCov = (nData*(nData+1))/2;
+            std::vector<double>(nCov,0).swap(_icov);
+            for(int iz = 0; iz < _zicov.size(); ++iz) {
+                int k = _zicovIndex[iz];
+                _icov[k] = _zicov[iz];
+            }
+        }     
+        // Update _icovData = C^(-1).data
+        multiply(_icov,_data,_icovData);
+        // Remove the uncompressed _icov if necessary.
+        if(_compressed) {
+            std::vector<double>().swap(_icov);
         }
     }
     void getDouble(std::string::const_iterator const &begin, std::string::const_iterator const &end,
