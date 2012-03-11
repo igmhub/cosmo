@@ -8,14 +8,16 @@ int colors[15] = { 1,2,3,4,5,6,7,8,9,46,28,30,33,38,41 };
 
 char name[9][16] = { "alpha", "bias", "beta", "amp", "scale", "xio", "a0", "a1", "a2" };
 
-int bins[9]   =   {   50,    50,  50,  50,   50,    50,  50,  50,   50  };
-double xlo[9] =   { -0.5, -0.05, -1., -1., 0.65, -1e-3, -3., -10., -10. };
-double xhi[9] =   {  9.5,  0.50, 10.,  5., 1.35,  1e-3,  9.,  10.,  10. };
-double xtrue[9] = {  3.8,  0.17,  1.,  1.,   1.,     0,   0,    0,   0  };
+int bins[9]   =   {   50,    50,   50,  50,   50,    50,  50,  50,   50  };
+double xlo[9] =   { -0.5, -0.05, -0.5, -1., 0.65, -1e-3, -3., -10., -10. };
+double xhi[9] =   {  9.5,  0.35,   4.,  5., 1.35,  1e-3,  9.,  10.,  10. };
+double xtrue[9] = {  3.8,  0.17,   1.,  1.,   1.,     0,   0,    0,   0  };
 
 TH1F *p1All, *p2All;
 
-void drawTruth(TVirtualPad *pad, int p) {
+double chi2p1,chi2p2;
+
+double drawTruth(TH1F const *hist, TVirtualPad const *pad, int p) {
     pad->Update();
     double ymin = pad->GetUymin(), ymax = pad->GetUymax();
     double x = xtrue[p];
@@ -27,6 +29,16 @@ void drawTruth(TVirtualPad *pad, int p) {
     alt->SetLineColor(kWhite);
     alt->SetLineStyle(kDashed);
     alt->Draw();
+    double residual = hist->GetMean()-xtrue[p];
+    double error = hist->GetRMS();
+    TText *label = new TLatex(0.9,0.9,Form("%+.3f #pm %.3f",residual,error));
+    label->SetTextFont(33);
+    label->SetTextAlign(33);
+    label->SetTextSize(24);
+    label->SetNDC();
+    label->Draw();
+    double pull = residual/error;
+    return pull*pull;
 }
 
 void analyze(int index, const char *pattern, int p1, int p2) {
@@ -48,12 +60,12 @@ void analyze(int index, const char *pattern, int p1, int p2) {
     p1p2Hist->Draw("same"); //(count ? "same":""));
     
     // Plot a histogram of bootstrap p1 values (not plotted)
-    TH1F *p1Hist = new TH1F(Form("%s%d",name[p1],count),Form(";%s;Bootstrap Trials",name[p1]),
+    TH1F *p1Hist = new TH1F(Form("%s%d",name[p1],count),Form(";%s;",name[p1]),
         bins[p1],xlo[p1],xhi[p1]);
     tree->Draw(Form("%s>>%s%d",name[p1],name[p1],count),"","goff");
     
     // Plot a histogram of bootstrap p2 values (not plotted)
-    TH1F *p2Hist = new TH1F(Form("%s%d",name[p2],count),Form(";%s;Bootstrap Trials",name[p2]),
+    TH1F *p2Hist = new TH1F(Form("%s%d",name[p2],count),Form(";%s;",name[p2]),
         bins[p2],xlo[p2],xhi[p2]);
     tree->Draw(Form("%s>>%s%d",name[p2],name[p2],count),"","goff");
     
@@ -62,11 +74,11 @@ void analyze(int index, const char *pattern, int p1, int p2) {
     canvas2->cd(pad);
     p1Hist->SetFillColor(color);
     p1Hist->Draw();
-    drawTruth(canvas2->GetPad(pad),p1);
+    chi2p1 += drawTruth(p1Hist,canvas2->GetPad(pad),p1);
     canvas3->cd(pad);
     p2Hist->SetFillColor(color);
     p2Hist->Draw();
-    drawTruth(canvas3->GetPad(pad),p2);
+    chi2p2 += drawTruth(p2Hist,canvas3->GetPad(pad),p2);
     
     // Accumulate histograms of bootstrap p1 and p2 for plotting at the end.
     if(0 == count) {
@@ -129,6 +141,10 @@ void plotBaoSamples(const char *pattern, int p1 = 4, int p2 = 3) {
     canvas3 = new TCanvas("canvas3","canvas3",1500,900);
     canvas3->Divide(5,3,0,0);
     
+    for(int pad = 1; pad <= 4; ++pad) {
+        canvas->GetPad(pad)->SetMargin(0.09,0.03,0.09,0.03); // L-R-B-T
+    }
+
     canvas->cd(1);
     TH2F *frame1 = new TH2F("frame1",Form(";%s;%s",name[p1],name[p2]),
         1,xlo[p1],xhi[p1],1,xlo[p2],xhi[p2]);
@@ -149,6 +165,7 @@ void plotBaoSamples(const char *pattern, int p1 = 4, int p2 = 3) {
     line2->Draw();
     
     count = 0;
+    chi2p1 = chi2p2 = 0;
     for(int index = 1; index <= 15; ++index) {
         analyze(index, pattern, p1, p2);
     }
@@ -157,17 +174,16 @@ void plotBaoSamples(const char *pattern, int p1 = 4, int p2 = 3) {
     p2All->SetLineWidth(1.5);
     p2All->SetFillColor(kBlue-8);
     p2All->Draw();
-    TText *p2Label = new TLatex(0.55,0.8,Form("%.3f #pm %.3f",p2All->GetMean(),p2All->GetRMS()));
-    p2Label->SetNDC();
-    p2Label->Draw();
-    drawTruth(canvas->GetPad(2),p2);
+    drawTruth(p2All, canvas->GetPad(2),p2);
 
     canvas->cd(3);
     p1All->SetLineWidth(1.5);
     p1All->SetFillColor(kBlue-8);
-    p1All->Draw();    
-    TText *p1Label = new TLatex(0.15,0.8,Form("%.3f #pm %.3f",p1All->GetMean(),p1All->GetRMS()));
-    p1Label->SetNDC();
-    p1Label->Draw();
-    drawTruth(canvas->GetPad(3),p1);
+    p1All->Draw();
+    drawTruth(p1All,canvas->GetPad(3),p1);
+    
+    std::cout << Form("%s: chi2/15 = %.3f (prob = %.4f)",
+        name[p1],chi2p1/15,TMath::Prob(chi2p1,15)) << std::endl;
+    std::cout << Form("%s: chi2/15 = %.3f (prob = %.4f)",
+        name[p2],chi2p2/15,TMath::Prob(chi2p2,15)) << std::endl;
 }
