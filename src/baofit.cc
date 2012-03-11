@@ -345,23 +345,10 @@ public:
         }
         else {
             // Calculate icov by inverting cov.
-            _icov = _cov; // element-by-element copy
-            char uplo('U');
-            int info(0),ndata(getNData());
-            dpptrf_(&uplo,&ndata,&_icov[0],&info); // Cholesky decompose
-            if(0 != info) std::cout << "Cholesky error: info = " << info << std::endl;
-            assert(0 == info);
-            dpptri_(&uplo,&ndata,&_icov[0],&info); // Calculate inverse
-            if(0 != info) std::cout << "Inverse error: info = " << info << std::endl;
-            assert(0 == info);
+            invert(_cov,_icov,getNData());
         }
         // Fill _icovData.
-        _icovData.resize(nData,0);
-        double alpha(1),beta(0);
-        int incr(1);
-        char uplo('U');
-        // See http://netlib.org/blas/dspmv.f
-        dspmv_(&uplo,&nData,&alpha,&_icov[0],&_data[0],&incr,&beta,&_icovData[0],&incr);
+        multiply(_icov,_data,_icovData);
         // All done.
         _covarianceFinalized = true;
     }
@@ -543,14 +530,11 @@ public:
     AbsBinningPtr getRedshiftBinning() const { return _redshiftBinning; }
     double calculateChiSquare(std::vector<double> &delta) {
         assert(delta.size() == getNData());
-        std::vector<double>(delta.size(),0).swap(_icovDelta); // zero _icovDelta
-        char uplo('U');
-        double alpha(1),beta(0);
-        int info(0),incr(1),ndata(getNData());
-        // See http://netlib.org/blas/dspmv.f
-        dspmv_(&uplo,&ndata,&alpha,&_icov[0],&delta[0],&incr,&beta,&_icovDelta[0],&incr);
+        // Calculate C^(-1).delta
+        multiply(_icov,delta,_icovDelta);
+        // Calculate chi2 = delta(t).C^(-1).delta
         double chi2(0);
-        for(int k = 0; k < ndata; ++k) {
+        for(int k = 0; k < getNData(); ++k) {
             chi2 += delta[k]*_icovDelta[k];
         }
         return chi2;
