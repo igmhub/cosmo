@@ -41,7 +41,7 @@ double local::OneDimensionalPowerSpectrum::operator()(double kMpch) const {
         // Create an integrator.
         likely::Integrator::IntegrandPtr integrand(new likely::Integrator::Integrand(
             boost::bind(&OneDimensionalPowerSpectrum::_integrand,this,_1)));
-        likely::Integrator integrator(integrand,1e-7,1e-6);
+        likely::Integrator integrator(integrand,1e-7,(_radius == 0) ? 1e-6 : 1e-4);
         // Allocate temporary space for the interpolation tables.
         likely::Interpolator::CoordinateValues logkValues(_nk), pValues(_nk);
         // Loop over logarithmic steps in r to build the interpolation tables.
@@ -51,13 +51,6 @@ double local::OneDimensionalPowerSpectrum::operator()(double kMpch) const {
         double kzLast(_kmax);
         _kz2 = _kmax*_kmax;
         pValues[_nk-1] = integrator.integrateUp(_kmax);
-        /** Introduce a Jeans-scale cutoff in the r=0 limit *
-        if(_radius == 0) {
-            double pi(4*atan(1));
-            std::cout << "kcut = " << pi/0.1 << std::endl;
-            pValues[_nk-1] -= integrator.integrateUp(pi/0.1);
-        }
-        **/
         for(int i = _nk-2; i >= 0; --i) {
             double logk = logkmin + i*dlogk;
             logkValues[i] = logk;
