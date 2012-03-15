@@ -708,7 +708,7 @@ private:
 class LyaBaoLikelihood {
 public:
     LyaBaoLikelihood(LyaDataPtr data, LyaBaoModelPtr model, double rmin, double rmax,
-    bool fixBao, bool noBBand, double initialAmp, double initialScale)
+    bool fixBao, bool fixScale, bool noBBand, double initialAmp, double initialScale)
     : _data(data), _model(model), _rmin(rmin), _rmax(rmax), _errorScale(1) {
         assert(data);
         assert(model);
@@ -717,7 +717,7 @@ public:
         _params.push_back(Parameter("Bias",0.17,0.015,fixBao || noBBand));
         _params.push_back(Parameter("Beta",1.0,0.1,true));
         _params.push_back(Parameter("BAO Ampl",initialAmp,0.15,!fixBao));
-        _params.push_back(Parameter("BAO Scale",initialScale,0.02,!fixBao));
+        _params.push_back(Parameter("BAO Scale",initialScale,0.02,!fixBao && !fixScale));
         _params.push_back(Parameter("BB xio",0,0.001,!noBBand));
         _params.push_back(Parameter("BB a0",0,0.2,!noBBand));
         _params.push_back(Parameter("BB a1",0,2,!noBBand));
@@ -905,6 +905,7 @@ int main(int argc, char **argv) {
             "Number of high-resolution uniform bins to use for dumping best fit model.")
         ("minos", "Runs MINOS to improve error estimates.")
         ("fix-bao", "Fix BAO scale and amplitude parameters.")
+        ("fix-scale", "Fix BAO scale parameter (amplitude floating).")
         ("no-bband", "Do not add any broadband contribution to the correlation function.")
         ("initial-amp", po::value<double>(&initialAmp)->default_value(1),
             "Initial value for the BAO amplitude parameter.")
@@ -927,7 +928,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose")), minos(vm.count("minos")), fastLoad(vm.count("fast-load")),
-        fixBao(vm.count("fix-bao")), noBBand(vm.count("no-bband")),
+        fixBao(vm.count("fix-bao")), fixScale(vm.count("fix-scale")), noBBand(vm.count("no-bband")),
         naiveCovariance(vm.count("naive-covariance")), nullHypothesis(vm.count("null-hypothesis"));
 
     // Check for the required filename parameters.
@@ -1025,7 +1026,7 @@ int main(int argc, char **argv) {
     // Minimize the -log(Likelihood) function.
     try {
         lk::GradientCalculatorPtr gcptr;
-        LyaBaoLikelihood nll(data,model,rmin,rmax,fixBao,noBBand,initialAmp,initialScale);
+        LyaBaoLikelihood nll(data,model,rmin,rmax,fixBao,fixScale,noBBand,initialAmp,initialScale);
         lk::FunctionPtr fptr(new lk::Function(boost::ref(nll)));
 
         int npar(nll.getNPar());
