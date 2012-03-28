@@ -715,7 +715,7 @@ public:
         assert(rmax > rmin);
         _params.push_back(Parameter("Alpha",3.8,0.3,true));
         _params.push_back(Parameter("Bias",0.17,0.015,fixBao || noBBand));
-        _params.push_back(Parameter("Beta",1.0,0.1,true));
+        _params.push_back(Parameter("Beta",1.0,0.1,fixBao || noBBand));
         _params.push_back(Parameter("BAO Ampl",initialAmp,0.15,!fixBao));
         _params.push_back(Parameter("BAO Scale",initialScale,0.02,!fixBao && !fixScale));
         _params.push_back(Parameter("BB xio",0,0.001,!noBBand));
