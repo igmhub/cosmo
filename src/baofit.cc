@@ -708,14 +708,14 @@ private:
 class LyaBaoLikelihood {
 public:
     LyaBaoLikelihood(LyaDataPtr data, LyaBaoModelPtr model, double rmin, double rmax,
-    bool fixBao, bool fixScale, bool noBBand, double initialAmp, double initialScale)
+    bool fixLinear, bool fixBao, bool fixScale, bool noBBand, double initialAmp, double initialScale)
     : _data(data), _model(model), _rmin(rmin), _rmax(rmax), _errorScale(1) {
         assert(data);
         assert(model);
         assert(rmax > rmin);
-        _params.push_back(Parameter("Alpha",3.8,0.3,true));
-        _params.push_back(Parameter("Bias",0.17,0.015,fixBao || noBBand));
-        _params.push_back(Parameter("Beta",1.0,0.1,fixBao || noBBand));
+        _params.push_back(Parameter("Alpha",3.8,0.3,!fixLinear));
+        _params.push_back(Parameter("Bias",0.17,0.015,!fixLinear && (fixBao || noBBand)));
+        _params.push_back(Parameter("Beta",1.0,0.1,!fixLinear && (fixBao || noBBand)));
         _params.push_back(Parameter("BAO Ampl",initialAmp,0.15,!fixBao));
         _params.push_back(Parameter("BAO Scale",initialScale,0.02,!fixBao && !fixScale));
         _params.push_back(Parameter("BB xio",0,0.001,!noBBand));
@@ -904,6 +904,7 @@ int main(int argc, char **argv) {
         ("model-bins", po::value<int>(&modelBins)->default_value(200),
             "Number of high-resolution uniform bins to use for dumping best fit model.")
         ("minos", "Runs MINOS to improve error estimates.")
+        ("fix-linear", "Fix linear bias parameters alpha, bias, beta.")
         ("fix-bao", "Fix BAO scale and amplitude parameters.")
         ("fix-scale", "Fix BAO scale parameter (amplitude floating).")
         ("no-bband", "Do not add any broadband contribution to the correlation function.")
@@ -928,8 +929,9 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose")), minos(vm.count("minos")), fastLoad(vm.count("fast-load")),
-        fixBao(vm.count("fix-bao")), fixScale(vm.count("fix-scale")), noBBand(vm.count("no-bband")),
-        naiveCovariance(vm.count("naive-covariance")), nullHypothesis(vm.count("null-hypothesis"));
+        fixLinear(vm.count("fix-linear")), fixBao(vm.count("fix-bao")), fixScale(vm.count("fix-scale")),
+        noBBand(vm.count("no-bband")), naiveCovariance(vm.count("naive-covariance")),
+        nullHypothesis(vm.count("null-hypothesis"));
 
     // Check for the required filename parameters.
     if(0 == dataName.length() && 0 == platelistName.length()) {
@@ -1026,7 +1028,8 @@ int main(int argc, char **argv) {
     // Minimize the -log(Likelihood) function.
     try {
         lk::GradientCalculatorPtr gcptr;
-        LyaBaoLikelihood nll(data,model,rmin,rmax,fixBao,fixScale,noBBand,initialAmp,initialScale);
+        LyaBaoLikelihood nll(data,model,rmin,rmax,fixLinear,fixBao,fixScale,noBBand,
+            initialAmp,initialScale);
         lk::FunctionPtr fptr(new lk::Function(boost::ref(nll)));
 
         int npar(nll.getNPar());

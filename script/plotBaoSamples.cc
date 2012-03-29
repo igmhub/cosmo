@@ -110,9 +110,7 @@ void analyze(int index, const char *pattern, int p1, int p2) {
 Pattern is a printf string with a single %d field that will be substituted with 1-15 to
 read results for each realization, e.g.
 
-  results/delta_diag_%d.root
-  results/delta_diag_n_%d.root
-  results/fix_bao_no_noise_%d.root
+  fit_bao_noise/set%d.root
 
 Select parameter indices p1,p2 according to:
 
