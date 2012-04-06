@@ -11,8 +11,8 @@ namespace cosmo {
 	class OneDimensionalPowerSpectrum {
 	public:
 	    // Calculates the power spectrum of fluctuations along 1D lines corresponding
-	    // to the specified 3D isotropic power spectrum. The resulting function is
-	    // valid for the specified range of wavenumbers [kmin,kmax] and uses
+	    // to the specified 3D isotropic power spectrum k^3/(2pi^2) P(k). The resulting
+	    // function is valid for the specified range of wavenumbers [kmin,kmax] and uses
 	    // interpolation on nk logarithmically spaced points over this interval.
 	    // The radius parameter specifies the thickness of the 1D to assume. A radius
 	    // of zero corresponds to a mathematical zero-thickness line. A radius > 0 is
@@ -26,7 +26,7 @@ namespace cosmo {
 		// the specified wavenumber in 1/(Mpc/h).
         double operator()(double kMpch) const;
 	private:
-        PowerSpectrumPtr _powerSpectrum;
+        PowerSpectrumPtr _powerSpectrum; // evaluates k^3/(2pi^2) P(k)
         double _radius, _kmin, _kmax;
         int _nk;
         mutable likely::InterpolatorPtr _interpolator;

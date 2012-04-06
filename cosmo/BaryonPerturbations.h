@@ -9,8 +9,15 @@ namespace cosmo {
     // Code adapted from http://background.uchicago.edu/~whu/transfer/transferpage.html
 	class BaryonPerturbations {
 	public:
+        // Options for including baryon acoustic oscillations in the transfer function calculation.
+        // See Section 3.2 of astro-ph/9709112 for details.
+        enum BaoOption {
+            NoOscillation,          // sinc(k*s) replaced by 
+            PeriodicOscillation,    // nodes are periodically spaced in k
+            ShiftedOscillation      // first few nodes (k*s < 10) are shifted to higher k
+        };
 		BaryonPerturbations(double omegaMatter, double omegaBaryon,
-		    double hubbleConstant, double cmbTemperature);
+		    double hubbleConstant, double cmbTemperature, BaoOption baoOption = ShiftedOscillation);
 		virtual ~BaryonPerturbations();
 		// Returns the redshift of matter-radiation equality. See eqn. (2).
         double getMatterRadiationEqualityRedshift() const;
@@ -36,9 +43,15 @@ namespace cosmo {
 		// Calculates and stores the baryon, CDM, and full (baryon+CDM) transfer functions
 		// for the specified input wavenumber k in 1/(Mpc/h).
         void calculateTransferFunctions(double kMpch,
-            double &Tf_baryon, double &Tf_cdm, double &Tf_full) const;
+            double &Tf_baryon, double &Tf_cdm, double &Tf_full,
+            BaoOption baoOption = ShiftedOscillation) const;
+        // Returns the value of k*s/pi for the n-th node of the BAO oscillation (n=1,2,3,...)
+        // where s is the sound horizon. Values approach n for large n but are generally
+        // larger for the first few nodes. See eqn. (22).
+        double getNode(int n) const;
 	private:
         double _omegaMatter, _omegaBaryon, _hubbleConstant, _cmbTemperature;
+        BaoOption _baoOption;
         double
             _omhh,		    /* Omega_matter*h^2 */
         	_obhh,		    /* Omega_baryon*h^2 */

@@ -4,7 +4,7 @@ AM_LDFLAGS = -llikely
 
 # targets to build and install
 lib_LTLIBRARIES = libcosmo.la
-bin_PROGRAMS = cosmocalc cosmo3d
+bin_PROGRAMS = cosmocalc cosmo3d baofit
 
 # extra targets that should not be installed
 noinst_PROGRAMS = cosmotest
@@ -15,8 +15,10 @@ libcosmo_la_SOURCES = \
 	cosmo/HomogeneousUniverseCalculator.cc \
 	cosmo/LambdaCdmUniverse.cc \
 	cosmo/BaryonPerturbations.cc \
+	cosmo/BroadbandPower.cc \
 	cosmo/TransferFunctionPowerSpectrum.cc \
 	cosmo/PowerSpectrumCorrelationFunction.cc \
+	cosmo/RsdCorrelationFunction.cc \
 	cosmo/OneDimensionalPowerSpectrum.cc \
 	cosmo/AbsGaussianRandomFieldGenerator.cc \
 	cosmo/FftGaussianRandomFieldGenerator.cc
@@ -32,8 +34,10 @@ nobase_include_HEADERS = \
 	cosmo/HomogeneousUniverseCalculator.h \
 	cosmo/LambdaCdmUniverse.h \
 	cosmo/BaryonPerturbations.h \
+	cosmo/BroadbandPower.h \
 	cosmo/TransferFunctionPowerSpectrum.h \
 	cosmo/PowerSpectrumCorrelationFunction.h \
+	cosmo/RsdCorrelationFunction.h \
 	cosmo/OneDimensionalPowerSpectrum.h \
 	cosmo/AbsGaussianRandomFieldGenerator.h \
 	cosmo/FftGaussianRandomFieldGenerator.h
@@ -47,6 +51,10 @@ cosmocalc_LDADD = -lboost_program_options -L. -lcosmo
 cosmo3d_SOURCES = src/cosmo3d.cc
 cosmo3d_DEPENDENCIES = $(lib_LIBRARIES)
 cosmo3d_LDADD = -lboost_program_options -L. -lcosmo
+
+baofit_SOURCES = src/baofit.cc
+baofit_DEPENDENCIES = $(lib_LIBRARIES)
+baofit_LDADD = -lboost_program_options -L. -lcosmo -lMinuit2 -lblas
 
 cosmotest_SOURCES = src/cosmotest.cc
 cosmotest_DEPENDENCIES = $(lib_LIBRARIES)

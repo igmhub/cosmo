@@ -25,8 +25,8 @@ AC_CHECK_LIB([m],[cos],,
 AC_ARG_WITH([fftw3],
 	AS_HELP_STRING([--without-fftw3], [Build without the FFTW3 library.]))
 AS_IF([test "x$with_fftw3" != "xno"], [
-	AC_CHECK_LIB([fftw3],[fftw_malloc],,
-		AC_MSG_ERROR([Cannot find the FFTW3 library.]))
+	AC_CHECK_LIB([fftw3f],[fftwf_malloc],,
+		AC_MSG_ERROR([Cannot find the FFTW3 single-precision library.]))
 ])
 
 # We need a recent version of boost

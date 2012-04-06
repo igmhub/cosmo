@@ -1,11 +1,12 @@
 // Created 12-Aug-2011 by David Kirkby (University of California, Irvine) <dkirkby@uci.edu>
 
 #include "cosmo/FftGaussianRandomFieldGenerator.h"
+#include "cosmo/RuntimeError.h"
 
 #include "likely/Random.h"
 
 #include "config.h"
-#ifdef HAVE_LIBFFTW3
+#ifdef HAVE_LIBFFTW3F
 #include "fftw3.h"
 //#define FFTW(X) fftw_ ## X // double transforms
 #define FFTW(X) fftwf_ ## X // float transforms
@@ -17,7 +18,7 @@ namespace local = cosmo;
 
 namespace cosmo {
     struct FftGaussianRandomFieldGenerator::Implementation {
-#ifdef HAVE_LIBFFTW3
+#ifdef HAVE_LIBFFTW3F
         FFTW(complex) *data;
         FFTW(plan) plan;
 #endif
@@ -29,13 +30,13 @@ PowerSpectrumPtr powerSpectrum, double spacing, int nx, int ny, int nz)
 : AbsGaussianRandomFieldGenerator(powerSpectrum,spacing,nx,ny,nz),
 _pimpl(new Implementation()), _halfz(nz/2+1)
 {
-#ifdef HAVE_LIBFFTW3
+#ifdef HAVE_LIBFFTW3F
     _pimpl->data = 0;
 #endif
 }
 
 local::FftGaussianRandomFieldGenerator::~FftGaussianRandomFieldGenerator() {
-#ifdef HAVE_LIBFFTW3
+#ifdef HAVE_LIBFFTW3F
     if(0 != _pimpl->data) {
         FFTW(destroy_plan)(_pimpl->plan);
         FFTW(free)(_pimpl->data);
@@ -44,7 +45,7 @@ local::FftGaussianRandomFieldGenerator::~FftGaussianRandomFieldGenerator() {
 }
 
 void local::FftGaussianRandomFieldGenerator::_generate(int seed) {
-#ifdef HAVE_LIBFFTW3
+#ifdef HAVE_LIBFFTW3F
     if(0 == _pimpl->data) {
         _nbuf = (std::size_t)getNx()*getNy()*_halfz;
         _pimpl->data = (FFTW(complex)*)FFTW(malloc)(_nbuf*sizeof(FFTW(complex)));

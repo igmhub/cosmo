@@ -9,10 +9,12 @@
 #include "cosmo/LambdaCdmUniverse.h"
 
 #include "cosmo/BaryonPerturbations.h"
+#include "cosmo/BroadbandPower.h"
 
 #include "cosmo/TransferFunctionPowerSpectrum.h"
 #include "cosmo/PowerSpectrumCorrelationFunction.h"
 #include "cosmo/OneDimensionalPowerSpectrum.h"
+#include "cosmo/RsdCorrelationFunction.h"
 
 #include "cosmo/AbsGaussianRandomFieldGenerator.h"
 #include "cosmo/FftGaussianRandomFieldGenerator.h"

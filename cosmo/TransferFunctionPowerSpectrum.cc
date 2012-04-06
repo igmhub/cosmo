@@ -6,6 +6,7 @@
 
 #include "likely/Integrator.h"
 
+#include "boost/bind.hpp"
 #include "boost/ref.hpp"
 
 #include <cmath>
@@ -14,19 +15,40 @@ namespace local = cosmo;
 
 local::TransferFunctionPowerSpectrum::TransferFunctionPowerSpectrum(
 TransferFunctionPtr transferFunction, double spectralIndex, double deltaH)
-: _transferFunction(transferFunction), _spectralIndex(spectralIndex), _deltaHSq(deltaH*deltaH)
+: _transferFunction(transferFunction)
 {
-    if(deltaH <= 0) {
-        throw RuntimeError("TransferFunctionPowerSpectrum: invalid deltaH <= 0.");
-    }
+    setSpectralIndex(spectralIndex);
+    setDeltaH(deltaH);
 }
 
 local::TransferFunctionPowerSpectrum::~TransferFunctionPowerSpectrum() { }
+
+
+void local::TransferFunctionPowerSpectrum::setSpectralIndex(double value) {
+    _spectralIndex = value;
+}
+
+void local::TransferFunctionPowerSpectrum::setDeltaH(double value) {
+    if(value <= 0) {
+        throw RuntimeError("TransferFunctionPowerSpectrum: invalid deltaH <= 0.");
+    }
+    _deltaH = value;
+    _deltaHSq = value*value;
+}
 
 double local::TransferFunctionPowerSpectrum::operator()(double kMpch) const {
     double Tf((*_transferFunction)(kMpch));
     double y(kMpch*hubbleLength());
     return _deltaHSq*std::pow(y,3+_spectralIndex)*Tf*Tf;
+}
+
+double local::TransferFunctionPowerSpectrum::setSigma(double sigma, double rMpch, bool gaussian) {
+    PowerSpectrumPtr self(new cosmo::PowerSpectrum(boost::ref(*this)));
+    double sigmaOld = getRmsAmplitude(self, rMpch, gaussian);
+    double ratio(sigma/sigmaOld);
+    _deltaH *= ratio;
+    _deltaHSq = _deltaH*_deltaH;
+    return sigmaOld;
 }
 
 namespace cosmo {
@@ -54,3 +76,22 @@ double local::getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch, bool
     likely::Integrator integrator(integrand,1e-8,1e-6);
     return std::sqrt(integrator.integrateSingular(0,1) + integrator.integrateUp(1));
 }
+
+template <class P>
+local::GenericFunctionPtr local::createFunctionPtr(boost::shared_ptr<P> pimpl) {
+    GenericFunctionPtr fptr(new GenericFunction(boost::bind(&P::operator(),pimpl,_1)));
+    return fptr;
+}
+
+// explicit template instantiations
+
+#include "cosmo/TransferFunctionPowerSpectrum.h"
+#include "cosmo/BroadbandPower.h"
+#include "likely/Interpolator.h"
+
+template local::PowerSpectrumPtr local::createFunctionPtr<local::TransferFunctionPowerSpectrum>
+    (boost::shared_ptr<TransferFunctionPowerSpectrum> pimpl);
+template local::PowerSpectrumPtr local::createFunctionPtr<local::BroadbandPower>
+    (boost::shared_ptr<BroadbandPower> pimpl);
+template local::GenericFunctionPtr local::createFunctionPtr<likely::Interpolator>
+    (boost::shared_ptr<likely::Interpolator> pimpl);

@@ -9,9 +9,9 @@
 namespace local = cosmo;
 
 local::BaryonPerturbations::BaryonPerturbations(double omegaMatter, double omegaBaryon,
-double hubbleConstant, double cmbTemperature)
+double hubbleConstant, double cmbTemperature, BaoOption baoOption)
 : _omegaMatter(omegaMatter), _omegaBaryon(omegaBaryon),
-_hubbleConstant(hubbleConstant), _cmbTemperature(cmbTemperature)
+_hubbleConstant(hubbleConstant), _cmbTemperature(cmbTemperature), _baoOption(baoOption)
 {
     if(omegaMatter < 0) {
         throw RuntimeError("BaryonPerturbation: invalid omegaMatter < 0.");
@@ -78,9 +78,19 @@ _hubbleConstant(hubbleConstant), _cmbTemperature(cmbTemperature)
 
 local::BaryonPerturbations::~BaryonPerturbations() { }
 
+#include <iostream>
+
+double local::BaryonPerturbations::getNode(int n) const {
+    if(n <= 0) throw RuntimeError("BaryonsPerturbations::getNode: invalid n <= 0.");
+    double pi(4*atan(1));
+    double n2(n*n), n3(n2*n), bpi(_beta_node/pi);
+    return (_baoOption == ShiftedOscillation) ?
+        std::pow((n3+std::sqrt(n3*(n3+4*bpi*bpi*bpi)))/2,1./3.) : n;
+}
+
 double local::BaryonPerturbations::getCdmTransfer(double kMpch) const {
     if(kMpch != _kSave) {
-        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full);
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_baoOption);
         _kSave = kMpch;
     }
     return _Tf_cdm;
@@ -88,7 +98,7 @@ double local::BaryonPerturbations::getCdmTransfer(double kMpch) const {
 
 double local::BaryonPerturbations::getBaryonTransfer(double kMpch) const {
     if(kMpch != _kSave) {
-        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full);
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_baoOption);
         _kSave = kMpch;
     }
     return _Tf_baryon;
@@ -96,14 +106,14 @@ double local::BaryonPerturbations::getBaryonTransfer(double kMpch) const {
 
 double local::BaryonPerturbations::getMatterTransfer(double kMpch) const {
     if(kMpch != _kSave) {
-        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full);
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_baoOption);
         _kSave = kMpch;
     }
     return _Tf_full;
 }
 
 void local::BaryonPerturbations::calculateTransferFunctions(double kMpch,
-double &Tf_baryon, double &Tf_cdm, double &Tf_full) const {
+double &Tf_baryon, double &Tf_cdm, double &Tf_full, BaoOption baoOption) const {
 
     if(0 == kMpch) {
         Tf_baryon = Tf_cdm = Tf_full = 1;
@@ -125,11 +135,6 @@ double &Tf_baryon, double &Tf_cdm, double &Tf_full) const {
     Tf_cdm = T_c_f*T_c_ln_beta/(T_c_ln_beta+T_c_C_noalpha*qSq) +
 	    (1-T_c_f)*T_c_ln_beta/(T_c_ln_beta+T_c_C_alpha*qSq);
     
-    tmp = _beta_node/xx;
-    tmp2 = tmp*tmp;
-    double s_tilde(_sound_horizon*std::pow(1+tmp*tmp2,-1./3.));
-    double xx_tilde(k*s_tilde);
-
     double T_b_T0(T_c_ln_nobeta/(T_c_ln_nobeta+T_c_C_noalpha*qSq));
 
     tmp = xx/5.2;
@@ -137,7 +142,29 @@ double &Tf_baryon, double &Tf_cdm, double &Tf_full) const {
     tmp = _beta_b/xx;
     tmp2 = tmp*tmp;
 	Tf_baryon += _alpha_b/(1+tmp*tmp2)*std::exp(-std::pow(k/_k_silk,1.4));
-    Tf_baryon *= std::sin(xx_tilde)/(xx_tilde);
+
+    // Add baryon acoustic oscillations
+    if(baoOption == PeriodicOscillation) {
+        // Force the oscillations to be exactly periodic with the sound horizon scale.
+        Tf_baryon *= std::sin(xx)/(xx);
+    }
+    else {
+        // Calculate the effective sound horizon at this wavenumber
+	    tmp = _beta_node/xx;
+        tmp2 = tmp*tmp;
+        double s_tilde(_sound_horizon*std::pow(1+tmp*tmp2,-1./3.));
+        double xx_tilde(k*s_tilde);
+    	if(baoOption == NoOscillation) {
+    	    // See the first paragraph of Section 3.3 in astro-ph/9709112.
+    	    // This function roughly follows the central lobe of sin(x)/x,
+    	    // then asymptotes to 1/xx_tilde, which is the envelope of sin(x)/x.
+            tmp2 = xx_tilde*xx_tilde;
+            Tf_baryon *= std::pow(1+tmp2*tmp2,-0.25);
+        }
+        else {
+            Tf_baryon *= std::sin(xx_tilde)/(xx_tilde);
+        }
+    }
     
     double f_baryon(_obhh/_omhh);
     Tf_full = f_baryon*Tf_baryon + (1-f_baryon)*Tf_cdm;
