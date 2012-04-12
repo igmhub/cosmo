@@ -4,7 +4,7 @@ AM_LDFLAGS = -llikely
 
 # targets to build and install
 lib_LTLIBRARIES = libcosmo.la
-bin_PROGRAMS = cosmocalc cosmo3d baofit
+bin_PROGRAMS = cosmocalc cosmo3d
 
 # extra targets that should not be installed
 noinst_PROGRAMS = cosmotest
@@ -51,10 +51,6 @@ cosmocalc_LDADD = -lboost_program_options -L. -lcosmo
 cosmo3d_SOURCES = src/cosmo3d.cc
 cosmo3d_DEPENDENCIES = $(lib_LIBRARIES)
 cosmo3d_LDADD = -lboost_program_options -L. -lcosmo
-
-baofit_SOURCES = src/baofit.cc
-baofit_DEPENDENCIES = $(lib_LIBRARIES)
-baofit_LDADD = -lboost_program_options -L. -lcosmo -lMinuit2 -lblas
 
 cosmotest_SOURCES = src/cosmotest.cc
 cosmotest_DEPENDENCIES = $(lib_LIBRARIES)
