@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
             // Create an interpolator of this data.
             lk::InterpolatorPtr iptr(new lk::Interpolator(columns[0],columns[1],"cspline"));
             // Use the resulting interpolation function for future power calculations.
-            power = cosmo::createFunctionPtr(iptr);
+            power = likely::createFunctionPtr(iptr);
         }
         else {
             // Create a power spectrum from the EH97 parameterization...
@@ -231,7 +231,7 @@ int main(int argc, char **argv) {
             }
         
             // Remember this power spectrum (this will keep all of the above alive)
-            power = createFunctionPtr(transferPowerPtr);
+            power = likely::createFunctionPtr(transferPowerPtr);
 
             if(verbose) {
                 std::cout << "Calculated sigma8(z=0) = " << cosmo::getRmsAmplitude(power,8)
@@ -288,7 +288,7 @@ int main(int argc, char **argv) {
             // Create an interpolator.
             lk::InterpolatorPtr iptr(new lk::Interpolator(kvec,pvec,"cspline"));
             // Use the resulting interpolation function for future power calculations.
-            power = cosmo::createFunctionPtr(iptr);
+            power = likely::createFunctionPtr(iptr);
         }
     }
     else {
@@ -299,7 +299,7 @@ int main(int argc, char **argv) {
         }
         boost::shared_ptr<cosmo::BroadbandPower> bbPowerPtr(new cosmo::BroadbandPower(
             bbandCoef,bbandP,bbandKmin,bbandRmin,bbandR0,bbandVar));
-        power = cosmo::createFunctionPtr(bbPowerPtr);
+        power = likely::createFunctionPtr(bbPowerPtr);
     }
 
     if(0 < savePowerFile.length()) {

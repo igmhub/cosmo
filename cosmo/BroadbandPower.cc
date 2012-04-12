@@ -42,3 +42,10 @@ double local::BroadbandPower::operator()(double kMpch) const {
     double krmin(kMpch*_rmin), k2(kMpch*kMpch);
     return _coef*(k2*kMpch/_twopi2)*std::exp(-krmin*krmin)/(_kminp+std::pow(kMpch,_p));
 }
+
+// explicit template instantiation for creating a function pointer to a TransferFunctionPowerSpectrum.
+
+#include "likely/function_impl.h"
+
+template local::PowerSpectrumPtr likely::createFunctionPtr<local::BroadbandPower>
+    (boost::shared_ptr<local::BroadbandPower> pimpl);

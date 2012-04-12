@@ -83,15 +83,9 @@ local::GenericFunctionPtr local::createFunctionPtr(boost::shared_ptr<P> pimpl) {
     return fptr;
 }
 
-// explicit template instantiations
+// explicit template instantiation for creating a function pointer to a TransferFunctionPowerSpectrum.
 
-#include "cosmo/TransferFunctionPowerSpectrum.h"
-#include "cosmo/BroadbandPower.h"
-#include "likely/Interpolator.h"
+#include "likely/function_impl.h"
 
-template local::PowerSpectrumPtr local::createFunctionPtr<local::TransferFunctionPowerSpectrum>
-    (boost::shared_ptr<TransferFunctionPowerSpectrum> pimpl);
-template local::PowerSpectrumPtr local::createFunctionPtr<local::BroadbandPower>
-    (boost::shared_ptr<BroadbandPower> pimpl);
-template local::GenericFunctionPtr local::createFunctionPtr<likely::Interpolator>
-    (boost::shared_ptr<likely::Interpolator> pimpl);
+template local::PowerSpectrumPtr likely::createFunctionPtr<local::TransferFunctionPowerSpectrum>
+    (boost::shared_ptr<local::TransferFunctionPowerSpectrum> pimpl);
