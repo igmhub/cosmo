@@ -17,9 +17,17 @@ namespace cosmo {
 		// Returns the normalized Hubble function value H(z)/H(0) at the specified
 		// redshift z >= 0.
         virtual double getHubbleFunction(double z) const;
+        // Returns the value of OmegaRadiation.
+        double getOmegaRadiation() const;
+        // Returns the value of OmegaLambda.
+        double getOmegaLambda() const;
 	private:
         double _OmegaMatter, _OmegaK, _OmegaRadiation, _OmegaLambda;
 	}; // LambdaCdmRadiationUniverse
+	
+    inline double LambdaCdmRadiationUniverse::getOmegaRadiation() const { return _OmegaRadiation; }
+    inline double LambdaCdmRadiationUniverse::getOmegaLambda() const { return _OmegaLambda; }
+
 } // cosmo
 
 #endif // COSMO_LAMBDA_CDM_RADIATION_UNIVERSE

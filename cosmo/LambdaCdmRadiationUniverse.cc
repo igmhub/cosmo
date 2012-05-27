@@ -5,8 +5,6 @@
 
 #include <cmath>
 
-#include <iostream>
-
 namespace local = cosmo;
 
 local::LambdaCdmRadiationUniverse::LambdaCdmRadiationUniverse(double OmegaMatter, double OmegaK,
@@ -30,7 +28,6 @@ local::LambdaCdmRadiationUniverse::LambdaCdmRadiationUniverse(double OmegaMatter
     _OmegaRadiation = rho/rhoc;
     // Calculate the present dark energy density.
     _OmegaLambda = 1 - _OmegaMatter - _OmegaRadiation - _OmegaK;
-    std::cout << "OmegaLambda = " << _OmegaLambda << std::endl;
 }
 
 local::LambdaCdmRadiationUniverse::~LambdaCdmRadiationUniverse() { }

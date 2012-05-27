@@ -137,20 +137,21 @@ int main(int argc, char **argv) {
     if(noWiggles) baoOption = cosmo::BaryonPerturbations::NoOscillation;
     if(periodicWiggles) baoOption = cosmo::BaryonPerturbations::PeriodicOscillation;
 
-    // Build the homogeneous cosmology we will use.
-    cosmo::AbsHomogeneousUniversePtr cosmology(
-        new cosmo::LambdaCdmRadiationUniverse(OmegaMatter,0,hubbleConstant,cmbTemp));
-    double growthFactor = cosmology->getGrowthFunction(zval)/cosmology->getGrowthFunction(0);
+    // Build a homogeneous cosmology using the parameters specified (and OmegaK = 0).
+    cosmo::LambdaCdmRadiationUniverse cosmology(OmegaMatter,0,hubbleConstant,cmbTemp);
+    double growthFactor = cosmology.getGrowthFunction(zval)/cosmology.getGrowthFunction(0);
     if(verbose) {
         // Print homogeneous cosmology info.
-        std::cout << "curvature = " << cosmology->getCurvature() << std::endl;    
+        std::cout << "OmegaRadiation = " << cosmology.getOmegaRadiation() << std::endl;
+        std::cout << "OmegaLambda = " << cosmology.getOmegaLambda() << std::endl;
+        std::cout << "OmegaK = " << cosmology.getCurvature() << std::endl;    
         std::cout << "At z = " << zval << ':' << std::endl;
-        std::cout << "  H(z)/H0 = " << cosmology->getHubbleFunction(zval) << std::endl;
-        std::cout << "  Radial D(z) = " << cosmology->getLineOfSightComovingDistance(zval)
+        std::cout << "  H(z)/H0 = " << cosmology.getHubbleFunction(zval) << std::endl;
+        std::cout << "  Radial D(z) = " << cosmology.getLineOfSightComovingDistance(zval)
             << " Mpc/h" << std::endl;
-        std::cout << "  Transverse DA(z) = " << cosmology->getTransverseComovingScale(zval)
+        std::cout << "  Transverse DA(z) = " << cosmology.getTransverseComovingScale(zval)
             << " Mpc/h/rad" << std::endl;
-        double tL(cosmology->getLookbackTime(zval));
+        double tL(cosmology.getLookbackTime(zval));
         double conv(1e9*86400*365.25);
         std::cout << "  t(lookback,z) = " << tL << " secs/h = " << tL/conv*hubbleConstant
             << " Gyr/h" << std::endl;
