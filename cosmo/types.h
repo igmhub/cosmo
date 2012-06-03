@@ -8,6 +8,8 @@
 
 namespace cosmo {
     
+    enum Multipole { Monopole = 0, Quadrupole = 2, Hexadecapole = 4 };
+    
     class AbsHomogeneousUniverse;
     typedef boost::shared_ptr<AbsHomogeneousUniverse> AbsHomogeneousUniversePtr;
     

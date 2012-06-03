@@ -122,10 +122,9 @@ int main(int argc, char **argv) {
             << std::endl;
         return -1;
     }
-    cosmo::PowerSpectrumCorrelationFunction::Multipole
-        multipole(cosmo::PowerSpectrumCorrelationFunction::Monopole);
-    if(quad) multipole = cosmo::PowerSpectrumCorrelationFunction::Quadrupole;
-    if(hexa) multipole = cosmo::PowerSpectrumCorrelationFunction::Hexadecapole;
+    cosmo::Multipole multipole(cosmo::Monopole);
+    if(quad) multipole = cosmo::Quadrupole;
+    if(hexa) multipole = cosmo::Hexadecapole;
 
     // Process the wiggle flags.
     if(vm.count("no-wiggles")+vm.count("periodic-wiggles")+vm.count("bao-fit") > 1) {
