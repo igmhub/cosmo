@@ -27,3 +27,14 @@ double local::RsdCorrelationFunction::operator()(double rMpch, double mu) const 
     // Combine the l=0,2,4 pieces.
     return _C0*(*_xi0)(rMpch) + P2*_C2*(*_xi2)(rMpch) + P4*_C4*(*_xi4)(rMpch);
 }
+
+double local::RsdCorrelationFunction::operator()(double rMpch, Multipole multipole) const {
+    switch(multipole) {
+    case Hexadecapole:
+        return (*_xi4)(rMpch);
+    case Quadrupole:
+        return (*_xi2)(rMpch);
+    default:
+        return (*_xi0)(rMpch);
+    }
+}

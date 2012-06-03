@@ -21,10 +21,13 @@ namespace cosmo {
 		// Sets the value of the redshift distortion parameters to use. If beta2=0,
 		// then beta2=beta1 is assumed.
         void setDistortion(double beta1, double beta2 = 0);
-        // Evaluates the correlation function at the specified pair average co-moving
+        // Evaluates the distorted correlation function at the specified pair average co-moving
         // line-of-sight separation rMpch (in Mpc/h) and mu, the cosine of the angle
         // between the pair separation vector and the line of sight.
         double operator()(double rMpch, double mu) const;
+        // Evaluates the undistorted correlation function at the specified pair average co-moving
+        // line-of-sight separation rMpch (in Mpc/h), for the specified multipole.
+        double operator()(double rMpch, Multipole multipole) const;
 	private:
         CorrelationFunctionPtr _xi0, _xi2, _xi4;
         double _C0, _C2, _C4;
