@@ -62,7 +62,9 @@ void local::FftGaussianRandomFieldGenerator::_generate(int seed) {
     // Set the real,imag parts of all complex numbers to random numbers sampled from
     // a Gaussian with mean zero and variance one.
     likely::Random &random(likely::Random::instance());
-    random.fillArrayNormal((FftwReal*)(_pimpl->data),_nbuf,seed);
+
+    // Need to synch FFTW malloc with likely::allocateAlignedArray...
+    //!!random.fillArrayNormal((FftwReal*)(_pimpl->data),_nbuf,seed);
     
     // Scale each complex value by sqrt(power(kx,ky,kz)).
     for(int x = 0; x < getNx(); ++x) {

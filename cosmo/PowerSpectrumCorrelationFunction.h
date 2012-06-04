@@ -11,7 +11,6 @@ namespace cosmo {
     // spectrum k^3/(2pi^2) P(k).
 	class PowerSpectrumCorrelationFunction {
 	public:
-        enum Multipole { Monopole = 0, Quadrupole = 2, Hexadecapole = 4 };
 	    // Creates a correlation function for the specified multipole from the power
 	    // spectrum provided that is valid from rmin-rmax (in Mpc/h) and which uses
 	    // nr logarithmically-spaced interpolation points over this range.

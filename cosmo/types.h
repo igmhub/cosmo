@@ -8,8 +8,13 @@
 
 namespace cosmo {
     
+    enum Multipole { Monopole = 0, Quadrupole = 2, Hexadecapole = 4 };
+    
     class AbsHomogeneousUniverse;
     typedef boost::shared_ptr<AbsHomogeneousUniverse> AbsHomogeneousUniversePtr;
+    
+    class RsdCorrelationFunction;
+    typedef boost::shared_ptr<RsdCorrelationFunction> RsdCorrelationFunctionPtr;
 
     // Represents a function that returns a dimensionless transfer function value T(k)
     // given an input wavenumber k in 1/(Mpc/h).

@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology calculator");
-    double OmegaLambda,OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,
+    double OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,
         zval,kval,kmin,kmax,r1d,rmin,rmax,baoAmplitude,baoSigma,baoScale;
     double bbandP,bbandCoef,bbandKmin,bbandRmin,bbandR0,bbandVar;
     int nk,nr;
@@ -35,10 +35,8 @@ int main(int argc, char **argv) {
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
-        ("omega-lambda", po::value<double>(&OmegaLambda)->default_value(0.728),
-            "Present-day value of OmegaLambda.")
-        ("omega-matter", po::value<double>(&OmegaMatter)->default_value(0),
-            "Present-day value of OmegaMatter or zero for 1-OmegaLambda.")
+        ("omega-matter", po::value<double>(&OmegaMatter)->default_value(0.272),
+            "Present-day value of OmegaMatter.")
         ("omega-baryon", po::value<double>(&OmegaBaryon)->default_value(0.0456),
             "Present-day value of OmegaBaryon, must be <= OmegaMatter.")
         ("hubble-constant", po::value<double>(&hubbleConstant)->default_value(0.704),
@@ -124,10 +122,9 @@ int main(int argc, char **argv) {
             << std::endl;
         return -1;
     }
-    cosmo::PowerSpectrumCorrelationFunction::Multipole
-        multipole(cosmo::PowerSpectrumCorrelationFunction::Monopole);
-    if(quad) multipole = cosmo::PowerSpectrumCorrelationFunction::Quadrupole;
-    if(hexa) multipole = cosmo::PowerSpectrumCorrelationFunction::Hexadecapole;
+    cosmo::Multipole multipole(cosmo::Monopole);
+    if(quad) multipole = cosmo::Quadrupole;
+    if(hexa) multipole = cosmo::Hexadecapole;
 
     // Process the wiggle flags.
     if(vm.count("no-wiggles")+vm.count("periodic-wiggles")+vm.count("bao-fit") > 1) {
@@ -139,21 +136,21 @@ int main(int argc, char **argv) {
     if(noWiggles) baoOption = cosmo::BaryonPerturbations::NoOscillation;
     if(periodicWiggles) baoOption = cosmo::BaryonPerturbations::PeriodicOscillation;
 
-    // Build the homogeneous cosmology we will use.
-    if(OmegaMatter == 0) OmegaMatter = 1 - OmegaLambda;
-    cosmo::AbsHomogeneousUniversePtr cosmology(
-        new cosmo::LambdaCdmUniverse(OmegaLambda,OmegaMatter));
-    double growthFactor = cosmology->getGrowthFunction(zval)/cosmology->getGrowthFunction(0);
+    // Build a homogeneous cosmology using the parameters specified (and OmegaK = 0).
+    cosmo::LambdaCdmRadiationUniverse cosmology(OmegaMatter,0,hubbleConstant,cmbTemp);
+    double growthFactor = cosmology.getGrowthFunction(zval)/cosmology.getGrowthFunction(0);
     if(verbose) {
         // Print homogeneous cosmology info.
-        std::cout << "curvature = " << cosmology->getCurvature() << std::endl;    
+        std::cout << "OmegaRadiation = " << cosmology.getOmegaRadiation() << std::endl;
+        std::cout << "OmegaLambda = " << cosmology.getOmegaLambda() << std::endl;
+        std::cout << "OmegaK = " << cosmology.getCurvature() << std::endl;    
         std::cout << "At z = " << zval << ':' << std::endl;
-        std::cout << "  H(z)/H0 = " << cosmology->getHubbleFunction(zval) << std::endl;
-        std::cout << "  Radial D(z) = " << cosmology->getLineOfSightComovingDistance(zval)
+        std::cout << "  H(z)/H0 = " << cosmology.getHubbleFunction(zval) << std::endl;
+        std::cout << "  Radial D(z) = " << cosmology.getLineOfSightComovingDistance(zval)
             << " Mpc/h" << std::endl;
-        std::cout << "  Transverse DA(z) = " << cosmology->getTransverseComovingScale(zval)
+        std::cout << "  Transverse DA(z) = " << cosmology.getTransverseComovingScale(zval)
             << " Mpc/h/rad" << std::endl;
-        double tL(cosmology->getLookbackTime(zval));
+        double tL(cosmology.getLookbackTime(zval));
         double conv(1e9*86400*365.25);
         std::cout << "  t(lookback,z) = " << tL << " secs/h = " << tL/conv*hubbleConstant
             << " Gyr/h" << std::endl;
@@ -203,7 +200,7 @@ int main(int argc, char **argv) {
             // Create an interpolator of this data.
             lk::InterpolatorPtr iptr(new lk::Interpolator(columns[0],columns[1],"cspline"));
             // Use the resulting interpolation function for future power calculations.
-            power = cosmo::createFunctionPtr(iptr);
+            power = likely::createFunctionPtr(iptr);
         }
         else {
             // Create a power spectrum from the EH97 parameterization...
@@ -231,7 +228,7 @@ int main(int argc, char **argv) {
             }
         
             // Remember this power spectrum (this will keep all of the above alive)
-            power = createFunctionPtr(transferPowerPtr);
+            power = likely::createFunctionPtr(transferPowerPtr);
 
             if(verbose) {
                 std::cout << "Calculated sigma8(z=0) = " << cosmo::getRmsAmplitude(power,8)
@@ -288,7 +285,7 @@ int main(int argc, char **argv) {
             // Create an interpolator.
             lk::InterpolatorPtr iptr(new lk::Interpolator(kvec,pvec,"cspline"));
             // Use the resulting interpolation function for future power calculations.
-            power = cosmo::createFunctionPtr(iptr);
+            power = likely::createFunctionPtr(iptr);
         }
     }
     else {
@@ -299,7 +296,7 @@ int main(int argc, char **argv) {
         }
         boost::shared_ptr<cosmo::BroadbandPower> bbPowerPtr(new cosmo::BroadbandPower(
             bbandCoef,bbandP,bbandKmin,bbandRmin,bbandR0,bbandVar));
-        power = cosmo::createFunctionPtr(bbPowerPtr);
+        power = likely::createFunctionPtr(bbPowerPtr);
     }
 
     if(0 < savePowerFile.length()) {
