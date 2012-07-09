@@ -29,7 +29,7 @@ namespace cosmo {
         // method to access generated values.
         virtual void generate() = 0;
         // Returns the most recent generated value at the specified grid point. Throws
-        // a RuntimeError if generate() has never been called.
+        // a RuntimeError for invalid (x,y,z).
         double getField(int x, int y, int z) const;
         // Returns the memory size in bytes required for this generator or zero if this
         // information is not available.

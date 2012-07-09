@@ -32,6 +32,8 @@ _pimpl(new Implementation()), _halfz(nz/2+1)
 {
 #ifdef HAVE_LIBFFTW3F
     _pimpl->data = 0;
+#else
+    throw RuntimeError("FftGaussianRandomFieldGenerator: library not built with libfftw3f.");
 #endif
 }
 

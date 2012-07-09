@@ -25,8 +25,7 @@ namespace cosmo {
         int _halfz;
         std::size_t _nbuf;
         boost::scoped_ptr<Implementation> _pimpl;
-        // The getField method calls this virtual method after checking that data is
-        // available and that (x,y,z) are valid values.
+        // The getField method calls this after checking for invalid (x,y,z).
         virtual double _getFieldUnchecked(int x, int y, int z) const;
 	}; // FftGaussianRandomFieldGenerator
 } // cosmo
