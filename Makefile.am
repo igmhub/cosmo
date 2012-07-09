@@ -4,7 +4,7 @@ AM_LDFLAGS = -llikely
 
 # targets to build and install
 lib_LTLIBRARIES = libcosmo.la
-bin_PROGRAMS = cosmocalc cosmo3d
+bin_PROGRAMS = cosmocalc cosmo3d cosmogrf
 
 # extra targets that should not be installed
 noinst_PROGRAMS = cosmotest
@@ -57,3 +57,7 @@ cosmo3d_LDADD = -lboost_program_options -L. -lcosmo
 cosmotest_SOURCES = src/cosmotest.cc
 cosmotest_DEPENDENCIES = $(lib_LIBRARIES)
 cosmotest_LDADD = -lboost_program_options -L. -lcosmo
+
+cosmogrf_SOURCES = src/cosmogrf.cc
+cosmogrf_DEPENDENCIES = $(lib_LIBRARIES)
+cosmogrf_LDADD = -lboost_program_options -L. -lcosmo
