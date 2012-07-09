@@ -26,8 +26,8 @@ namespace cosmo {
 } // cosmo::
 
 local::FftGaussianRandomFieldGenerator::FftGaussianRandomFieldGenerator(
-PowerSpectrumPtr powerSpectrum, double spacing, int nx, int ny, int nz)
-: AbsGaussianRandomFieldGenerator(powerSpectrum,spacing,nx,ny,nz),
+PowerSpectrumPtr powerSpectrum, double spacing, int nx, int ny, int nz, likely::RandomPtr random)
+: AbsGaussianRandomFieldGenerator(powerSpectrum,spacing,nx,ny,nz,random),
 _pimpl(new Implementation()), _halfz(nz/2+1)
 {
 #ifdef HAVE_LIBFFTW3F
@@ -44,7 +44,7 @@ local::FftGaussianRandomFieldGenerator::~FftGaussianRandomFieldGenerator() {
 #endif
 }
 
-void local::FftGaussianRandomFieldGenerator::_generate(int seed) {
+void local::FftGaussianRandomFieldGenerator::generate() {
 #ifdef HAVE_LIBFFTW3F
     if(0 == _pimpl->data) {
         _nbuf = (std::size_t)getNx()*getNy()*_halfz;

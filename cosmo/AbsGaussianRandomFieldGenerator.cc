@@ -3,11 +3,13 @@
 #include "cosmo/AbsGaussianRandomFieldGenerator.h"
 #include "cosmo/RuntimeError.h"
 
+#include "likely/Random.h"
+
 namespace local = cosmo;
 
 local::AbsGaussianRandomFieldGenerator::AbsGaussianRandomFieldGenerator(
-PowerSpectrumPtr powerSpectrum, double spacing, int nx, int ny, int nz)
-: _powerSpectrum(powerSpectrum), _spacing(spacing), _nx(nx), _ny(ny), _nz(nz), _generateCount(0)
+PowerSpectrumPtr powerSpectrum, double spacing, int nx, int ny, int nz, likely::RandomPtr random)
+: _powerSpectrum(powerSpectrum), _spacing(spacing), _nx(nx), _ny(ny), _nz(nz), _random(random)
 {
     if(spacing <= 0) {
         throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid spacing <= 0.");
@@ -21,14 +23,12 @@ PowerSpectrumPtr powerSpectrum, double spacing, int nx, int ny, int nz)
     if(nz <= 0) {
         throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid nz <= 0.");        
     }
+    if(!_random) _random = likely::Random::instance();
 }
 
 local::AbsGaussianRandomFieldGenerator::~AbsGaussianRandomFieldGenerator() { }
 
 double local::AbsGaussianRandomFieldGenerator::getField(int x, int y, int z) const {
-    if(0 == _generateCount) {
-        throw RuntimeError("AbsGaussianRandomFieldGenerator: no field generated yet.");
-    }
     if(x < 0 || x >= _nx) {
         throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid x < 0 or >= nx.");
     }

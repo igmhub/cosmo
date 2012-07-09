@@ -12,8 +12,11 @@ namespace cosmo {
 	class FftGaussianRandomFieldGenerator : public AbsGaussianRandomFieldGenerator {
 	public:
 		FftGaussianRandomFieldGenerator(PowerSpectrumPtr powerSpectrum, double spacing,
-		    int nx, int ny, int nz);
+		    int nx, int ny, int nz, likely::RandomPtr random = likely::RandomPtr());
 		virtual ~FftGaussianRandomFieldGenerator();
+        // Generates a new realization and stores the results internally. Use the getField()
+        // method to access generated values.
+        virtual void generate();
         // Returns the memory size in bytes required for this generator or zero if this
         // information is not available.
         virtual std::size_t getMemorySize() const;
@@ -22,8 +25,6 @@ namespace cosmo {
         int _halfz;
         std::size_t _nbuf;
         boost::scoped_ptr<Implementation> _pimpl;
-        // The generate() method calls this virtual method.
-        virtual void _generate(int seed);
         // The getField method calls this virtual method after checking that data is
         // available and that (x,y,z) are valid values.
         virtual double _getFieldUnchecked(int x, int y, int z) const;
