@@ -44,3 +44,7 @@ double local::AbsGaussianRandomFieldGenerator::getField(int x, int y, int z) con
 std::size_t local::AbsGaussianRandomFieldGenerator::getMemorySize() const {
     return 0;
 }
+
+double local::AbsGaussianRandomFieldGenerator::getPower(double k) const {
+    return (*_powerSpectrum)(k);
+}

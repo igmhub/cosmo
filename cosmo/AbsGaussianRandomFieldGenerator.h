@@ -36,6 +36,7 @@ namespace cosmo {
         virtual std::size_t getMemorySize() const;
     protected:
         likely::RandomPtr getRandom();
+        double getPower(double k) const;
 	private:
         PowerSpectrumPtr _powerSpectrum;
         double _spacing;

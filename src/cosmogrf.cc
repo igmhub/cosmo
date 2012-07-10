@@ -5,6 +5,7 @@
 #include "likely/likely.h"
 
 #include "boost/program_options.hpp"
+#include "boost/format.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -89,8 +90,22 @@ int main(int argc, char **argv) {
     // Create the generator.
     cosmo::FftGaussianRandomFieldGenerator generator(power, spacing, nx, ny, nz);
     if(verbose) {
-        std::cout << "Memory size = " << generator.getMemorySize() << std::endl;
+        std::cout << "Memory size = "
+            << boost::format("%.1f Mb") % (generator.getMemorySize()/1048576.) << std::endl;
     }
+    generator.generate();
+    
+    // Calculate the statistics of the generated delta field.
+    likely::WeightedAccumulator accumulator;
+    for(int ix = 0; ix < nx; ++ix) {
+        for(int iy = 0; iy < ny; ++iy) {
+            for(int iz = 0; iz < nz; ++iz) {
+                accumulator.accumulate(generator.getField(ix,iy,iz));
+            }
+        }
+    }
+    std::cout << "Delta field mean = " << accumulator.mean() << ", variance = "
+        << accumulator.variance() << std::endl;
     
     return 0;
 }
