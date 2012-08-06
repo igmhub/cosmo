@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
             std::cout << "Silk damping scale = " << baryonsPtr->getSilkDampingScale() << " /(Mpc/h)"
                 << std::endl;
             double Tfc,Tfb,Tf;
-            baryonsPtr->calculateTransferFunctions(kval,Tfb,Tfc,Tf);
+            baryonsPtr->calculateTransferFunctions(kval,Tfb,Tfc,Tf,baoOption);
             std::cout << "At k = " << kval << " /(Mpc/h):" << std::endl;
             std::cout << "  Tf(CDM,k) = " << Tfc << std::endl;
             std::cout << "  Tf(baryon,k) = " << Tfb << std::endl;
