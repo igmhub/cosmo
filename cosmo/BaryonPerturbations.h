@@ -30,6 +30,8 @@ namespace cosmo {
         // Returns the sound horizon at the drag epoch in Mpc/h as the comoving distance
         // a wave can travel prior to the drag epoch redshift. See eqn. (6).
         double getSoundHorizon() const;
+        // Calculates the sound horizon in Mpc/h using eqn (26) instead.
+        double getSoundHorizonFit() const;
         // Returns the wavenumber in 1/(Mpc/h) characterizing baryon-photon diffusion.
         double getSilkDampingScale() const;
         // Returns the CDM transfer function value at the specified wavenumber in 1/(Mpc/h).
@@ -40,10 +42,13 @@ namespace cosmo {
         // Returns the CDM + baryon transfer function value at the specified wavenumber
         // in 1/(Mpc/h).
         double getMatterTransfer(double kMpch) const;
+        // Returns the no-wiggles CDM + baryon transfer function value at the specified
+        // wavenumber in 1/(Mpc/h).
+        double getNoWigglesTransfer(double kMpch) const;
 		// Calculates and stores the baryon, CDM, and full (baryon+CDM) transfer functions
 		// for the specified input wavenumber k in 1/(Mpc/h).
         void calculateTransferFunctions(double kMpch,
-            double &Tf_baryon, double &Tf_cdm, double &Tf_full,
+            double &Tf_baryon, double &Tf_cdm, double &Tf_full, double &Tf_nw,
             BaoOption baoOption = ShiftedOscillation) const;
         // Returns the value of k*s/pi for the n-th node of the BAO oscillation (n=1,2,3,...)
         // where s is the sound horizon. Values approach n for large n but are generally
@@ -71,7 +76,7 @@ namespace cosmo {
         	_k_peak,		/* Fit to wavenumber of first peak, in Mpc^-1 */
         	_sound_horizon_fit,	/* Fit to sound horizon, in Mpc */
         	_alpha_gamma;	/* Gamma suppression in approximate TF */
-        mutable double _Tf_baryon, _Tf_cdm, _Tf_full, _kSave;
+        mutable double _Tf_baryon, _Tf_cdm, _Tf_full, _Tf_nw, _kSave;
 	}; // BaryonPerturbations
 	
 	inline double BaryonPerturbations::getMatterRadiationEqualityRedshift() const {
@@ -85,6 +90,9 @@ namespace cosmo {
 	}
 	inline double BaryonPerturbations::getSoundHorizon() const {
         return _sound_horizon*_hubbleConstant;
+	}
+	inline double BaryonPerturbations::getSoundHorizonFit() const {
+        return _sound_horizon_fit*_hubbleConstant;
 	}
 	inline double BaryonPerturbations::getSilkDampingScale() const {
         return _k_silk/_hubbleConstant;

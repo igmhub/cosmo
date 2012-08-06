@@ -170,15 +170,17 @@ int main(int argc, char **argv) {
             std::cout << "k(eq) = " << baryonsPtr->getMatterRadiationEqualityScale() << " /(Mpc/h)"
                 << std::endl;
             std::cout << "sound horizon = " << baryonsPtr->getSoundHorizon() << " Mpc/h at z(drag) = "
-                << baryonsPtr->getDragEpoch() << std::endl;
+                << baryonsPtr->getDragEpoch() << " (fit = " << baryonsPtr->getSoundHorizonFit()
+                << " Mpc/h)" << std::endl;
             std::cout << "Silk damping scale = " << baryonsPtr->getSilkDampingScale() << " /(Mpc/h)"
                 << std::endl;
-            double Tfc,Tfb,Tf;
-            baryonsPtr->calculateTransferFunctions(kval,Tfb,Tfc,Tf,baoOption);
+            double Tfc,Tfb,Tf,Tnw;
+            baryonsPtr->calculateTransferFunctions(kval,Tfb,Tfc,Tf,Tnw,baoOption);
             std::cout << "At k = " << kval << " /(Mpc/h):" << std::endl;
             std::cout << "  Tf(CDM,k) = " << Tfc << std::endl;
             std::cout << "  Tf(baryon,k) = " << Tfb << std::endl;
             std::cout << "  Tf(full,k) = " << Tf << std::endl;
+            std::cout << "  Tf(nw,k) = " << Tnw << std::endl;
         }
 
         if(0 < loadPowerFile.length()) {

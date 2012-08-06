@@ -90,7 +90,7 @@ double local::BaryonPerturbations::getNode(int n) const {
 
 double local::BaryonPerturbations::getCdmTransfer(double kMpch) const {
     if(kMpch != _kSave) {
-        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_baoOption);
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_Tf_nw,_baoOption);
         _kSave = kMpch;
     }
     return _Tf_cdm;
@@ -98,7 +98,7 @@ double local::BaryonPerturbations::getCdmTransfer(double kMpch) const {
 
 double local::BaryonPerturbations::getBaryonTransfer(double kMpch) const {
     if(kMpch != _kSave) {
-        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_baoOption);
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_Tf_nw,_baoOption);
         _kSave = kMpch;
     }
     return _Tf_baryon;
@@ -106,14 +106,22 @@ double local::BaryonPerturbations::getBaryonTransfer(double kMpch) const {
 
 double local::BaryonPerturbations::getMatterTransfer(double kMpch) const {
     if(kMpch != _kSave) {
-        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_baoOption);
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_Tf_nw,_baoOption);
         _kSave = kMpch;
     }
     return _Tf_full;
 }
 
+double local::BaryonPerturbations::getNoWigglesTransfer(double kMpch) const {
+    if(kMpch != _kSave) {
+        calculateTransferFunctions(kMpch,_Tf_baryon,_Tf_cdm,_Tf_full,_Tf_nw,_baoOption);
+        _kSave = kMpch;
+    }
+    return _Tf_nw;
+}
+
 void local::BaryonPerturbations::calculateTransferFunctions(double kMpch,
-double &Tf_baryon, double &Tf_cdm, double &Tf_full, BaoOption baoOption) const {
+double &Tf_baryon, double &Tf_cdm, double &Tf_full, double &Tf_nw, BaoOption baoOption) const {
 
     if(0 == kMpch) {
         Tf_baryon = Tf_cdm = Tf_full = 1;
@@ -168,4 +176,15 @@ double &Tf_baryon, double &Tf_cdm, double &Tf_full, BaoOption baoOption) const {
     
     double f_baryon(_obhh/_omhh);
     Tf_full = f_baryon*Tf_baryon + (1-f_baryon)*Tf_cdm;
+
+	// Calculate the no-wiggles transfer function using eqns (29-31) of EH98.
+	// Equations below reproduce exactly the sample code from EH98, but should consider
+	// replacing _sound_horizon_fit with _sound_horizon and a full precision value for e.
+    tmp = 0.43*k*_sound_horizon_fit;
+    tmp2 = tmp*tmp;
+    double gamma_eff = _omhh*(_alpha_gamma + (1-_alpha_gamma)/(1+tmp2*tmp2));
+    double q_eff(q*_omhh/gamma_eff);
+    double L0 = std::log(2.0*2.718282+1.8*q_eff); // using e = 2.718282
+    double C0 = 14.2 + 731.0/(1+62.5*q_eff);
+    Tf_nw = L0/(L0 + C0*q_eff*q_eff);
 }
