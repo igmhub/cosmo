@@ -77,7 +77,8 @@ int main(int argc, char **argv) {
         ("quad", "Calculates the quadrupole (l=2) correlation function (default is monopole).")
         ("hexa", "Calculates the hexedacapole (l=4) correlation function (default is monopole).")
         ("no-wiggles", "Calculates the power spectrum without baryon acoustic oscillations.")
-        ("periodic-wiggles", "Calculates the power spectrum with periodic acoustic oscillations.")
+        ("no-osc", "Calculates the power spectrum with a non-oscillation baryon transfer function.")
+        ("periodic-osc", "Calculates the power spectrum with periodic acoustic oscillations.")
         ("bao-amplitude", po::value<double>(&baoAmplitude)->default_value(1),
             "Amplitude of baryon acoustic oscillations relative to fiducial model.")
         ("bao-sigma", po::value<double>(&baoSigma)->default_value(0),
@@ -114,7 +115,7 @@ int main(int argc, char **argv) {
     }
     bool verbose(vm.count("verbose")), power1d(vm.count("power1d")), rlog(vm.count("rlog")),
         quad(vm.count("quad")), hexa(vm.count("hexa")), noWiggles(vm.count("no-wiggles")),
-        periodicWiggles(vm.count("periodic-wiggles")), baoSmooth(vm.count("bao-smooth"));
+        noOsc(vm.count("no-osc")),periodicOsc(vm.count("periodic-osc")), baoSmooth(vm.count("bao-smooth"));
 
     // Process the multipole flags.
     if(quad && hexa) {
@@ -133,8 +134,8 @@ int main(int argc, char **argv) {
         return -1;
     }
     cosmo::BaryonPerturbations::BaoOption baoOption(cosmo::BaryonPerturbations::ShiftedOscillation);
-    if(noWiggles) baoOption = cosmo::BaryonPerturbations::NoOscillation;
-    if(periodicWiggles) baoOption = cosmo::BaryonPerturbations::PeriodicOscillation;
+    if(noOsc) baoOption = cosmo::BaryonPerturbations::NoOscillation;
+    if(periodicOsc) baoOption = cosmo::BaryonPerturbations::PeriodicOscillation;
 
     // Build a homogeneous cosmology using the parameters specified (and OmegaK = 0).
     cosmo::LambdaCdmRadiationUniverse cosmology(OmegaMatter,0,hubbleConstant,cmbTemp);
@@ -210,7 +211,10 @@ int main(int argc, char **argv) {
             // Create a sharable pointer to the matter transfer function (this will
             // keep baryonsPtr alive)
             cosmo::TransferFunctionPtr transferPtr(new cosmo::TransferFunction(boost::bind(
-                &cosmo::BaryonPerturbations::getMatterTransfer,baryonsPtr,_1)));
+                noWiggles ?
+                    &cosmo::BaryonPerturbations::getNoWigglesTransfer :
+                    &cosmo::BaryonPerturbations::getMatterTransfer,
+                baryonsPtr,_1)));
 
             // Use COBE  n=1 normalization by default
             double deltaH = 1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter));
