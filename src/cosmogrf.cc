@@ -57,6 +57,8 @@ int main(int argc, char **argv) {
     if(0 == ny) ny = nx;
     if(0 == nz) nz = ny;
     
+    double pi(4*std::atan(1));
+    
     // Load a tabulated power spectrum for interpolation.
     cosmo::PowerSpectrumPtr power;
     if(0 < loadPowerFile.length()) {
@@ -68,7 +70,7 @@ int main(int argc, char **argv) {
             std::cout << "Read " << columns[0].size() << " rows from " << loadPowerFile
                 << std::endl;
         }
-        double pi(4*std::atan(1)),twopi2(2*pi*pi);
+        double twopi2(2*pi*pi);
         // rescale to k^3/(2pi^2) P(k)
         for(int row = 0; row < columns[0].size(); ++row) {
             double k(columns[0][row]);
@@ -104,8 +106,21 @@ int main(int argc, char **argv) {
             }
         }
     }
+    
+    // Compare with var(k1,k2) = Integral[k^2/(2pi) P(k),{k,k1,k2}]. This will not match exactly
+    // because we are comparing a sphere in k-space with a cuboid in r-space.
+    double kmax = pi/spacing, kmin = pi/(spacing*std::pow(nx*ny*nz,1./3.));
+    int nsteps(1000);
+    double kratio = std::pow(kmax/kmin,1./(nsteps-1.));
+    double kVariance(0);
+    for(int step = 0; step < nsteps; ++step) {
+        double k = kmin*std::pow(kratio,step);
+        kVariance += (*power)(k)/k;
+    }
+    kVariance *= std::log(kratio);
+    
     std::cout << "Delta field mean = " << accumulator.mean() << ", variance = "
-        << accumulator.variance() << std::endl;
+        << accumulator.variance() << ", P(k) variance estimate is " << kVariance << std::endl;
     
     return 0;
 }
