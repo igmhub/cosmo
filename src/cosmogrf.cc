@@ -55,10 +55,6 @@ int main(int argc, char **argv) {
             "Name of power spectrum output file, leave blank to skip.")
         ("nkbins", po::value<int>(&nkbins)->default_value(100),
             "Number of k bins to use for power spectrum measurement.")
-        // ("kmin", po::value<double>(&kmin)->default_value(.1),
-        //     "Minimum k value to use for power spectrum measurement.")
-        // ("kmax", po::value<double>(&kmax)->default_value(1),
-        //     "Maximum k value to use for power spectrum measurement.")
         ;
 
     // do the command line parsing now
@@ -128,41 +124,38 @@ int main(int argc, char **argv) {
             << boost::format("%.1f Mb") % (generator.getMemorySize()/1048576.) << std::endl;
     }
 
-    // Generate delta field in kspace
-    generator.generateKSpace();
+    // Generate delta field in k-space.
+    generator.generateFieldK();
 
-    // Perform power spectrum estimate from k-space delta field
+    // Perform power spectrum estimate from k-space delta field.
     if (powerfile.length() > 0) {
-        // Prepare power spectrum bins
+        // Prepare power spectrum bins.
         double kmax = pi/spacing, kmin = pi/(spacing*std::pow(nx*ny*nz,1./3.));
         double binsize = (kmax-kmin)/nkbins;
-        //double binfactor = nkbins/std::log10(kmax/kmin);
-        // Substritute BinnedData here?
         boost::scoped_array<lk::WeightedAccumulator> 
             powerAccumulator(new lk::WeightedAccumulator[nkbins]);
-        // k-space grid spacing
+        // k-space grid spacing.
         double dkx(2*pi/(nx*spacing)), dky(2*pi/(ny*spacing)), dkz(2*pi/(nz*spacing));
         double powerNorm = nx*ny*nz*spacing*spacing*spacing;
         for(int ix = 0; ix < nx; ++ix){
             double kx = (ix > nx/2 ? ix-nx : ix)*dkx;
             for(int iy = 0; iy < ny; ++iy){
                 double ky = (iy > ny/2 ? iy-ny : iy)*dky;
-                for(int iz = 0; iz < (nz/2 + 1); ++iz){
+                for(int iz = 0; iz < nz; ++iz){
                     double kz = (iz > nz/2 ? iz-nz : iz)*dkz;
                     double ksq = kx*kx + ky*ky + kz*kz;
                     double k = std::sqrt(ksq);
                     int index = (int) ((k-kmin)/binsize);
-                    //int index = (int) (binfactor*std::log10(k/kmin));
                     if (index < 0 || index >= nkbins) continue;
-                    powerAccumulator[index].accumulate(generator.getSqDeltaK(ix,iy,iz)*powerNorm);
+                    double redk(generator.getFieldKRe(ix,iy,iz)), imdk(generator.getFieldKIm(ix,iy,iz));
+                    powerAccumulator[index].accumulate(powerNorm*(redk*redk+imdk*imdk));
                 }
             }
         }
-        // Output power spectrum
+        // Output power spectrum.
         std::ofstream out(powerfile.c_str());
         for(int i = 0; i < nkbins; ++i) {
             out << boost::format("%d %f %f %f %d") 
-                //% i % (kmin*std::pow(10,(i+.5)/binfactor))
                 % i % (kmin + (i+.5)*binsize)
                 % powerAccumulator[i].mean() % powerAccumulator[i].variance() 
                 % powerAccumulator[i].count() << std::endl;
@@ -170,27 +163,27 @@ int main(int argc, char **argv) {
         out.close();
     }
 
-    // Perform FFT to realspace 
-    generator.generate();
+    // Perform FFT to realspace.
+    generator.transformFieldToR();
     
-    // Perform power spectrum estimate from k-space delta field
+    // Perform power spectrum estimate from k-space delta field.
     if (corrfile.length() > 0) {
         double rmin(0), rmax(200);
         double binsize = (rmax - rmin)/nbins;
-        // Prepare correlation function accumulators
+        // Prepare correlation function accumulators.
         boost::scoped_array<lk::WeightedAccumulator> 
             corrdidj(new lk::WeightedAccumulator[nbins]),
             corrdi(new lk::WeightedAccumulator[nbins]),
             corrdj(new lk::WeightedAccumulator[nbins]);
-
+        // Initialize the random number source for pair generating.
         lk::RandomPtr random = lk::Random::instance();
         random->setSeed(pairseed);
         for(long ipair = 0; ipair < npairs; ++ipair) {
-            // First random position
+            // First random position.
             long i = random->getInteger(1,nx*ny*nz);
             int ix(i % nx), iy(i/nx % ny), iz(i/(nx*ny) % nz);
             // Second random position chosen from to be within a sphere 
-            // of radius rmax from the first position
+            // of radius rmax from the first position.
             double jr = rmax/spacing*std::pow(random->getUniform(),1/3.);
             double jphi = 2*pi*random->getUniform();
             double jtheta = std::acos(2*random->getUniform()-1);
@@ -201,7 +194,7 @@ int main(int argc, char **argv) {
                 ipair--;
                 continue;
             }
-            // Calculate distance between positions
+            // Calculate distance between positions.
             double dx(ix-jx), dy(iy-jy), dz(iz-jz);
             double r = spacing*std::sqrt(dx*dx+dy*dy+dz*dz);
             int index = (int) ((r-rmin)/binsize);
@@ -209,7 +202,7 @@ int main(int argc, char **argv) {
                 ipair--;
                 continue;
             }
-            // Accumulate values
+            // Accumulate values.
             double idelta = generator.getField(ix,iy,iz);
             double jdelta = generator.getField(jx,jy,jz);
             corrdidj[index].accumulate(idelta*jdelta);

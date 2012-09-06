@@ -29,7 +29,7 @@ namespace cosmo {
 local::FftGaussianRandomFieldGenerator::FftGaussianRandomFieldGenerator(
 PowerSpectrumPtr powerSpectrum, double spacing, int nx, int ny, int nz, likely::RandomPtr random)
 : AbsGaussianRandomFieldGenerator(powerSpectrum,spacing,nx,ny,nz,random),
-_pimpl(new Implementation()), _halfz(nz/2+1), _kspace(false)
+_pimpl(new Implementation()), _halfz(nz/2+1)
 {
 #ifdef HAVE_LIBFFTW3F
     _pimpl->data = 0;
@@ -48,7 +48,7 @@ local::FftGaussianRandomFieldGenerator::~FftGaussianRandomFieldGenerator() {
 #endif
 }
 
-void local::FftGaussianRandomFieldGenerator::generateKSpace() {
+void local::FftGaussianRandomFieldGenerator::generateFieldK() {
 #ifdef HAVE_LIBFFTW3F
     // Cleanup any previous plan.
     if(_pimpl->data) FFTW(destroy_plan)(_pimpl->plan);
@@ -85,43 +85,57 @@ void local::FftGaussianRandomFieldGenerator::generateKSpace() {
             }
         }
     }
-    _kspace = true;
 #endif    
 }
 
-void local::FftGaussianRandomFieldGenerator::_inverseToReal() {
+void local::FftGaussianRandomFieldGenerator::transformFieldToR() {
 #ifdef HAVE_LIBFFTW3F
-    // Do the inverse FFT to real data.
-    if(_kspace) {
-        FFTW(execute)(_pimpl->plan);
-        _kspace = false;
-    }
+    // Do the inverse FFT.
+    FFTW(execute)(_pimpl->plan);
 #endif
 }
 
 void local::FftGaussianRandomFieldGenerator::generate() {
 #ifdef HAVE_LIBFFTW3F
-    if(!_kspace) generateKSpace();
-    _inverseToReal();
+    generateFieldK();
+    transformFieldToR();
 #endif
 }
 
-double local::FftGaussianRandomFieldGenerator::getSqDeltaK(int kx, int ky, int kz) const {
-    if(_kspace) {
-        int newz = (kz < _halfz ? kz : 2*_halfz - kz);
-        std::size_t index(newz+_halfz*(ky+getNy()*kx));
-        double re = _pimpl->data[index][0];
-        double im = _pimpl->data[index][1];
-        return re*re + im*im;
+double local::FftGaussianRandomFieldGenerator::getFieldKRe(int kx, int ky, int kz) const {
+    if(kx < 0 || kx >= getNx()) {
+        throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid kx < 0 or >= nx.");
     }
+    if(ky < 0 || ky >= getNy()) {
+        throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid ky < 0 or >= ny.");
+    }
+    if(kz < 0 || kz >= getNz()) {
+        throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid kz < 0 or >= nz.");
+    }
+    int newz = (kz < _halfz ? kz : 2*_halfz - kz);
+    std::size_t index(newz+_halfz*(ky+getNy()*kx));
+    return _pimpl->data[index][0];
+}
+
+double local::FftGaussianRandomFieldGenerator::getFieldKIm(int kx, int ky, int kz) const {
+    if(kx < 0 || kx >= getNx()) {
+        throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid kx < 0 or >= nx.");
+    }
+    if(ky < 0 || ky >= getNy()) {
+        throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid ky < 0 or >= ny.");
+    }
+    if(kz < 0 || kz >= getNz()) {
+        throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid kz < 0 or >= nz.");
+    }
+    int newz = (kz < _halfz ? kz : getNz() - kz);
+    std::size_t index(newz+_halfz*(ky+getNy()*kx));
+    return _pimpl->data[index][1];
 }
 
 double local::FftGaussianRandomFieldGenerator::_getFieldUnchecked(int x, int y, int z) const {
-    if(!_kspace) {
-        FftwReal const *realData = (FftwReal*)(_pimpl->data);
-        int index(z+2*_halfz*(y+getNy()*x));
-        return (double)realData[index];
-    }
+    FftwReal const *realData = (FftwReal*)(_pimpl->data);
+    int index(z+2*_halfz*(y+getNy()*x));
+    return (double)realData[index];
 }
 
 std::size_t local::FftGaussianRandomFieldGenerator::getMemorySize() const {
