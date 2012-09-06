@@ -4,6 +4,7 @@
 #include "cosmo/RuntimeError.h"
 
 #include "likely/Random.h"
+#include "likely/WeightedAccumulator.h"
 
 #include "config.h"
 #ifdef HAVE_LIBFFTW3F
@@ -28,7 +29,7 @@ namespace cosmo {
 local::FftGaussianRandomFieldGenerator::FftGaussianRandomFieldGenerator(
 PowerSpectrumPtr powerSpectrum, double spacing, int nx, int ny, int nz, likely::RandomPtr random)
 : AbsGaussianRandomFieldGenerator(powerSpectrum,spacing,nx,ny,nz,random),
-_pimpl(new Implementation()), _halfz(nz/2+1)
+_pimpl(new Implementation()), _halfz(nz/2+1), _kspace(false)
 {
 #ifdef HAVE_LIBFFTW3F
     _pimpl->data = 0;
@@ -47,7 +48,7 @@ local::FftGaussianRandomFieldGenerator::~FftGaussianRandomFieldGenerator() {
 #endif
 }
 
-void local::FftGaussianRandomFieldGenerator::generate() {
+void local::FftGaussianRandomFieldGenerator::generateKSpace() {
 #ifdef HAVE_LIBFFTW3F
     // Cleanup any previous plan.
     if(_pimpl->data) FFTW(destroy_plan)(_pimpl->plan);
@@ -58,7 +59,6 @@ void local::FftGaussianRandomFieldGenerator::generate() {
     _pimpl->data = (FFTW(complex)*)&_buffer[0];
     FftwReal *realData = (FftwReal*)(_pimpl->data);
     _pimpl->plan = FFTW(plan_dft_c2r_3d)(getNx(),getNy(),getNz(),_pimpl->data,realData,FFTW_ESTIMATE);
-
     // Scale each complex value according to the power for the coresponding k-vector.
     double twopi(8*std::atan(1)), spacing(getSpacing());
     double dkx = twopi/(getNx()*spacing), dky = twopi/(getNy()*spacing), dkz = twopi/(getNz()*spacing);
@@ -85,16 +85,43 @@ void local::FftGaussianRandomFieldGenerator::generate() {
             }
         }
     }
-
-    // Do the inverse FFT to real data.
-    FFTW(execute)(_pimpl->plan);
+    _kspace = true;
 #endif    
 }
 
+void local::FftGaussianRandomFieldGenerator::_inverseToReal() {
+#ifdef HAVE_LIBFFTW3F
+    // Do the inverse FFT to real data.
+    if(_kspace) {
+        FFTW(execute)(_pimpl->plan);
+        _kspace = false;
+    }
+#endif
+}
+
+void local::FftGaussianRandomFieldGenerator::generate() {
+#ifdef HAVE_LIBFFTW3F
+    if(!_kspace) generateKSpace();
+    _inverseToReal();
+#endif
+}
+
+double local::FftGaussianRandomFieldGenerator::getSqDeltaK(int kx, int ky, int kz) const {
+    if(_kspace) {
+        int newz = (kz < _halfz ? kz : 2*_halfz - kz);
+        std::size_t index(newz+_halfz*(ky+getNy()*kx));
+        double re = _pimpl->data[index][0];
+        double im = _pimpl->data[index][1];
+        return re*re + im*im;
+    }
+}
+
 double local::FftGaussianRandomFieldGenerator::_getFieldUnchecked(int x, int y, int z) const {
-    FftwReal const *realData = (FftwReal*)(_pimpl->data);
-    int index(z+2*_halfz*(y+getNy()*x));
-    return (double)realData[index];
+    if(!_kspace) {
+        FftwReal const *realData = (FftwReal*)(_pimpl->data);
+        int index(z+2*_halfz*(y+getNy()*x));
+        return (double)realData[index];
+    }
 }
 
 std::size_t local::FftGaussianRandomFieldGenerator::getMemorySize() const {

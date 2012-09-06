@@ -17,17 +17,24 @@ namespace cosmo {
         // Generates a new realization and stores the results internally. Use the getField()
         // method to access generated values.
         virtual void generate();
+        // Generates a new realization in k-space.
+        virtual void generateKSpace();
         // Returns the memory size in bytes required for this generator or zero if this
         // information is not available.
         virtual std::size_t getMemorySize() const;
+        // Returns |d(k)|^2 
+        double getSqDeltaK(int kx, int ky, int kz) const;
 	private:
         class Implementation;
         int _halfz;
         std::size_t _nbuf;
         boost::scoped_ptr<Implementation> _pimpl;
         boost::shared_array<float> _buffer;
+        bool _kspace;
         // The getField method calls this after checking for invalid (x,y,z).
         virtual double _getFieldUnchecked(int x, int y, int z) const;
+        // Perform inverse FFT to real data.
+        virtual void _inverseToReal();
 	}; // FftGaussianRandomFieldGenerator
 } // cosmo
 
