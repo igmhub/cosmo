@@ -29,6 +29,7 @@ namespace cosmo {
         double getFieldKRe(int kx, int ky, int kz) const;
         // Returns the imaginary component of the k-space delta field at the specified position
         double getFieldKIm(int kx, int ky, int kz) const;
+        int flattenIndex(int kx, int ky, int kz) const;
 	private:
         class Implementation;
         int _halfz;

@@ -102,6 +102,15 @@ void local::FftGaussianRandomFieldGenerator::generate() {
 #endif
 }
 
+int local::FftGaussianRandomFieldGenerator::flattenIndex(int kx, int ky, int kz) const{
+    if(kz < _halfz) {
+        return kz+_halfz*(ky+getNy()*kx);
+    }
+    else {
+        return (getNz()-kz)+_halfz*(ky+getNy()*kx);
+    }
+}
+
 double local::FftGaussianRandomFieldGenerator::getFieldKRe(int kx, int ky, int kz) const {
     if(kx < 0 || kx >= getNx()) {
         throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid kx < 0 or >= nx.");
@@ -112,8 +121,7 @@ double local::FftGaussianRandomFieldGenerator::getFieldKRe(int kx, int ky, int k
     if(kz < 0 || kz >= getNz()) {
         throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid kz < 0 or >= nz.");
     }
-    int newz = (kz < _halfz ? kz : 2*_halfz - kz);
-    std::size_t index(newz+_halfz*(ky+getNy()*kx));
+    std::size_t index(flattenIndex(kx,ky,kz));
     return _pimpl->data[index][0];
 }
 
@@ -127,10 +135,18 @@ double local::FftGaussianRandomFieldGenerator::getFieldKIm(int kx, int ky, int k
     if(kz < 0 || kz >= getNz()) {
         throw RuntimeError("AbsGaussianRandomFieldGenerator: invalid kz < 0 or >= nz.");
     }
-    int newz = (kz < _halfz ? kz : getNz() - kz);
-    std::size_t index(newz+_halfz*(ky+getNy()*kx));
-    return _pimpl->data[index][1];
+    std::size_t index(flattenIndex(kx,ky,kz));
+    if(kz == getNz()/2 && getNz() % 2 == 0) {
+        return 0;
+    }
+    else if(kz > getNz()/2) {
+        return -_pimpl->data[index][1];
+    }
+    else {
+        return _pimpl->data[index][1];
+    }
 }
+
 
 double local::FftGaussianRandomFieldGenerator::_getFieldUnchecked(int x, int y, int z) const {
     FftwReal const *realData = (FftwReal*)(_pimpl->data);
