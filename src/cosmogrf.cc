@@ -243,13 +243,31 @@ int main(int argc, char **argv) {
     if(verbose) {
         // Calculate the statistics of the generated delta field.
         lk::WeightedAccumulator accumulator;
+        std::cout << "{";
         for(int ix = 0; ix < nx; ++ix) {
+            std::cout << "{";
             for(int iy = 0; iy < ny; ++iy) {
+                std::cout << "{";
                 for(int iz = 0; iz < nz; ++iz) {
                     accumulator.accumulate(generator.getField(ix,iy,iz));
+                    std::cout << boost::format("%f") % generator.getField(ix,iy,iz);;
+                    if(iz != nz-1) std::cout << ", ";
+                }
+                if(iy < ny-1){
+                    std::cout << "}, " << std::endl;
+                }
+                else {
+                    std::cout << "}";
                 }
             }
+            if(ix < nx-1){
+                std::cout << "}, " << std::endl;
+            }
+            else {
+                std::cout << "}";
+            }
         }
+        std::cout << "}" << std::endl;
 
         // Compare with var(k1,k2) = Integral[k^2/(2pi) P(k),{k,k1,k2}]. This will not match exactly
         // because we are comparing a sphere in k-space with a cuboid in r-space.
