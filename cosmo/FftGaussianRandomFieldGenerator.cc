@@ -107,6 +107,29 @@ int local::FftGaussianRandomFieldGenerator::flattenIndex(int kx, int ky, int kz)
 }
 
 double local::FftGaussianRandomFieldGenerator::getFieldKRe(int kx, int ky, int kz) const {
+    if(kx < 0 || kx >= getNx()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid kx < 0 or >= nx.");
+    }
+    if(ky < 0 || ky >= getNy()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid ky < 0 or >= ny.");
+    }
+    if(kz < 0 || kz >= getNz()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid kz < 0 or >= nz.");
+    }
+    if(2*kz == getNz() && ky == 0 && kx == 0){
+        return _pimpl->data[flattenIndex(kx,ky,kz)][0];
+    }
+    if( kz == 0 || 2*kz == getNz() ){
+        if(ky != 0 && kx == 0){
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][0]+_pimpl->data[flattenIndex(kx,getNy()-ky,kz)][0]);
+        }
+        else if( ky == 0 && kx != 0) {
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][0]+_pimpl->data[flattenIndex(getNx()-kx,ky,kz)][0]);
+        }
+        else if( kx != 0 && ky != 0) {
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][0]+_pimpl->data[flattenIndex(getNx()-kx,getNy()-ky,kz)][0]);            
+        }
+    }
     if(kz < _halfz){
         return _pimpl->data[flattenIndex(kx,ky,kz)][0];
     }
@@ -122,6 +145,29 @@ double local::FftGaussianRandomFieldGenerator::getFieldKRe(int kx, int ky, int k
 }
 
 double local::FftGaussianRandomFieldGenerator::getFieldKIm(int kx, int ky, int kz) const {
+    if(kx < 0 || kx >= getNx()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid kx < 0 or >= nx.");
+    }
+    if(ky < 0 || ky >= getNy()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid ky < 0 or >= ny.");
+    }
+    if(kz < 0 || kz >= getNz()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid kz < 0 or >= nz.");
+    }
+    if(2*kz == getNz() && ky == 0 && kx == 0){
+        return 0;
+    }
+    if( kz == 0 || 2*kz == getNz() ){
+        if(ky != 0 && kx == 0){
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][1]-_pimpl->data[flattenIndex(kx,getNy()-ky,kz)][1]);
+        }
+        else if( ky == 0 && kx != 0) {
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][1]-_pimpl->data[flattenIndex(getNx()-kx,ky,kz)][1]);
+        }
+        else if( kx != 0 && ky != 0) {
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][1]-_pimpl->data[flattenIndex(getNx()-kx,getNy()-ky,kz)][1]);            
+        }
+    }
     if(kz < _halfz){
         return _pimpl->data[flattenIndex(kx,ky,kz)][1];
     }

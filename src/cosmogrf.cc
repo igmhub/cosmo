@@ -137,39 +137,21 @@ int main(int argc, char **argv) {
         // k-space grid spacing.
         double dkx(2*pi/(nx*spacing)), dky(2*pi/(ny*spacing)), dkz(2*pi/(nz*spacing));
         double powerNorm = nx*ny*nz*spacing*spacing*spacing;
-        std::cout << "{";
         for(int ix = 0; ix < nx; ++ix){
-            std::cout << "{";
             double kx = (ix > nx/2 ? ix-nx : ix)*dkx;
             for(int iy = 0; iy < ny; ++iy){
-                std::cout << "{";
                 double ky = (iy > ny/2 ? iy-ny : iy)*dky;
                 for(int iz = 0; iz < nz; ++iz){
                     double kz = (iz > nz/2 ? iz-nz : iz)*dkz;
                     double ksq = kx*kx + ky*ky + kz*kz;
                     double k = std::sqrt(ksq);
                     int index = (int) ((k-kmin)/binsize);
-                    //if (index < 0 || index >= nkbins) continue;
+                    if (index < 0 || index >= nkbins) continue;
                     double redk(generator.getFieldKRe(ix,iy,iz)), imdk(generator.getFieldKIm(ix,iy,iz));
-                    //powerAccumulator[index].accumulate(powerNorm*(redk*redk+imdk*imdk));
-                    std::cout << boost::format("%f + I*%f") % redk % imdk;;
-                    if(iz != nz-1) std::cout << ", ";
+                    powerAccumulator[index].accumulate(powerNorm*(redk*redk+imdk*imdk));
                 }
-                if(iy < ny-1){
-                    std::cout << "}, " << std::endl;
-                }
-                else {
-                    std::cout << "}";
-                }
-            }
-            if(ix < nx-1){
-                std::cout << "}, " << std::endl;
-            }
-            else {
-                std::cout << "}";
             }
         }
-        std::cout << "}" << std::endl;
         // Output power spectrum.
         std::ofstream out(powerfile.c_str());
         for(int i = 0; i < nkbins; ++i) {
@@ -243,32 +225,13 @@ int main(int argc, char **argv) {
     if(verbose) {
         // Calculate the statistics of the generated delta field.
         lk::WeightedAccumulator accumulator;
-        std::cout << "{";
         for(int ix = 0; ix < nx; ++ix) {
-            std::cout << "{";
             for(int iy = 0; iy < ny; ++iy) {
-                std::cout << "{";
                 for(int iz = 0; iz < nz; ++iz) {
                     accumulator.accumulate(generator.getField(ix,iy,iz));
-                    std::cout << boost::format("%f") % generator.getField(ix,iy,iz);;
-                    if(iz != nz-1) std::cout << ", ";
                 }
-                if(iy < ny-1){
-                    std::cout << "}, " << std::endl;
-                }
-                else {
-                    std::cout << "}";
-                }
-            }
-            if(ix < nx-1){
-                std::cout << "}, " << std::endl;
-            }
-            else {
-                std::cout << "}";
             }
         }
-        std::cout << "}" << std::endl;
-
         // Compare with var(k1,k2) = Integral[k^2/(2pi) P(k),{k,k1,k2}]. This will not match exactly
         // because we are comparing a sphere in k-space with a cuboid in r-space.
         double kmax = pi/spacing, kmin = pi/(spacing*std::pow(nx*ny*nz,1./3.));
