@@ -4,6 +4,7 @@
 #include "cosmo/RuntimeError.h"
 
 #include "likely/Random.h"
+#include "likely/WeightedAccumulator.h"
 
 #include "config.h"
 #ifdef HAVE_LIBFFTW3F
@@ -26,65 +27,161 @@ namespace cosmo {
 } // cosmo::
 
 local::FftGaussianRandomFieldGenerator::FftGaussianRandomFieldGenerator(
-PowerSpectrumPtr powerSpectrum, double spacing, int nx, int ny, int nz)
-: AbsGaussianRandomFieldGenerator(powerSpectrum,spacing,nx,ny,nz),
+PowerSpectrumPtr powerSpectrum, double spacing, int nx, int ny, int nz, likely::RandomPtr random)
+: AbsGaussianRandomFieldGenerator(powerSpectrum,spacing,nx,ny,nz,random),
 _pimpl(new Implementation()), _halfz(nz/2+1)
 {
 #ifdef HAVE_LIBFFTW3F
     _pimpl->data = 0;
+#else
+    throw RuntimeError("FftGaussianRandomFieldGenerator: package not built with FFTW3.");
 #endif
+    // Calculate the number of complex values needed in k space.
+    _nbuf = (std::size_t)getNx()*getNy()*_halfz;
 }
 
 local::FftGaussianRandomFieldGenerator::~FftGaussianRandomFieldGenerator() {
 #ifdef HAVE_LIBFFTW3F
     if(0 != _pimpl->data) {
         FFTW(destroy_plan)(_pimpl->plan);
-        FFTW(free)(_pimpl->data);
     }
 #endif
 }
 
-void local::FftGaussianRandomFieldGenerator::_generate(int seed) {
+void local::FftGaussianRandomFieldGenerator::generateFieldK() {
 #ifdef HAVE_LIBFFTW3F
-    if(0 == _pimpl->data) {
-        _nbuf = (std::size_t)getNx()*getNy()*_halfz;
-        _pimpl->data = (FFTW(complex)*)FFTW(malloc)(_nbuf*sizeof(FFTW(complex)));
-        FftwReal *realData = (FftwReal*)(_pimpl->data);
-        _pimpl->plan = FFTW(plan_dft_c2r_3d)(getNx(),getNy(),getNz(),_pimpl->data,
-            realData,FFTW_ESTIMATE);
-    }
-    // Fill the complex transform data here, making sure that the inverse FT is real, i.e.
-    // data[(nx-x0)%nx,(ny-y)%ny,(nz-z)%nz] = data[x,y,z]*. Since we only provide transform
-    // data for z < nz/2+1, this only constrains values with z=0 or (for nz even) z=nz/2,
-    // which are unchanged under z -> (nz-z)%nz. I'm not sure if actually matters if we don't
-    // bother symmetrizing the transform data -- should test this...
-    
-    // Set the real,imag parts of all complex numbers to random numbers sampled from
-    // a Gaussian with mean zero and variance one.
-    likely::RandomPtr random = likely::Random::instance();
-
-    // Need to synch FFTW malloc with likely::allocateAlignedArray...
-    //!!random->fillArrayNormal((FftwReal*)(_pimpl->data),_nbuf,seed);
-    
-    // Scale each complex value by sqrt(power(kx,ky,kz)).
-    for(int x = 0; x < getNx(); ++x) {
-        double kx(...);
-        for(int y = 0; y < getNy(); ++y) {
-            for(int z = 0; z < _halfz; ++z) {
-                std::size_t index(z+_halfz*(y+getNy()*x));
-                double sigma(1);
+    // Cleanup any previous plan.
+    if(_pimpl->data) FFTW(destroy_plan)(_pimpl->plan);
+    // Generate random (real,imag) components with unit Gaussian distributions.
+    std::size_t ngen(2*_nbuf);
+    _buffer = getRandom()->fillFloatArrayNormal(ngen);
+    // Create a new plan for the new buffer.
+    _pimpl->data = (FFTW(complex)*)&_buffer[0];
+    FftwReal *realData = (FftwReal*)(_pimpl->data);
+    _pimpl->plan = FFTW(plan_dft_c2r_3d)(getNx(),getNy(),getNz(),_pimpl->data,realData,FFTW_ESTIMATE);
+    // Scale each complex value according to the power for the coresponding k-vector.
+    double twopi(8*std::atan(1)), spacing(getSpacing());
+    double dkx = twopi/(getNx()*spacing), dky = twopi/(getNy()*spacing), dkz = twopi/(getNz()*spacing);
+    double dk3 = dkx*dky*dkz/(2*twopi);
+    int nxby2 = getNx()/2, nyby2 = getNy()/2, nzby2 = getNz()/2;
+    for(int ix = 0; ix < getNx(); ++ix) {
+        double kx = (ix > nxby2 ? ix-getNx() : ix)*dkx;
+        for(int iy = 0; iy < getNy(); ++iy) {
+            double ky = (iy > nyby2 ? iy-getNy() : iy)*dky;
+            for(int iz = 0; iz < _halfz; ++iz) {
+                double kz = (iz > nzby2 ? iz-getNz() : iz)*dkz;
+                double ksq = kx*kx + ky*ky + kz*kz;
+                double sigma(0);
+                if(ksq > 0) {
+                    double k = std::sqrt(ksq);
+                    // Evaluate Deltak = k^3/(2pi^2) P(k)
+                    double Deltak = getPower(k);
+                    // Calculate corresponding RMS for Re,Im parts of delta_k
+                    sigma = std::sqrt(Deltak*dk3/(ksq*k)/2);
+                }
+                std::size_t index(iz+_halfz*(iy+getNy()*ix));
                 _pimpl->data[index][0] *= sigma;
                 _pimpl->data[index][1] *= sigma;
             }
         }
     }
-
-    // Do the inverse FFT to real data.
-    FFTW(execute)(_pimpl->plan);
-#else
-    throw RuntimeError("FftGaussianRandomFieldGenerator: package was not built with FFTW3.");
 #endif    
 }
+
+void local::FftGaussianRandomFieldGenerator::transformFieldToR() {
+#ifdef HAVE_LIBFFTW3F
+    // Do the inverse FFT.
+    FFTW(execute)(_pimpl->plan);
+#endif
+}
+
+void local::FftGaussianRandomFieldGenerator::generate() {
+#ifdef HAVE_LIBFFTW3F
+    generateFieldK();
+    transformFieldToR();
+#endif
+}
+
+int local::FftGaussianRandomFieldGenerator::flattenIndex(int kx, int ky, int kz) const{
+    return kz+_halfz*(ky+getNy()*kx);
+}
+
+double local::FftGaussianRandomFieldGenerator::getFieldKRe(int kx, int ky, int kz) const {
+    if(kx < 0 || kx >= getNx()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid kx < 0 or >= nx.");
+    }
+    if(ky < 0 || ky >= getNy()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid ky < 0 or >= ny.");
+    }
+    if(kz < 0 || kz >= getNz()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid kz < 0 or >= nz.");
+    }
+    if(2*kz == getNz() && ky == 0 && kx == 0){
+        return _pimpl->data[flattenIndex(kx,ky,kz)][0];
+    }
+    if( kz == 0 || 2*kz == getNz() ){
+        if(ky != 0 && kx == 0){
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][0]+_pimpl->data[flattenIndex(kx,getNy()-ky,kz)][0]);
+        }
+        else if( ky == 0 && kx != 0) {
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][0]+_pimpl->data[flattenIndex(getNx()-kx,ky,kz)][0]);
+        }
+        else if( kx != 0 && ky != 0) {
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][0]+_pimpl->data[flattenIndex(getNx()-kx,getNy()-ky,kz)][0]);            
+        }
+    }
+    if(kz < _halfz){
+        return _pimpl->data[flattenIndex(kx,ky,kz)][0];
+    }
+    else { 
+        if(ky != 0) {
+            ky = getNy()-ky;
+        }
+        if(kx != 0) {
+            kx = getNx()-kx;
+        }
+        return _pimpl->data[flattenIndex(kx,ky,getNz()-kz)][0];
+    }
+}
+
+double local::FftGaussianRandomFieldGenerator::getFieldKIm(int kx, int ky, int kz) const {
+    if(kx < 0 || kx >= getNx()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid kx < 0 or >= nx.");
+    }
+    if(ky < 0 || ky >= getNy()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid ky < 0 or >= ny.");
+    }
+    if(kz < 0 || kz >= getNz()) {
+        throw RuntimeError("FftGaussianRandomFieldGenerator: invalid kz < 0 or >= nz.");
+    }
+    if(2*kz == getNz() && ky == 0 && kx == 0){
+        return 0;
+    }
+    if( kz == 0 || 2*kz == getNz() ){
+        if(ky != 0 && kx == 0){
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][1]-_pimpl->data[flattenIndex(kx,getNy()-ky,kz)][1]);
+        }
+        else if( ky == 0 && kx != 0) {
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][1]-_pimpl->data[flattenIndex(getNx()-kx,ky,kz)][1]);
+        }
+        else if( kx != 0 && ky != 0) {
+            return .5*(_pimpl->data[flattenIndex(kx,ky,kz)][1]-_pimpl->data[flattenIndex(getNx()-kx,getNy()-ky,kz)][1]);            
+        }
+    }
+    if(kz < _halfz){
+        return _pimpl->data[flattenIndex(kx,ky,kz)][1];
+    }
+    else {
+        if(ky != 0) {
+            ky = getNy()-ky;
+        }
+        if(kx != 0) {
+            kx = getNx()-kx;
+        }
+        return -_pimpl->data[flattenIndex(kx,ky,getNz()-kz)][1];
+    }
+}
+
 
 double local::FftGaussianRandomFieldGenerator::_getFieldUnchecked(int x, int y, int z) const {
     FftwReal const *realData = (FftwReal*)(_pimpl->data);
@@ -93,5 +190,5 @@ double local::FftGaussianRandomFieldGenerator::_getFieldUnchecked(int x, int y, 
 }
 
 std::size_t local::FftGaussianRandomFieldGenerator::getMemorySize() const {
-    return sizeof(*this) + (std::size_t)getNx()*getNy()*_halfz;
+    return sizeof(*this) + (std::size_t)getNx()*getNy()*_halfz*8;
 }

@@ -4,6 +4,7 @@
 #define COSMO_ABS_GAUSSIAN_RANDOM_FIELD_GENERATOR
 
 #include "cosmo/types.h"
+#include "likely/types.h"
 
 #include <cstddef>
 
@@ -14,32 +15,33 @@ namespace cosmo {
 	public:
 	    // Creates a new generator with the specified grid spacing in Mpc/h and the
 	    // specified dimensions (nx,ny,nz). No realization is generated until the
-	    // generate method is called.
+	    // first call to generate(). Uses the random number source provided, or else
+	    // the default likely::Random::instance().
 		AbsGaussianRandomFieldGenerator(PowerSpectrumPtr powerSpectrum, double spacing,
-		    int nx, int ny, int nz);
+		    int nx, int ny, int nz, likely::RandomPtr random = likely::RandomPtr());
 		virtual ~AbsGaussianRandomFieldGenerator();
 		// Accessors for constructor parameters.
         double getSpacing() const;
         int getNx() const;
         int getNy() const;
         int getNz() const;
-        // Generates a new realization using the specified random seed and stores the
-        // results internally. Use the getField() method to access generated values.
-        void generate(int seed);
+        // Generates a new realization and stores the results internally. Use the getField()
+        // method to access generated values.
+        virtual void generate() = 0;
         // Returns the most recent generated value at the specified grid point. Throws
-        // a RuntimeError if generate() has never been called.
+        // a RuntimeError for invalid (x,y,z).
         double getField(int x, int y, int z) const;
-        // Returns the number of times that generate() has been called.
-        int getGenerateCount() const;
         // Returns the memory size in bytes required for this generator or zero if this
         // information is not available.
         virtual std::size_t getMemorySize() const;
+    protected:
+        likely::RandomPtr getRandom();
+        double getPower(double k) const;
 	private:
         PowerSpectrumPtr _powerSpectrum;
         double _spacing;
-        int _nx,_ny,_nz, _generateCount;
-        // The generate() method calls this virtual method.
-        virtual void _generate(int seed) = 0;
+        int _nx,_ny,_nz;
+        likely::RandomPtr _random;
         // The getField method calls this virtual method after checking that data is
         // available and that (x,y,z) are valid values.
         virtual double _getFieldUnchecked(int x, int y, int z) const = 0;
@@ -51,13 +53,7 @@ namespace cosmo {
     inline int AbsGaussianRandomFieldGenerator::getNy() const { return _ny; }
     inline int AbsGaussianRandomFieldGenerator::getNz() const { return _nz; }
 
-    inline int AbsGaussianRandomFieldGenerator::getGenerateCount() const {
-        return _generateCount;
-    }
-    inline void AbsGaussianRandomFieldGenerator::generate(int seed) {
-        _generateCount++;
-        _generate(seed);
-    }
+    inline likely::RandomPtr AbsGaussianRandomFieldGenerator::getRandom() { return _random; }
 	
 } // cosmo
 
