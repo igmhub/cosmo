@@ -1,7 +1,5 @@
 // Created 8-Oct-2012 by Daniel Margala (University of California, Irvine) <dmargala@uci.edu>
-// Generates a Gaussian random field.
-
-// g++ -lboost_program_options -lcosmo -llikely -o stacked stackedgrf.cc 
+// Stacks many Gaussian random fields on the field maximum (or minimum).
 
 #include "cosmo/cosmo.h"
 #include "likely/likely.h"
@@ -18,7 +16,7 @@ namespace lk = likely;
 
 // Return the distance between x0 and x1 in a periodic dimension of length nx
 int distance(int x0, int x1, int nx){
-    int dx = x1 - x0;
+    int dx(x1 - x0);
     return (dx > 0 ? (dx > nx/2 ? nx - dx : dx) : (dx <= -nx/2 ? nx + dx : dx) );
 }
 
@@ -28,13 +26,13 @@ int main(int argc, char **argv) {
     long npairs;
     int nx,ny,nz,seed,nfields;
     std::string loadPowerFile, prefix;
-    po::options_description cli("Generates Xi(r,mu,z) from a Gaussian random field.");
+    po::options_description cli("Stacks many Gaussian random fields on the field maximum (or minimum).");
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
-        ("spacing", po::value<double>(&spacing)->default_value(3),
+        ("spacing", po::value<double>(&spacing)->default_value(4),
             "Grid spacing in Mpc/h.")
-        ("nx", po::value<int>(&nx)->default_value(64),
+        ("nx", po::value<int>(&nx)->default_value(76),
             "Grid size along x-axis.")
         ("ny", po::value<int>(&ny)->default_value(0),
             "Grid size along y-axis (or zero for ny=nx).")
@@ -46,14 +44,14 @@ int main(int argc, char **argv) {
             "Random seed to use for GRF.")
         ("prefix", po::value<std::string>(&prefix)->default_value("stack"),
             "Prefix for output file names.")
-        ("nfields", po::value<int>(&nfields)->default_value(2),
+        ("nfields", po::value<int>(&nfields)->default_value(1000),
             "Number of fields to stack.")
         ("fiducial",
             "Stack relative to box center instead of local maximum.")
         ("minimum",
             "Stack relative to the local minimum instead of local maximum.")
         ("snapshot",
-            "Save snapshot every 10%%.")
+            "Save snapshot of 1d projection every 10%%.")
         ;
 
     // do the command line parsing now
@@ -117,9 +115,9 @@ int main(int argc, char **argv) {
     }
 
     // Initialize histogram
-    double binspacing = spacing;
-    int nbins = std::floor(150./binspacing + .5);
-    double rmax = nbins*binspacing;
+    double binspacing(spacing);
+    int nbins(std::floor(150./binspacing + .5));
+    double rmax(nbins*binspacing);
     boost::scoped_array<lk::WeightedAccumulator> xi(new lk::WeightedAccumulator[nbins]);
     boost::scoped_array<lk::WeightedAccumulator> xi2d(new lk::WeightedAccumulator[nbins*nbins]);
 
