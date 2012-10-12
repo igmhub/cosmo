@@ -195,7 +195,7 @@ int main(int argc, char **argv) {
 
     // Print extreme value mean, variance, and count
     if(verbose) {
-        std::cout << boost::format("Extrem value mean, variance, count: %f %f %d")
+        std::cout << boost::format("Extreme value mean, variance, count: %f %f %d")
             % extremeValues.mean() % extremeValues.variance() % extremeValues.count() << std::endl;
     }
 
