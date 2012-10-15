@@ -22,7 +22,7 @@ int distance(int x0, int x1, int nx){
 
 int main(int argc, char **argv) {
     // Configure command-line option processing
-    double spacing;
+    double spacing, xlos, ylos, zlos;
     long npairs;
     int nx,ny,nz,seed,nfields;
     std::string loadPowerFile, prefix;
@@ -52,6 +52,12 @@ int main(int argc, char **argv) {
             "Stack relative to the local minimum instead of local maximum.")
         ("snapshot",
             "Save snapshot of 1d projection every 10%%.")
+        ("xlos", po::value<double>(&xlos)->default_value(1),
+            "Line-of-sight direction x-component.")
+        ("ylos", po::value<double>(&ylos)->default_value(0),
+            "Line-of-sight direction y-component.")
+        ("zlos", po::value<double>(&zlos)->default_value(0),
+            "Line-of-sight direction z-component.")
         ;
 
     // do the command line parsing now
@@ -122,9 +128,11 @@ int main(int argc, char **argv) {
     boost::scoped_array<lk::WeightedAccumulator> xi2d(new lk::WeightedAccumulator[nbins*nbins]);
 
     int dx,dy,dz;
-    float value, extremeValue, dr, r, rperp, rparl;
+    double value, extremeValue, dr, r, rperp, rparl;
     std::vector<int> extremeIndex(3,0);
     lk::WeightedAccumulator extremeValues;
+    double normlos(std::sqrt(xlos*xlos + ylos*ylos + zlos*zlos));
+    double xparl(xlos/normlos), yparl(ylos/normlos), zparl(zlos/normlos);
     for(int ifield = 0; ifield < nfields; ++ifield){
         // Generate Gaussian random field
         generator.generate();
@@ -160,8 +168,8 @@ int main(int argc, char **argv) {
                     dr = std::sqrt(dx*dx + dy*dy + dz*dz);
                     // Apply grid spacing
                     r = spacing*dr;
-                    rparl = spacing*std::abs(dx);
-                    rperp = spacing*std::sqrt(dr*dr-dx*dx);
+                    rparl = spacing*std::abs(dx*xparl + dy*yparl + dz*zparl);
+                    rperp = std::sqrt(r*r-rparl*rparl);
                     // Look up field value
                     value = generator.getField(ix,iy,iz);
                     // Accumulate value in appropriate bin
