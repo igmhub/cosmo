@@ -22,9 +22,9 @@ int distance(int x0, int x1, int nx){
 
 int main(int argc, char **argv) {
     // Configure command-line option processing
-    double spacing, xlos, ylos, zlos;
+    double spacing, xlos, ylos, zlos, binsize, binmin;
     long npairs;
-    int nx,ny,nz,seed,nfields;
+    int nx,ny,nz,seed,nfields,nbins;
     std::string loadPowerFile, prefix;
     po::options_description cli("Stacks many Gaussian random fields on the field maximum (or minimum).");
     cli.add_options()
@@ -58,6 +58,12 @@ int main(int argc, char **argv) {
             "Line-of-sight direction y-component.")
         ("zlos", po::value<double>(&zlos)->default_value(0),
             "Line-of-sight direction z-component.")
+        ("bin-size", po::value<double>(&binsize)->default_value(4),
+            "Histogram bin size in Mpc/h.")
+        ("bin-n", po::value<int>(&nbins)->default_value(37),
+            "Number of histogram bins.")
+        ("bin-min", po::value<double>(&binmin)->default_value(2),
+            "Minimum bin (left edge) in Mpc/h.")
         ;
 
     // do the command line parsing now
@@ -121,9 +127,9 @@ int main(int argc, char **argv) {
     }
 
     // Initialize histogram
-    double binspacing(spacing);
-    int nbins(std::floor(150./binspacing + .5));
-    double rmax(nbins*binspacing);
+    //int nbins(std::floor(150./binsize + .5));
+
+    double rmax(binmin + nbins*binsize);
     boost::scoped_array<lk::WeightedAccumulator> xi(new lk::WeightedAccumulator[nbins]);
     boost::scoped_array<lk::WeightedAccumulator> xi2d(new lk::WeightedAccumulator[nbins*nbins]);
 
@@ -173,11 +179,11 @@ int main(int argc, char **argv) {
                     // Look up field value
                     value = generator.getField(ix,iy,iz);
                     // Accumulate value in appropriate bin
-                    if(r < rmax) {
-                        xi[std::floor(r/binspacing)].accumulate(value);
+                    if(r < rmax && r >= binmin) {
+                        xi[std::floor((r-binmin)/binsize)].accumulate(value);
                     }
-                    if(rparl < rmax && rperp < rmax){
-                        xi2d[std::floor(rperp/binspacing)+nbins*std::floor(rparl/binspacing)].accumulate(value);
+                    if(rparl < rmax && rperp < rmax && rparl >= binmin && rperp >= binmin){
+                        xi2d[std::floor((rperp-binmin)/binsize)+nbins*std::floor((rparl-binmin)/binsize)].accumulate(value);
                     }
                 }
             }
@@ -193,7 +199,7 @@ int main(int argc, char **argv) {
                 std::ofstream out(outFilename.c_str());
                 boost::format outFormat("%.2f %.10f %.10f %d");
                 for(int index = 0; index < nbins; ++index) {
-                    out << (outFormat % ((index+.5)*binspacing)
+                    out << (outFormat % ((index+.5)*binsize+binmin)
                         % xi[index].mean() % xi[index].variance() % xi[index].count()) << std::endl;
                 }
                 out.close();
@@ -213,7 +219,7 @@ int main(int argc, char **argv) {
         std::ofstream out(outFilename.c_str());
         boost::format outFormat("%.2f %.10f %.10f %d");
         for(int index = 0; index < nbins; ++index) {
-            out << (outFormat % ((index+.5)*binspacing)
+            out << (outFormat % ((index+.5)*binsize+binmin)
                 % xi[index].mean() % xi[index].variance() % xi[index].count()) << std::endl;
         }
         out.close();
@@ -225,7 +231,7 @@ int main(int argc, char **argv) {
         std::ofstream out(outFilename.c_str());
         boost::format outFormat("%.2f %.2f %.10f %.10f %d");
         for(int index = 0; index < nbins*nbins; ++index) {
-            out << (outFormat % ((index%nbins+.5)*binspacing) % ((index/nbins+.5)*binspacing)
+            out << (outFormat % ((index%nbins+.5)*binsize+binmin) % ((index/nbins+.5)*binsize+binmin)
                 % xi2d[index].mean() % xi2d[index].variance() % xi2d[index].count()) << std::endl;
         }
         out.close();
