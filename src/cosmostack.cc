@@ -10,6 +10,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cmath>
 
 namespace po = boost::program_options;
 namespace lk = likely;
@@ -17,12 +18,12 @@ namespace lk = likely;
 // Return the distance between x0 and x1 in a periodic dimension of length nx
 int distance(int x0, int x1, int nx){
     int dx(x1 - x0);
-    return (dx > 0 ? (dx > nx/2 ? nx - dx : dx) : (dx <= -nx/2 ? nx + dx : dx) );
+    return (dx > 0 ? (dx > nx/2 ? dx - nx : dx) : (dx <= -nx/2 ? nx + dx : dx) );
 }
-
+ 
 int main(int argc, char **argv) {
     // Configure command-line option processing
-    double spacing, xlos, ylos, zlos, binsize, binmin;
+    double spacing, xlos, ylos, zlos, binsize, rmin;
     long npairs;
     int nx,ny,nz,seed,nfields,nbins;
     std::string loadPowerFile, prefix;
@@ -62,7 +63,7 @@ int main(int argc, char **argv) {
             "Histogram bin size in Mpc/h.")
         ("bin-n", po::value<int>(&nbins)->default_value(37),
             "Number of histogram bins.")
-        ("bin-min", po::value<double>(&binmin)->default_value(2),
+        ("bin-min", po::value<double>(&rmin)->default_value(2),
             "Minimum bin (left edge) in Mpc/h.")
         ;
 
@@ -88,6 +89,12 @@ int main(int argc, char **argv) {
     if(0 == nz) nz = ny;
     
     double pi(4*std::atan(1));
+
+    if(verbose) {
+        std::cout << "Will stack " << nfields << " GRFs with dimensions (x,y,z) = " 
+            << boost::format("(%d,%d,%d)") % nx % ny % nz 
+            << boost::format(" using %.2f Mpc/h grid spacing.") % spacing << std::endl;
+    }
 
     // Load a tabulated power spectrum for interpolation.
     cosmo::PowerSpectrumPtr power;
@@ -127,27 +134,32 @@ int main(int argc, char **argv) {
     }
 
     // Initialize histogram
-    //int nbins(std::floor(150./binsize + .5));
-
-    double rmax(binmin + nbins*binsize);
+    double rmax(rmin + nbins*binsize);
     boost::scoped_array<lk::WeightedAccumulator> xi(new lk::WeightedAccumulator[nbins]);
     boost::scoped_array<lk::WeightedAccumulator> xi2d(new lk::WeightedAccumulator[nbins*nbins]);
-
-    int dx,dy,dz;
-    double value, extremeValue, dr, r, rperp, rparl;
-    std::vector<int> extremeIndex(3,0);
+    // Collect extreme values of grfs
     lk::WeightedAccumulator extremeValues;
+    // Line-of-sight direction
     double normlos(std::sqrt(xlos*xlos + ylos*ylos + zlos*zlos));
     double xparl(xlos/normlos), yparl(ylos/normlos), zparl(zlos/normlos);
+
+    if(verbose) {
+        std::cout << boost::format("Preparing 1-d and 2-d histograms from %.2f to %.2f Mpc/h with a bin size of %.2f Mpc/h") 
+            % rmin % rmax % nbins << std::endl;
+        std::cout << boost::format("Line-of-sight unit vector components: (%.4f,%.4f,%.4f)") 
+            % xparl % yparl % zparl << std::endl;
+    }
+
     for(int ifield = 0; ifield < nfields; ++ifield){
         // Generate Gaussian random field
         generator.generate();
-        extremeValue = generator.getField(0,0,0);
+        double extremeValue(generator.getField(0,0,0));
+        std::vector<int> extremeIndex(3,0);
         if(!fiducial) {
             for(int iz = 0; iz < nz; ++iz){
                 for(int iy = 0; iy < ny; ++iy){
-                    for(int ix = 0; ix < nx; ix++){
-                        value = generator.getField(ix,iy,iz);
+                    for(int ix = 0; ix < nx; ++ix){
+                        double value = generator.getField(ix,iy,iz);
                         if((minimum ? value < extremeValue : value > extremeValue)){
                             extremeValue = value;
                             extremeIndex[0] = ix;
@@ -166,24 +178,24 @@ int main(int argc, char **argv) {
         // Fill 1-d, 2-d histograms
         for(int iz = 0; iz < nz; ++iz){
             for(int iy = 0; iy < ny; ++iy){
-                for(int ix = 0; ix < nx; ix++){
+                for(int ix = 0; ix < nx; ++ix){
                     // Calculate distance from extreme value point on grid (wrap-around)
-                    dx = distance(ix,extremeIndex[0],nx);
-                    dy = distance(iy,extremeIndex[1],ny);
-                    dz = distance(iz,extremeIndex[2],nz);
-                    dr = std::sqrt(dx*dx + dy*dy + dz*dz);
+                    double dx(distance(ix,extremeIndex[0],nx)), 
+                        dy(distance(iy,extremeIndex[1],ny)), 
+                        dz(distance(iz,extremeIndex[2],nz));
+                    double dr(std::sqrt(dx*dx + dy*dy + dz*dz));
                     // Apply grid spacing
-                    r = spacing*dr;
-                    rparl = spacing*std::abs(dx*xparl + dy*yparl + dz*zparl);
-                    rperp = std::sqrt(r*r-rparl*rparl);
+                    double r(spacing*dr);
+                    double rparl(spacing*std::fabs(dx*xparl + dy*yparl + dz*zparl));
+                    double rperp(std::sqrt(r*r-rparl*rparl));
                     // Look up field value
-                    value = generator.getField(ix,iy,iz);
+                    double value(generator.getField(ix,iy,iz));
                     // Accumulate value in appropriate bin
-                    if(r < rmax && r >= binmin) {
-                        xi[std::floor((r-binmin)/binsize)].accumulate(value);
+                    if(r < rmax && r >= rmin) {
+                        xi[std::floor((r-rmin)/binsize)].accumulate(value);
                     }
-                    if(rparl < rmax && rperp < rmax && rparl >= binmin && rperp >= binmin){
-                        xi2d[std::floor((rperp-binmin)/binsize)+nbins*std::floor((rparl-binmin)/binsize)].accumulate(value);
+                    if(rparl < rmax && rperp < rmax && rparl >= rmin && rperp >= rmin){
+                        xi2d[std::floor((rperp-rmin)/binsize)+nbins*std::floor((rparl-rmin)/binsize)].accumulate(value);
                     }
                 }
             }
@@ -199,7 +211,7 @@ int main(int argc, char **argv) {
                 std::ofstream out(outFilename.c_str());
                 boost::format outFormat("%.2f %.10f %.10f %d");
                 for(int index = 0; index < nbins; ++index) {
-                    out << (outFormat % ((index+.5)*binsize+binmin)
+                    out << (outFormat % ((index+.5)*binsize+rmin)
                         % xi[index].mean() % xi[index].variance() % xi[index].count()) << std::endl;
                 }
                 out.close();
@@ -209,7 +221,7 @@ int main(int argc, char **argv) {
 
     // Print extreme value mean, variance, and count
     if(verbose) {
-        std::cout << boost::format("Extreme value mean, variance, count: %f %f %d")
+        std::cout << boost::format("Extreme value mean, variance, count: %.6f %.6f %d")
             % extremeValues.mean() % extremeValues.variance() % extremeValues.count() << std::endl;
     }
 
@@ -219,7 +231,7 @@ int main(int argc, char **argv) {
         std::ofstream out(outFilename.c_str());
         boost::format outFormat("%.2f %.10f %.10f %d");
         for(int index = 0; index < nbins; ++index) {
-            out << (outFormat % ((index+.5)*binsize+binmin)
+            out << (outFormat % ((index+.5)*binsize+rmin)
                 % xi[index].mean() % xi[index].variance() % xi[index].count()) << std::endl;
         }
         out.close();
@@ -231,7 +243,7 @@ int main(int argc, char **argv) {
         std::ofstream out(outFilename.c_str());
         boost::format outFormat("%.2f %.2f %.10f %.10f %d");
         for(int index = 0; index < nbins*nbins; ++index) {
-            out << (outFormat % ((index%nbins+.5)*binsize+binmin) % ((index/nbins+.5)*binsize+binmin)
+            out << (outFormat % ((index%nbins+.5)*binsize+rmin) % ((index/nbins+.5)*binsize+rmin)
                 % xi2d[index].mean() % xi2d[index].variance() % xi2d[index].count()) << std::endl;
         }
         out.close();
