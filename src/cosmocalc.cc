@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     po::options_description cli("Cosmology calculator");
     double OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,
         zval,kval,kmin,kmax,r1d,rmin,rmax,baoAmplitude,baoSigma,baoScale;
-    double bbandP,bbandCoef,bbandKmin,bbandRmin,bbandR0,bbandVar;
+    double bbandP,bbandCoef,bbandKmin,bbandRmin,bbandR0,bbandVar,epsAbs,epsRel;
     int nk,nr;
     std::string loadPowerFile,savePowerFile,saveCorrelationFile;
     cli.add_options()
@@ -73,6 +73,10 @@ int main(int argc, char **argv) {
             "Maximum radius in (Mpc/h) for tabulating correlation function.")
         ("nr", po::value<int>(&nr)->default_value(100),
             "Number of logarithmic steps to use for tabulating correlation function.")
+        ("eps-abs", po::value<double>(&epsAbs)->default_value(1e-8),
+            "Absolute precision goal for 1D integration of correlation functions.")
+        ("eps-rel", po::value<double>(&epsRel)->default_value(1e-6),
+            "Relative precision goal for 1D integration of correlation functions (integrand1 only).")
         ("rlog", "Use log spaced r-values for saved correlation function (default is linear).")
         ("quad", "Calculates the quadrupole (l=2) correlation function (default is monopole).")
         ("hexa", "Calculates the hexedacapole (l=4) correlation function (default is monopole).")
@@ -137,214 +141,220 @@ int main(int argc, char **argv) {
     if(noOsc) baoOption = cosmo::BaryonPerturbations::NoOscillation;
     if(periodicOsc) baoOption = cosmo::BaryonPerturbations::PeriodicOscillation;
 
-    // Build a homogeneous cosmology using the parameters specified (and OmegaK = 0).
-    cosmo::LambdaCdmRadiationUniverse cosmology(OmegaMatter,0,hubbleConstant,cmbTemp);
-    double growthFactor = cosmology.getGrowthFunction(zval)/cosmology.getGrowthFunction(0);
-    if(verbose) {
-        // Print homogeneous cosmology info.
-        std::cout << "OmegaRadiation = " << cosmology.getOmegaRadiation() << std::endl;
-        std::cout << "OmegaLambda = " << cosmology.getOmegaLambda() << std::endl;
-        std::cout << "OmegaK = " << cosmology.getCurvature() << std::endl;    
-        std::cout << "At z = " << zval << ':' << std::endl;
-        std::cout << "  H(z)/H0 = " << cosmology.getHubbleFunction(zval) << std::endl;
-        std::cout << "  Radial D(z) = " << cosmology.getLineOfSightComovingDistance(zval)
-            << " Mpc/h" << std::endl;
-        std::cout << "  Transverse DA(z) = " << cosmology.getTransverseComovingScale(zval)
-            << " Mpc/h/rad" << std::endl;
-        double tL(cosmology.getLookbackTime(zval));
-        double conv(1e9*86400*365.25);
-        std::cout << "  t(lookback,z) = " << tL << " secs/h = " << tL/conv*hubbleConstant
-            << " Gyr/h" << std::endl;
-        std::cout << "  Growth D1(z)/D1(0) = " << growthFactor << std::endl;
-    }
-    
-    // Build the inhomogeneous cosmology we will use.
-    cosmo::PowerSpectrumPtr power;
-    if(0 == bbandCoef) {
-        // Create an Eisenstein & Hu 1997 parameterization.
-        boost::shared_ptr<cosmo::BaryonPerturbations> baryonsPtr(
-            new cosmo::BaryonPerturbations(
-            OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,baoOption));
+    try {
+        // Build a homogeneous cosmology using the parameters specified (and OmegaK = 0).
+        cosmo::LambdaCdmRadiationUniverse cosmology(OmegaMatter,0,hubbleConstant,cmbTemp);
+        double growthFactor = cosmology.getGrowthFunction(zval)/cosmology.getGrowthFunction(0);
         if(verbose) {
-            // Print inhomogeneous cosmology info.
-            std::cout << "z(eq) = " << baryonsPtr->getMatterRadiationEqualityRedshift() << std::endl;
-            std::cout << "k(eq) = " << baryonsPtr->getMatterRadiationEqualityScale() << " /(Mpc/h)"
-                << std::endl;
-            std::cout << "sound horizon = " << baryonsPtr->getSoundHorizon() << " Mpc/h at z(drag) = "
-                << baryonsPtr->getDragEpoch() << " (fit = " << baryonsPtr->getSoundHorizonFit()
-                << " Mpc/h)" << std::endl;
-            std::cout << "Silk damping scale = " << baryonsPtr->getSilkDampingScale() << " /(Mpc/h)"
-                << std::endl;
-            double Tfc,Tfb,Tf,Tnw;
-            baryonsPtr->calculateTransferFunctions(kval,Tfb,Tfc,Tf,Tnw,baoOption);
-            std::cout << "At k = " << kval << " /(Mpc/h):" << std::endl;
-            std::cout << "  Tf(CDM,k) = " << Tfc << std::endl;
-            std::cout << "  Tf(baryon,k) = " << Tfb << std::endl;
-            std::cout << "  Tf(full,k) = " << Tf << std::endl;
-            std::cout << "  Tf(nw,k) = " << Tnw << std::endl;
+            // Print homogeneous cosmology info.
+            std::cout << "OmegaRadiation = " << cosmology.getOmegaRadiation() << std::endl;
+            std::cout << "OmegaLambda = " << cosmology.getOmegaLambda() << std::endl;
+            std::cout << "OmegaK = " << cosmology.getCurvature() << std::endl;    
+            std::cout << "At z = " << zval << ':' << std::endl;
+            std::cout << "  H(z)/H0 = " << cosmology.getHubbleFunction(zval) << std::endl;
+            std::cout << "  Radial D(z) = " << cosmology.getLineOfSightComovingDistance(zval)
+                << " Mpc/h" << std::endl;
+            std::cout << "  Transverse DA(z) = " << cosmology.getTransverseComovingScale(zval)
+                << " Mpc/h/rad" << std::endl;
+            double tL(cosmology.getLookbackTime(zval));
+            double conv(1e9*86400*365.25);
+            std::cout << "  t(lookback,z) = " << tL << " secs/h = " << tL/conv*hubbleConstant
+                << " Gyr/h" << std::endl;
+            std::cout << "  Growth D1(z)/D1(0) = " << growthFactor << std::endl;
         }
-
-        if(0 < loadPowerFile.length()) {
-            // Load a tabulated power spectrum for interpolation.
-            std::vector<std::vector<double> > columns(2);
-            std::ifstream in(loadPowerFile.c_str());
-            lk::readVectors(in,columns);
-            in.close();
+    
+        // Build the inhomogeneous cosmology we will use.
+        cosmo::PowerSpectrumPtr power;
+        if(0 == bbandCoef) {
+            // Create an Eisenstein & Hu 1997 parameterization.
+            boost::shared_ptr<cosmo::BaryonPerturbations> baryonsPtr(
+                new cosmo::BaryonPerturbations(
+                OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,baoOption));
             if(verbose) {
-                std::cout << "Read " << columns[0].size() << " rows from " << loadPowerFile
+                // Print inhomogeneous cosmology info.
+                std::cout << "z(eq) = " << baryonsPtr->getMatterRadiationEqualityRedshift() << std::endl;
+                std::cout << "k(eq) = " << baryonsPtr->getMatterRadiationEqualityScale() << " /(Mpc/h)"
+                    << std::endl;
+                std::cout << "sound horizon = " << baryonsPtr->getSoundHorizon() << " Mpc/h at z(drag) = "
+                    << baryonsPtr->getDragEpoch() << " (fit = " << baryonsPtr->getSoundHorizonFit()
+                    << " Mpc/h)" << std::endl;
+                std::cout << "Silk damping scale = " << baryonsPtr->getSilkDampingScale() << " /(Mpc/h)"
+                    << std::endl;
+                double Tfc,Tfb,Tf,Tnw;
+                baryonsPtr->calculateTransferFunctions(kval,Tfb,Tfc,Tf,Tnw,baoOption);
+                std::cout << "At k = " << kval << " /(Mpc/h):" << std::endl;
+                std::cout << "  Tf(CDM,k) = " << Tfc << std::endl;
+                std::cout << "  Tf(baryon,k) = " << Tfb << std::endl;
+                std::cout << "  Tf(full,k) = " << Tf << std::endl;
+                std::cout << "  Tf(nw,k) = " << Tnw << std::endl;
+            }
+
+            if(0 < loadPowerFile.length()) {
+                // Load a tabulated power spectrum for interpolation.
+                std::vector<std::vector<double> > columns(2);
+                std::ifstream in(loadPowerFile.c_str());
+                lk::readVectors(in,columns);
+                in.close();
+                if(verbose) {
+                    std::cout << "Read " << columns[0].size() << " rows from " << loadPowerFile
+                        << std::endl;
+                }
+                double pi(4*std::atan(1)),twopi2(2*pi*pi);
+                // rescale to k^3/(2pi^2) P(k)
+                for(int row = 0; row < columns[0].size(); ++row) {
+                    double k(columns[0][row]);
+                    columns[1][row] *= k*k*k/twopi2;
+                }
+                // Create an interpolator of this data.
+                lk::InterpolatorPtr iptr(new lk::Interpolator(columns[0],columns[1],"cspline"));
+                // Use the resulting interpolation function for future power calculations.
+                power = likely::createFunctionPtr(iptr);
+            }
+            else {
+                // Create a power spectrum from the EH97 parameterization...
+
+                // Create a sharable pointer to the matter transfer function (this will
+                // keep baryonsPtr alive)
+                cosmo::TransferFunctionPtr transferPtr(new cosmo::TransferFunction(boost::bind(
+                    noWiggles ?
+                        &cosmo::BaryonPerturbations::getNoWigglesTransfer :
+                        &cosmo::BaryonPerturbations::getMatterTransfer,
+                    baryonsPtr,_1)));
+
+                // Use COBE  n=1 normalization by default
+                double deltaH = 1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter));
+
+                // Create a sharable pointer to a power spectrum for this transfer function
+                // (this will keep transferPtr and therefore also baryonsPtr alive)
+                boost::shared_ptr<cosmo::TransferFunctionPowerSpectrum> transferPowerPtr(
+                    new cosmo::TransferFunctionPowerSpectrum(transferPtr,spectralIndex,deltaH));
+
+                // Use the requested sigma8 value if there is one.
+                if(sigma8 > 0) {
+                    if(verbose) std::cout << "Renormalizing to sigma8 = " << sigma8 << std::endl;
+                    transferPowerPtr->setSigma(sigma8);
+                }
+                else if(verbose) {
+                    std::cout << "Using COBE n=1 deltaH = " << deltaH << std::endl;            
+                }
+        
+                // Remember this power spectrum (this will keep all of the above alive)
+                power = likely::createFunctionPtr(transferPowerPtr);
+
+                if(verbose) {
+                    std::cout << "Calculated sigma8(z=0) = " << cosmo::getRmsAmplitude(power,8)
+                        << std::endl;
+                }
+
+                // Rescale the power from z=0 to the desired redshift.
+                transferPowerPtr->setDeltaH(growthFactor*transferPowerPtr->getDeltaH());
+            }
+
+            if(verbose) {
+                std::cout << "Calculated sigma8(z=" << zval << ") = " << cosmo::getRmsAmplitude(power,8)
                     << std::endl;
             }
-            double pi(4*std::atan(1)),twopi2(2*pi*pi);
-            // rescale to k^3/(2pi^2) P(k)
-            for(int row = 0; row < columns[0].size(); ++row) {
-                double k(columns[0][row]);
-                columns[1][row] *= k*k*k/twopi2;
+        
+            // Resample at BAO nodes if requested
+            if(baoSmooth) {
+                std::list<double> klist;
+                double pi(4*std::atan(1));
+                double ks = pi/baryonsPtr->getSoundHorizon();
+                double k1 = ks*baryonsPtr->getNode(1);
+                if(kmax < k1) {
+                    std::cerr << "Cannot smooth with kmax < k1.";
+                    return -2;
+                }
+                // Sample at the first 20 nodes.
+                int numNodes(20);
+                for(int n = 1; n < numNodes; ++n) {
+                    double k = ks*baryonsPtr->getNode(n);
+                    klist.push_back(k);
+                }
+                // Sample up to kmax doubling the node number between samples.
+                double k;
+                int n(numNodes);
+                double smoothStep(1.25);
+                do {
+                    k = ks*baryonsPtr->getNode(n);
+                    klist.push_back(k);
+                    n = (int)std::ceil(n*smoothStep);
+                } while(k < kmax);
+                // Sample from k1 down to kmin, halving k each time.
+                k = k1;
+                do {
+                    k /= smoothStep;
+                    klist.push_front(k);
+                } while(k > kmin);
+                // Calculate the power at each k value.
+                std::list<double>::iterator nextk(klist.begin());
+                std::vector<double> kvec(klist.size()), pvec(klist.size());
+                for(int i = 0; i < kvec.size(); ++i) {
+                    k = kvec[i] = *nextk++;
+                    pvec[i] = (*power)(kvec[i]);
+                }
+                // Create an interpolator.
+                lk::InterpolatorPtr iptr(new lk::Interpolator(kvec,pvec,"cspline"));
+                // Use the resulting interpolation function for future power calculations.
+                power = likely::createFunctionPtr(iptr);
             }
-            // Create an interpolator of this data.
-            lk::InterpolatorPtr iptr(new lk::Interpolator(columns[0],columns[1],"cspline"));
-            // Use the resulting interpolation function for future power calculations.
-            power = likely::createFunctionPtr(iptr);
         }
         else {
-            // Create a power spectrum from the EH97 parameterization...
-
-            // Create a sharable pointer to the matter transfer function (this will
-            // keep baryonsPtr alive)
-            cosmo::TransferFunctionPtr transferPtr(new cosmo::TransferFunction(boost::bind(
-                noWiggles ?
-                    &cosmo::BaryonPerturbations::getNoWigglesTransfer :
-                    &cosmo::BaryonPerturbations::getMatterTransfer,
-                baryonsPtr,_1)));
-
-            // Use COBE  n=1 normalization by default
-            double deltaH = 1.94e-5*std::pow(OmegaMatter,-0.785-0.05*std::log(OmegaMatter));
-
-            // Create a sharable pointer to a power spectrum for this transfer function
-            // (this will keep transferPtr and therefore also baryonsPtr alive)
-            boost::shared_ptr<cosmo::TransferFunctionPowerSpectrum> transferPowerPtr(
-                new cosmo::TransferFunctionPowerSpectrum(transferPtr,spectralIndex,deltaH));
-
-            // Use the requested sigma8 value if there is one.
-            if(sigma8 > 0) {
-                if(verbose) std::cout << "Renormalizing to sigma8 = " << sigma8 << std::endl;
-                transferPowerPtr->setSigma(sigma8);
+            // Create a broadband power model.
+            if(0 < loadPowerFile.length()) {
+                std::cerr << "Cannot combine --load-power with broadband options." << std::endl;
+                return -1;
             }
-            else if(verbose) {
-                std::cout << "Using COBE n=1 deltaH = " << deltaH << std::endl;            
-            }
-        
-            // Remember this power spectrum (this will keep all of the above alive)
-            power = likely::createFunctionPtr(transferPowerPtr);
-
-            if(verbose) {
-                std::cout << "Calculated sigma8(z=0) = " << cosmo::getRmsAmplitude(power,8)
-                    << std::endl;
-            }
-
-            // Rescale the power from z=0 to the desired redshift.
-            transferPowerPtr->setDeltaH(growthFactor*transferPowerPtr->getDeltaH());
+            boost::shared_ptr<cosmo::BroadbandPower> bbPowerPtr(new cosmo::BroadbandPower(
+                bbandCoef,bbandP,bbandKmin,bbandRmin,bbandR0,bbandVar));
+            power = likely::createFunctionPtr(bbPowerPtr);
         }
 
-        if(verbose) {
-            std::cout << "Calculated sigma8(z=" << zval << ") = " << cosmo::getRmsAmplitude(power,8)
-                << std::endl;
-        }
-        
-        // Resample at BAO nodes if requested
-        if(baoSmooth) {
-            std::list<double> klist;
-            double pi(4*std::atan(1));
-            double ks = pi/baryonsPtr->getSoundHorizon();
-            double k1 = ks*baryonsPtr->getNode(1);
-            if(kmax < k1) {
-                std::cerr << "Cannot smooth with kmax < k1.";
-                return -2;
-            }
-            // Sample at the first 20 nodes.
-            int numNodes(20);
-            for(int n = 1; n < numNodes; ++n) {
-                double k = ks*baryonsPtr->getNode(n);
-                klist.push_back(k);
-            }
-            // Sample up to kmax doubling the node number between samples.
-            double k;
-            int n(numNodes);
-            double smoothStep(1.25);
-            do {
-                k = ks*baryonsPtr->getNode(n);
-                klist.push_back(k);
-                n = (int)std::ceil(n*smoothStep);
-            } while(k < kmax);
-            // Sample from k1 down to kmin, halving k each time.
-            k = k1;
-            do {
-                k /= smoothStep;
-                klist.push_front(k);
-            } while(k > kmin);
-            // Calculate the power at each k value.
-            std::list<double>::iterator nextk(klist.begin());
-            std::vector<double> kvec(klist.size()), pvec(klist.size());
-            for(int i = 0; i < kvec.size(); ++i) {
-                k = kvec[i] = *nextk++;
-                pvec[i] = (*power)(kvec[i]);
-            }
-            // Create an interpolator.
-            lk::InterpolatorPtr iptr(new lk::Interpolator(kvec,pvec,"cspline"));
-            // Use the resulting interpolation function for future power calculations.
-            power = likely::createFunctionPtr(iptr);
-        }
-    }
-    else {
-        // Create a broadband power model.
-        if(0 < loadPowerFile.length()) {
-            std::cerr << "Cannot combine --load-power with broadband options." << std::endl;
-            return -1;
-        }
-        boost::shared_ptr<cosmo::BroadbandPower> bbPowerPtr(new cosmo::BroadbandPower(
-            bbandCoef,bbandP,bbandKmin,bbandRmin,bbandR0,bbandVar));
-        power = likely::createFunctionPtr(bbPowerPtr);
-    }
-
-    if(0 < savePowerFile.length()) {
-        double pi(4*std::atan(1)),twopi2(2*pi*pi);
-        boost::shared_ptr<cosmo::OneDimensionalPowerSpectrum> onedZero,onedHard,onedSoft;
-        if(power1d) {
-            onedZero.reset(new cosmo::OneDimensionalPowerSpectrum(power,0,kmin,kmax,nk));
-            onedHard.reset(new cosmo::OneDimensionalPowerSpectrum(power,+r1d,kmin,kmax,nk));
-            onedSoft.reset(new cosmo::OneDimensionalPowerSpectrum(power,-r1d,kmin,kmax,nk));
-        }
-        std::ofstream out(savePowerFile.c_str());
-        double kratio(std::pow(kmax/kmin,1/(nk-1.)));
-        for(int i = 0; i < nk; ++i) {
-            double k(kmin*std::pow(kratio,i));
-            if(k > kmax) k = kmax; // might happen with rounding
-            out << k << ' ' << twopi2/(k*k*k)*(*power)(k);
+        if(0 < savePowerFile.length()) {
+            double pi(4*std::atan(1)),twopi2(2*pi*pi);
+            boost::shared_ptr<cosmo::OneDimensionalPowerSpectrum> onedZero,onedHard,onedSoft;
             if(power1d) {
-                out << ' ' << pi/k*(*onedZero)(k) << ' ' << pi/k*(*onedHard)(k)
-                    << ' ' << pi/k*(*onedSoft)(k);
+                onedZero.reset(new cosmo::OneDimensionalPowerSpectrum(power,0,kmin,kmax,nk));
+                onedHard.reset(new cosmo::OneDimensionalPowerSpectrum(power,+r1d,kmin,kmax,nk));
+                onedSoft.reset(new cosmo::OneDimensionalPowerSpectrum(power,-r1d,kmin,kmax,nk));
             }
-            out << std::endl;
+            std::ofstream out(savePowerFile.c_str());
+            double kratio(std::pow(kmax/kmin,1/(nk-1.)));
+            for(int i = 0; i < nk; ++i) {
+                double k(kmin*std::pow(kratio,i));
+                if(k > kmax) k = kmax; // might happen with rounding
+                out << k << ' ' << twopi2/(k*k*k)*(*power)(k);
+                if(power1d) {
+                    out << ' ' << pi/k*(*onedZero)(k) << ' ' << pi/k*(*onedHard)(k)
+                        << ' ' << pi/k*(*onedSoft)(k);
+                }
+                out << std::endl;
+            }
+            out.close();
+            if(verbose) {
+                std::cout << "Wrote power to " << savePowerFile << std::endl;
+            }
         }
-        out.close();
-        if(verbose) {
-            std::cout << "Wrote power to " << savePowerFile << std::endl;
+    
+        if(0 < saveCorrelationFile.length()) {
+            cosmo::PowerSpectrumCorrelationFunction xi(power,rmin,rmax,multipole,nr,epsAbs,epsRel);
+            std::ofstream out(saveCorrelationFile.c_str());
+            double r,dr;
+            dr = rlog ? std::pow(rmax/rmin,1/(nr-1.)) : (rmax-rmin)/(nr-1.);
+            for(int i = 0; i < nr; ++i) {
+                r = rlog ? rmin*std::pow(dr,i) : rmin + dr*i;
+                if(r > rmax) r = rmax; // might happen with rounding but xi(r) will complain
+                out << r << ' ' << xi(r) << std::endl;
+            }
+            out.close();        
+            if(verbose) {
+                std::cout << "Wrote correlation function to " << saveCorrelationFile << std::endl;
+            }
         }
     }
-    
-    if(0 < saveCorrelationFile.length()) {
-        cosmo::PowerSpectrumCorrelationFunction xi(power,rmin,rmax,multipole,nr);
-        std::ofstream out(saveCorrelationFile.c_str());
-        double r,dr;
-        dr = rlog ? std::pow(rmax/rmin,1/(nr-1.)) : (rmax-rmin)/(nr-1.);
-        for(int i = 0; i < nr; ++i) {
-            r = rlog ? rmin*std::pow(dr,i) : rmin + dr*i;
-            if(r > rmax) r = rmax; // might happen with rounding but xi(r) will complain
-            out << r << ' ' << xi(r) << std::endl;
-        }
-        out.close();        
-        if(verbose) {
-            std::cout << "Wrote correlation function to " << saveCorrelationFile << std::endl;
-        }
+    catch(std::runtime_error const &e) {
+        std::cerr << "ERROR: exiting with an exception:\n  " << e.what() << std::endl;
+        return -4;
     }
 
     return 0;

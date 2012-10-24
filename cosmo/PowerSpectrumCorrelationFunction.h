@@ -13,15 +13,18 @@ namespace cosmo {
 	public:
 	    // Creates a correlation function for the specified multipole from the power
 	    // spectrum provided that is valid from rmin-rmax (in Mpc/h) and which uses
-	    // nr logarithmically-spaced interpolation points over this range.
+	    // nr logarithmically-spaced interpolation points over this range. The parameters
+	    // epsAbs and epsRel are the precision goals for the numerical integrators.
+	    // See likely::Integrator for details.
 		PowerSpectrumCorrelationFunction(PowerSpectrumPtr powerSpectrum,
-		    double rmin, double rmax, Multipole = Monopole, int nr = 1024);
+		    double rmin, double rmax, Multipole = Monopole, int nr = 1024,
+		    double epsAbs = 1e-8, double epsRel = 1e-6);
 		virtual ~PowerSpectrumCorrelationFunction();
 		// Returns the correlation function evaluated at the specified radius in Mpc/h.
         double operator()(double rMpch) const;
 	private:
         PowerSpectrumPtr _powerSpectrum; // evaluates k^3/(2pi^2) P(k)
-        double _rmin, _rmax;
+        double _rmin, _rmax, _epsAbs, _epsRel;
         Multipole _multipole;
         int _nr;
         mutable likely::InterpolatorPtr _interpolator;
