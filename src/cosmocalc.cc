@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     po::options_description cli("Cosmology calculator");
     double OmegaMatter,OmegaBaryon,hubbleConstant,cmbTemp,spectralIndex,sigma8,
         zval,kval,kmin,kmax,r1d,rmin,rmax,baoAmplitude,baoSigma,baoScale;
-    double bbandP,bbandCoef,bbandKmin,bbandRmin,bbandR0,bbandVar;
+    double bbandP,bbandCoef,bbandKmin,bbandRmin,bbandR0,bbandVar,epsAbs,epsRel;
     int nk,nr;
     std::string loadPowerFile,savePowerFile,saveCorrelationFile;
     cli.add_options()
@@ -73,6 +73,10 @@ int main(int argc, char **argv) {
             "Maximum radius in (Mpc/h) for tabulating correlation function.")
         ("nr", po::value<int>(&nr)->default_value(100),
             "Number of logarithmic steps to use for tabulating correlation function.")
+        ("eps-abs", po::value<double>(&epsAbs)->default_value(1e-8),
+            "Absolute precision goal for 1D integration of correlation functions.")
+        ("eps-rel", po::value<double>(&epsRel)->default_value(1e-6),
+            "Relative precision goal for 1D integration of correlation functions (integrand1 only).")
         ("rlog", "Use log spaced r-values for saved correlation function (default is linear).")
         ("quad", "Calculates the quadrupole (l=2) correlation function (default is monopole).")
         ("hexa", "Calculates the hexedacapole (l=4) correlation function (default is monopole).")
@@ -333,7 +337,7 @@ int main(int argc, char **argv) {
         }
     
         if(0 < saveCorrelationFile.length()) {
-            cosmo::PowerSpectrumCorrelationFunction xi(power,rmin,rmax,multipole,nr);
+            cosmo::PowerSpectrumCorrelationFunction xi(power,rmin,rmax,multipole,nr,epsAbs,epsRel);
             std::ofstream out(saveCorrelationFile.c_str());
             double r,dr;
             dr = rlog ? std::pow(rmax/rmin,1/(nr-1.)) : (rmax-rmin)/(nr-1.);
