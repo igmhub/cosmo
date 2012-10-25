@@ -19,3 +19,4 @@
 
 #include "cosmo/AbsGaussianRandomFieldGenerator.h"
 #include "cosmo/FftGaussianRandomFieldGenerator.h"
+#include "cosmo/TestFftGaussianRandomFieldGenerator.h"

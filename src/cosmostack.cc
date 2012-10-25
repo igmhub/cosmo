@@ -15,10 +15,10 @@
 namespace po = boost::program_options;
 namespace lk = likely;
 
-// Return the distance between x0 and x1 in a periodic dimension of length nx
-int distance(int x0, int x1, int nx){
-    int dx(x1 - x0);
-    return (dx > 0 ? (dx > nx/2 ? dx - nx : dx) : (dx <= -nx/2 ? nx + dx : dx) );
+// Return the distance between 'x0' and 'x1' in a periodic dimension of length 'period'
+double distance(double x0, double x1, double period){
+    double dx(x1 - x0);
+    return (dx > 0 ? (dx > period/2 ? dx - period : dx) : (dx < -period/2 ? dx + period : dx) );
 }
  
 int main(int argc, char **argv) {
@@ -65,6 +65,7 @@ int main(int argc, char **argv) {
             "Number of histogram bins.")
         ("bin-min", po::value<double>(&rmin)->default_value(2),
             "Minimum bin (left edge) in Mpc/h.")
+        ("test","Use the test fft generator.")
         ;
 
     // do the command line parsing now
@@ -83,6 +84,12 @@ int main(int argc, char **argv) {
     }  
     bool verbose(vm.count("verbose")), fiducial(vm.count("fiducial")), snapshot(vm.count("snapshot")),
         minimum(vm.count("minimum"));
+
+    double normlos(std::sqrt(xlos*xlos + ylos*ylos + zlos*zlos));
+    if(normlos <= 0){
+        std::cerr << "Invalid line-of-sight specification: norm must be > 0." << std::endl;
+        return -2;
+    }
 
     // Fill in any missing grid dimensions.
     if(0 == ny) ny = nx;
@@ -127,10 +134,16 @@ int main(int argc, char **argv) {
     lk::Random::instance()->setSeed(seed);
 
     // Create the generator.
-    cosmo::FftGaussianRandomFieldGenerator generator(power, spacing, nx, ny, nz);
+    cosmo::AbsGaussianRandomFieldGeneratorPtr generator;
+    if(vm.count("test")) {
+        generator.reset(new cosmo::TestFftGaussianRandomFieldGenerator(power, spacing, nx, ny, nz));
+    }
+    else {
+        generator.reset(new cosmo::FftGaussianRandomFieldGenerator(power, spacing, nx, ny, nz));
+    }
     if(verbose) {
         std::cout << "Memory size = "
-            << boost::format("%.1f Mb") % (generator.getMemorySize()/1048576.) << std::endl;
+            << boost::format("%.1f Mb") % (generator->getMemorySize()/1048576.) << std::endl;
     }
 
     // Initialize histogram
@@ -140,26 +153,28 @@ int main(int argc, char **argv) {
     // Collect extreme values of grfs
     lk::WeightedAccumulator extremeValues;
     // Line-of-sight direction
-    double normlos(std::sqrt(xlos*xlos + ylos*ylos + zlos*zlos));
     double xparl(xlos/normlos), yparl(ylos/normlos), zparl(zlos/normlos);
 
     if(verbose) {
         std::cout << boost::format("Preparing 1-d and 2-d histograms from %.2f to %.2f Mpc/h with a bin size of %.2f Mpc/h") 
-            % rmin % rmax % nbins << std::endl;
+            % rmin % rmax % binsize << std::endl;
         std::cout << boost::format("Line-of-sight unit vector components: (%.4f,%.4f,%.4f)") 
             % xparl % yparl % zparl << std::endl;
     }
 
+    lk::RandomPtr random = lk::Random::instance();
+    random->setSeed(seed);
+
     for(int ifield = 0; ifield < nfields; ++ifield){
         // Generate Gaussian random field
-        generator.generate();
-        double extremeValue(generator.getField(0,0,0));
+        generator->generate();
+        double extremeValue(generator->getField(0,0,0));
         std::vector<int> extremeIndex(3,0);
         if(!fiducial) {
-            for(int iz = 0; iz < nz; ++iz){
+            for(int ix = 0; ix < nx; ++ix){
                 for(int iy = 0; iy < ny; ++iy){
-                    for(int ix = 0; ix < nx; ++ix){
-                        double value = generator.getField(ix,iy,iz);
+                    for(int iz = 0; iz < nz; ++iz){
+                        double value = generator->getField(ix,iy,iz);
                         if((minimum ? value < extremeValue : value > extremeValue)){
                             extremeValue = value;
                             extremeIndex[0] = ix;
@@ -171,25 +186,31 @@ int main(int argc, char **argv) {
             }
         }
         else {
-            extremeIndex[0] = nx/2; extremeIndex[1] = ny/2; extremeIndex[2] = nz/2;
+            // extremeIndex[0] = random->getInteger(0,nx-1);
+            // extremeIndex[1] = random->getInteger(0,ny-1);
+            // extremeIndex[2] = random->getInteger(0,nz-1);
+            extremeIndex[0] = 0;
+            extremeIndex[1] = 0;
+            extremeIndex[2] = 0;
         }
         // Accumulate extreme value
-        extremeValues.accumulate(generator.getField(extremeIndex[0],extremeIndex[1],extremeIndex[2]));
+        extremeValues.accumulate(generator->getField(extremeIndex[0],extremeIndex[1],extremeIndex[2]));
         // Fill 1-d, 2-d histograms
-        for(int iz = 0; iz < nz; ++iz){
+        for(int ix = 0; ix < nx; ++ix){
             for(int iy = 0; iy < ny; ++iy){
-                for(int ix = 0; ix < nx; ++ix){
+                for(int iz = 0; iz < nz; ++iz){
                     // Calculate distance from extreme value point on grid (wrap-around)
                     double dx(distance(ix,extremeIndex[0],nx)), 
                         dy(distance(iy,extremeIndex[1],ny)), 
                         dz(distance(iz,extremeIndex[2],nz));
+                    //double dx(ix-extremeIndex[0]), dy(iy-extremeIndex[1]), dz(iz-extremeIndex[2]);
                     double dr(std::sqrt(dx*dx + dy*dy + dz*dz));
                     // Apply grid spacing
                     double r(spacing*dr);
                     double rparl(spacing*std::fabs(dx*xparl + dy*yparl + dz*zparl));
                     double rperp(std::sqrt(r*r-rparl*rparl));
                     // Look up field value
-                    double value(generator.getField(ix,iy,iz));
+                    double value(generator->getField(ix,iy,iz));
                     // Accumulate value in appropriate bin
                     if(r < rmax && r >= rmin) {
                         xi[std::floor((r-rmin)/binsize)].accumulate(value);
