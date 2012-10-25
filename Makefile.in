@@ -36,7 +36,8 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = cosmocalc$(EXEEXT) cosmo3d$(EXEEXT) cosmogrf$(EXEEXT)
+bin_PROGRAMS = cosmocalc$(EXEEXT) cosmo3d$(EXEEXT) cosmogrf$(EXEEXT) \
+	cosmostack$(EXEEXT)
 noinst_PROGRAMS = cosmotest$(EXEEXT)
 subdir = .
 DIST_COMMON = $(am__configure_deps) $(nobase_include_HEADERS) \
@@ -85,7 +86,8 @@ am_libcosmo_la_OBJECTS = AbsHomogeneousUniverse.lo \
 	PowerSpectrumCorrelationFunction.lo RsdCorrelationFunction.lo \
 	OneDimensionalPowerSpectrum.lo \
 	AbsGaussianRandomFieldGenerator.lo \
-	FftGaussianRandomFieldGenerator.lo
+	FftGaussianRandomFieldGenerator.lo \
+	TestFftGaussianRandomFieldGenerator.lo
 libcosmo_la_OBJECTS = $(am_libcosmo_la_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS)
 am_cosmo3d_OBJECTS = cosmo3d.$(OBJEXT)
@@ -94,6 +96,8 @@ am_cosmocalc_OBJECTS = cosmocalc.$(OBJEXT)
 cosmocalc_OBJECTS = $(am_cosmocalc_OBJECTS)
 am_cosmogrf_OBJECTS = cosmogrf.$(OBJEXT)
 cosmogrf_OBJECTS = $(am_cosmogrf_OBJECTS)
+am_cosmostack_OBJECTS = cosmostack.$(OBJEXT)
+cosmostack_OBJECTS = $(am_cosmostack_OBJECTS)
 am_cosmotest_OBJECTS = cosmotest.$(OBJEXT)
 cosmotest_OBJECTS = $(am_cosmotest_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -110,9 +114,11 @@ CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libcosmo_la_SOURCES) $(cosmo3d_SOURCES) \
-	$(cosmocalc_SOURCES) $(cosmogrf_SOURCES) $(cosmotest_SOURCES)
+	$(cosmocalc_SOURCES) $(cosmogrf_SOURCES) $(cosmostack_SOURCES) \
+	$(cosmotest_SOURCES)
 DIST_SOURCES = $(libcosmo_la_SOURCES) $(cosmo3d_SOURCES) \
-	$(cosmocalc_SOURCES) $(cosmogrf_SOURCES) $(cosmotest_SOURCES)
+	$(cosmocalc_SOURCES) $(cosmogrf_SOURCES) $(cosmostack_SOURCES) \
+	$(cosmotest_SOURCES)
 HEADERS = $(nobase_include_HEADERS)
 ETAGS = etags
 CTAGS = ctags
@@ -270,7 +276,8 @@ libcosmo_la_SOURCES = \
 	cosmo/RsdCorrelationFunction.cc \
 	cosmo/OneDimensionalPowerSpectrum.cc \
 	cosmo/AbsGaussianRandomFieldGenerator.cc \
-	cosmo/FftGaussianRandomFieldGenerator.cc
+	cosmo/FftGaussianRandomFieldGenerator.cc \
+	cosmo/TestFftGaussianRandomFieldGenerator.cc
 
 
 # library headers to install (nobase prefix preserves any subdirectories)
@@ -291,7 +298,8 @@ nobase_include_HEADERS = \
 	cosmo/RsdCorrelationFunction.h \
 	cosmo/OneDimensionalPowerSpectrum.h \
 	cosmo/AbsGaussianRandomFieldGenerator.h \
-	cosmo/FftGaussianRandomFieldGenerator.h
+	cosmo/FftGaussianRandomFieldGenerator.h \
+	cosmo/TestFftGaussianRandomFieldGenerator.cc
 
 
 # instructions for building each program
@@ -307,6 +315,9 @@ cosmotest_LDADD = -lboost_program_options -L. -lcosmo
 cosmogrf_SOURCES = src/cosmogrf.cc
 cosmogrf_DEPENDENCIES = $(lib_LIBRARIES)
 cosmogrf_LDADD = -lboost_program_options -L. -lcosmo
+cosmostack_SOURCES = src/cosmostack.cc
+cosmostack_DEPENDENCIES = $(lib_LIBRARIES)
+cosmostack_LDADD = -lboost_program_options -L. -lcosmo
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -457,6 +468,9 @@ cosmocalc$(EXEEXT): $(cosmocalc_OBJECTS) $(cosmocalc_DEPENDENCIES)
 cosmogrf$(EXEEXT): $(cosmogrf_OBJECTS) $(cosmogrf_DEPENDENCIES) 
 	@rm -f cosmogrf$(EXEEXT)
 	$(CXXLINK) $(cosmogrf_OBJECTS) $(cosmogrf_LDADD) $(LIBS)
+cosmostack$(EXEEXT): $(cosmostack_OBJECTS) $(cosmostack_DEPENDENCIES) 
+	@rm -f cosmostack$(EXEEXT)
+	$(CXXLINK) $(cosmostack_OBJECTS) $(cosmostack_LDADD) $(LIBS)
 cosmotest$(EXEEXT): $(cosmotest_OBJECTS) $(cosmotest_DEPENDENCIES) 
 	@rm -f cosmotest$(EXEEXT)
 	$(CXXLINK) $(cosmotest_OBJECTS) $(cosmotest_LDADD) $(LIBS)
@@ -478,10 +492,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/OneDimensionalPowerSpectrum.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PowerSpectrumCorrelationFunction.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RsdCorrelationFunction.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TestFftGaussianRandomFieldGenerator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TransferFunctionPowerSpectrum.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmo3d.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmocalc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmogrf.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmostack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmotest.Po@am__quote@
 
 .cc.o:
@@ -589,6 +605,13 @@ FftGaussianRandomFieldGenerator.lo: cosmo/FftGaussianRandomFieldGenerator.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o FftGaussianRandomFieldGenerator.lo `test -f 'cosmo/FftGaussianRandomFieldGenerator.cc' || echo '$(srcdir)/'`cosmo/FftGaussianRandomFieldGenerator.cc
 
+TestFftGaussianRandomFieldGenerator.lo: cosmo/TestFftGaussianRandomFieldGenerator.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT TestFftGaussianRandomFieldGenerator.lo -MD -MP -MF $(DEPDIR)/TestFftGaussianRandomFieldGenerator.Tpo -c -o TestFftGaussianRandomFieldGenerator.lo `test -f 'cosmo/TestFftGaussianRandomFieldGenerator.cc' || echo '$(srcdir)/'`cosmo/TestFftGaussianRandomFieldGenerator.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/TestFftGaussianRandomFieldGenerator.Tpo $(DEPDIR)/TestFftGaussianRandomFieldGenerator.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/TestFftGaussianRandomFieldGenerator.cc' object='TestFftGaussianRandomFieldGenerator.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o TestFftGaussianRandomFieldGenerator.lo `test -f 'cosmo/TestFftGaussianRandomFieldGenerator.cc' || echo '$(srcdir)/'`cosmo/TestFftGaussianRandomFieldGenerator.cc
+
 cosmo3d.o: src/cosmo3d.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmo3d.o -MD -MP -MF $(DEPDIR)/cosmo3d.Tpo -c -o cosmo3d.o `test -f 'src/cosmo3d.cc' || echo '$(srcdir)/'`src/cosmo3d.cc
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/cosmo3d.Tpo $(DEPDIR)/cosmo3d.Po
@@ -630,6 +653,20 @@ cosmogrf.obj: src/cosmogrf.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmogrf.cc' object='cosmogrf.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmogrf.obj `if test -f 'src/cosmogrf.cc'; then $(CYGPATH_W) 'src/cosmogrf.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmogrf.cc'; fi`
+
+cosmostack.o: src/cosmostack.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmostack.o -MD -MP -MF $(DEPDIR)/cosmostack.Tpo -c -o cosmostack.o `test -f 'src/cosmostack.cc' || echo '$(srcdir)/'`src/cosmostack.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/cosmostack.Tpo $(DEPDIR)/cosmostack.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmostack.cc' object='cosmostack.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmostack.o `test -f 'src/cosmostack.cc' || echo '$(srcdir)/'`src/cosmostack.cc
+
+cosmostack.obj: src/cosmostack.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmostack.obj -MD -MP -MF $(DEPDIR)/cosmostack.Tpo -c -o cosmostack.obj `if test -f 'src/cosmostack.cc'; then $(CYGPATH_W) 'src/cosmostack.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmostack.cc'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/cosmostack.Tpo $(DEPDIR)/cosmostack.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmostack.cc' object='cosmostack.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmostack.obj `if test -f 'src/cosmostack.cc'; then $(CYGPATH_W) 'src/cosmostack.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmostack.cc'; fi`
 
 cosmotest.o: src/cosmotest.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmotest.o -MD -MP -MF $(DEPDIR)/cosmotest.Tpo -c -o cosmotest.o `test -f 'src/cosmotest.cc' || echo '$(srcdir)/'`src/cosmotest.cc

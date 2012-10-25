@@ -4,7 +4,7 @@ AM_LDFLAGS = -llikely
 
 # targets to build and install
 lib_LTLIBRARIES = libcosmo.la
-bin_PROGRAMS = cosmocalc cosmo3d cosmogrf
+bin_PROGRAMS = cosmocalc cosmo3d cosmogrf cosmostack
 
 # extra targets that should not be installed
 noinst_PROGRAMS = cosmotest
@@ -22,7 +22,8 @@ libcosmo_la_SOURCES = \
 	cosmo/RsdCorrelationFunction.cc \
 	cosmo/OneDimensionalPowerSpectrum.cc \
 	cosmo/AbsGaussianRandomFieldGenerator.cc \
-	cosmo/FftGaussianRandomFieldGenerator.cc
+	cosmo/FftGaussianRandomFieldGenerator.cc \
+	cosmo/TestFftGaussianRandomFieldGenerator.cc
 
 # library headers to install (nobase prefix preserves any subdirectories)
 # Anything that includes config.h should *not* be listed here.
@@ -42,7 +43,8 @@ nobase_include_HEADERS = \
 	cosmo/RsdCorrelationFunction.h \
 	cosmo/OneDimensionalPowerSpectrum.h \
 	cosmo/AbsGaussianRandomFieldGenerator.h \
-	cosmo/FftGaussianRandomFieldGenerator.h
+	cosmo/FftGaussianRandomFieldGenerator.h \
+	cosmo/TestFftGaussianRandomFieldGenerator.cc
 
 # instructions for building each program
 
@@ -61,3 +63,7 @@ cosmotest_LDADD = -lboost_program_options -L. -lcosmo
 cosmogrf_SOURCES = src/cosmogrf.cc
 cosmogrf_DEPENDENCIES = $(lib_LIBRARIES)
 cosmogrf_LDADD = -lboost_program_options -L. -lcosmo
+
+cosmostack_SOURCES = src/cosmostack.cc
+cosmostack_DEPENDENCIES = $(lib_LIBRARIES)
+cosmostack_LDADD = -lboost_program_options -L. -lcosmo

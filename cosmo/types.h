@@ -16,6 +16,9 @@ namespace cosmo {
     class RsdCorrelationFunction;
     typedef boost::shared_ptr<RsdCorrelationFunction> RsdCorrelationFunctionPtr;
 
+    class AbsGaussianRandomFieldGenerator;
+    typedef boost::shared_ptr<AbsGaussianRandomFieldGenerator> AbsGaussianRandomFieldGeneratorPtr;
+
     // Represents a function that returns a dimensionless transfer function value T(k)
     // given an input wavenumber k in 1/(Mpc/h).
     typedef boost::function<double (double)> TransferFunction;
