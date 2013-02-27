@@ -15052,7 +15052,7 @@ fi
 
 
 # Configure automake
-ac_config_files="$ac_config_files Makefile"
+ac_config_files="$ac_config_files Makefile cosmo.pc"
 
 am__api_version='1.11'
 
@@ -16963,6 +16963,7 @@ do
   case $ac_config_target in
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
+    "cosmo.pc") CONFIG_FILES="$CONFIG_FILES cosmo.pc" ;;
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
 

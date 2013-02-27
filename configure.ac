@@ -47,7 +47,7 @@ BOOST_SMART_PTR
 BOOST_PROGRAM_OPTIONS
 
 # Configure automake
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile cosmo.pc])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 # See http://www.gnu.org/s/hello/manual/automake/maintainer_002dmode.html
 AM_MAINTAINER_MODE

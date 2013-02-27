@@ -11,6 +11,13 @@ bin_PROGRAMS = cosmocalc cosmo3d cosmogrf cosmostack
 # extra targets that should not be installed
 noinst_PROGRAMS = cosmotest
 
+# targets that contain unit tests
+#check_PROGRAMS = 
+
+# add our pkgconfig file to the install target
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = cosmo.pc
+
 # any library dependencies not already added by configure can be added here
 #libcosmo_la_LIBADD = 
 
