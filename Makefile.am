@@ -11,6 +11,9 @@ bin_PROGRAMS = cosmocalc cosmo3d cosmogrf cosmostack
 # extra targets that should not be installed
 noinst_PROGRAMS = cosmotest
 
+# any library dependencies not already added by configure can be added here
+#libcosmo_la_LIBADD = 
+
 # instructions for building the library
 libcosmo_la_SOURCES = \
 	cosmo/AbsHomogeneousUniverse.cc \
@@ -52,20 +55,20 @@ nobase_include_HEADERS = \
 
 cosmocalc_SOURCES = src/cosmocalc.cc
 cosmocalc_DEPENDENCIES = $(lib_LIBRARIES)
-cosmocalc_LDADD = libcosmo.la -llikely $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+cosmocalc_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 
 cosmo3d_SOURCES = src/cosmo3d.cc
 cosmo3d_DEPENDENCIES = $(lib_LIBRARIES)
-cosmo3d_LDADD = libcosmo.la -llikely $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+cosmo3d_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 
 cosmotest_SOURCES = src/cosmotest.cc
 cosmotest_DEPENDENCIES = $(lib_LIBRARIES)
-cosmotest_LDADD = libcosmo.la -llikely $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+cosmotest_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 
 cosmogrf_SOURCES = src/cosmogrf.cc
 cosmogrf_DEPENDENCIES = $(lib_LIBRARIES)
-cosmogrf_LDADD = libcosmo.la -llikely $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+cosmogrf_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 
 cosmostack_SOURCES = src/cosmostack.cc
 cosmostack_DEPENDENCIES = $(lib_LIBRARIES)
-cosmostack_LDADD = libcosmo.la -llikely $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+cosmostack_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)

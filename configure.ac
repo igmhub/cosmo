@@ -21,6 +21,10 @@ LT_INIT
 AC_CHECK_LIB([m],[cos],,
 	AC_MSG_ERROR([Cannot find the math library.]))
 
+# We don't use PKG_CHECK_MODULES here for a variety of reasons
+AC_CHECK_LIB([likely],[main],,
+	AC_MSG_ERROR([Cannot find the likely library.]))
+
 # Use 'configure --without-fftw3' if no FFTW3 library is available.
 AC_ARG_WITH([fftw3],
 	AS_HELP_STRING([--without-fftw3], [Build without the FFTW3 library.]))
