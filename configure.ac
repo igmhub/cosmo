@@ -30,7 +30,7 @@ AS_IF([test "x$with_fftw3" != "xno"], [
 ])
 
 # We need a recent version of boost
-BOOST_REQUIRE([1.45])
+BOOST_REQUIRE([1.49])
 
 # Required header-only boost packages
 BOOST_BIND
@@ -38,6 +38,9 @@ BOOST_FOREACH
 BOOST_FUNCTION
 BOOST_UTILITY
 BOOST_SMART_PTR
+
+# Required boost libraries
+BOOST_PROGRAM_OPTIONS
 
 # Configure automake
 AC_CONFIG_FILES([Makefile])
