@@ -56,7 +56,7 @@ nobase_include_HEADERS = \
 	cosmo/OneDimensionalPowerSpectrum.h \
 	cosmo/AbsGaussianRandomFieldGenerator.h \
 	cosmo/FftGaussianRandomFieldGenerator.h \
-	cosmo/TestFftGaussianRandomFieldGenerator.cc
+	cosmo/TestFftGaussianRandomFieldGenerator.h
 
 # instructions for building each program
 
