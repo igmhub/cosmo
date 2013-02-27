@@ -21,6 +21,10 @@ LT_INIT
 AC_CHECK_LIB([m],[cos],,
 	AC_MSG_ERROR([Cannot find the math library.]))
 
+# We don't use PKG_CHECK_MODULES here for a variety of reasons
+AC_CHECK_LIB([likely],[main],,
+	AC_MSG_ERROR([Cannot find the likely library.]))
+
 # Use 'configure --without-fftw3' if no FFTW3 library is available.
 AC_ARG_WITH([fftw3],
 	AS_HELP_STRING([--without-fftw3], [Build without the FFTW3 library.]))
@@ -30,7 +34,7 @@ AS_IF([test "x$with_fftw3" != "xno"], [
 ])
 
 # We need a recent version of boost
-BOOST_REQUIRE([1.45])
+BOOST_REQUIRE([1.49])
 
 # Required header-only boost packages
 BOOST_BIND
@@ -39,8 +43,11 @@ BOOST_FUNCTION
 BOOST_UTILITY
 BOOST_SMART_PTR
 
+# Required boost libraries
+BOOST_PROGRAM_OPTIONS
+
 # Configure automake
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile cosmo.pc])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 # See http://www.gnu.org/s/hello/manual/automake/maintainer_002dmode.html
 AM_MAINTAINER_MODE

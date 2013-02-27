@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: cosmo
+Description: a library of C++ cosmology calculation utility classes
+Version: @VERSION@
+Libs: -L${libdir} -lcosmo @LIBS@
+Cflags: -I${includedir}

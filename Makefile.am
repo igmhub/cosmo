@@ -1,6 +1,8 @@
+# add path to boost.m4
+ACLOCAL_AMFLAGS = -I .
+
 # global compile and link options
 AM_CPPFLAGS = $(BOOST_CPPFLAGS)
-AM_LDFLAGS = -llikely
 
 # targets to build and install
 lib_LTLIBRARIES = libcosmo.la
@@ -8,6 +10,16 @@ bin_PROGRAMS = cosmocalc cosmo3d cosmogrf cosmostack
 
 # extra targets that should not be installed
 noinst_PROGRAMS = cosmotest
+
+# targets that contain unit tests
+#check_PROGRAMS = 
+
+# add our pkgconfig file to the install target
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = cosmo.pc
+
+# any library dependencies not already added by configure can be added here
+#libcosmo_la_LIBADD = 
 
 # instructions for building the library
 libcosmo_la_SOURCES = \
@@ -44,26 +56,26 @@ nobase_include_HEADERS = \
 	cosmo/OneDimensionalPowerSpectrum.h \
 	cosmo/AbsGaussianRandomFieldGenerator.h \
 	cosmo/FftGaussianRandomFieldGenerator.h \
-	cosmo/TestFftGaussianRandomFieldGenerator.cc
+	cosmo/TestFftGaussianRandomFieldGenerator.h
 
 # instructions for building each program
 
 cosmocalc_SOURCES = src/cosmocalc.cc
 cosmocalc_DEPENDENCIES = $(lib_LIBRARIES)
-cosmocalc_LDADD = -lboost_program_options -L. -lcosmo
+cosmocalc_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 
 cosmo3d_SOURCES = src/cosmo3d.cc
 cosmo3d_DEPENDENCIES = $(lib_LIBRARIES)
-cosmo3d_LDADD = -lboost_program_options -L. -lcosmo
+cosmo3d_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 
 cosmotest_SOURCES = src/cosmotest.cc
 cosmotest_DEPENDENCIES = $(lib_LIBRARIES)
-cosmotest_LDADD = -lboost_program_options -L. -lcosmo
+cosmotest_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 
 cosmogrf_SOURCES = src/cosmogrf.cc
 cosmogrf_DEPENDENCIES = $(lib_LIBRARIES)
-cosmogrf_LDADD = -lboost_program_options -L. -lcosmo
+cosmogrf_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 
 cosmostack_SOURCES = src/cosmostack.cc
 cosmostack_DEPENDENCIES = $(lib_LIBRARIES)
-cosmostack_LDADD = -lboost_program_options -L. -lcosmo
+cosmostack_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
