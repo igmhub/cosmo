@@ -45,7 +45,8 @@ DIST_COMMON = $(am__configure_deps) $(nobase_include_HEADERS) \
 	$(srcdir)/config.h.in $(top_srcdir)/configure config.guess \
 	config.sub depcomp install-sh ltmain.sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/boost.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
@@ -92,6 +93,7 @@ libcosmo_la_OBJECTS = $(am_libcosmo_la_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS)
 am_cosmo3d_OBJECTS = cosmo3d.$(OBJEXT)
 cosmo3d_OBJECTS = $(am_cosmo3d_OBJECTS)
+am__DEPENDENCIES_1 =
 am_cosmocalc_OBJECTS = cosmocalc.$(OBJEXT)
 cosmocalc_OBJECTS = $(am_cosmocalc_OBJECTS)
 am_cosmogrf_OBJECTS = cosmogrf.$(OBJEXT)
@@ -141,6 +143,10 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
+BOOST_LDPATH = @BOOST_LDPATH@
+BOOST_PROGRAM_OPTIONS_LDFLAGS = @BOOST_PROGRAM_OPTIONS_LDFLAGS@
+BOOST_PROGRAM_OPTIONS_LDPATH = @BOOST_PROGRAM_OPTIONS_LDPATH@
+BOOST_PROGRAM_OPTIONS_LIBS = @BOOST_PROGRAM_OPTIONS_LIBS@
 BOOST_ROOT = @BOOST_ROOT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
@@ -256,9 +262,11 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 
+# add path to boost.m4
+ACLOCAL_AMFLAGS = -I .
+
 # global compile and link options
 AM_CPPFLAGS = $(BOOST_CPPFLAGS)
-AM_LDFLAGS = -llikely
 
 # targets to build and install
 lib_LTLIBRARIES = libcosmo.la
@@ -305,19 +313,19 @@ nobase_include_HEADERS = \
 # instructions for building each program
 cosmocalc_SOURCES = src/cosmocalc.cc
 cosmocalc_DEPENDENCIES = $(lib_LIBRARIES)
-cosmocalc_LDADD = -lboost_program_options -L. -lcosmo
+cosmocalc_LDADD = libcosmo.la -llikely $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 cosmo3d_SOURCES = src/cosmo3d.cc
 cosmo3d_DEPENDENCIES = $(lib_LIBRARIES)
-cosmo3d_LDADD = -lboost_program_options -L. -lcosmo
+cosmo3d_LDADD = libcosmo.la -llikely $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 cosmotest_SOURCES = src/cosmotest.cc
 cosmotest_DEPENDENCIES = $(lib_LIBRARIES)
-cosmotest_LDADD = -lboost_program_options -L. -lcosmo
+cosmotest_LDADD = libcosmo.la -llikely $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 cosmogrf_SOURCES = src/cosmogrf.cc
 cosmogrf_DEPENDENCIES = $(lib_LIBRARIES)
-cosmogrf_LDADD = -lboost_program_options -L. -lcosmo
+cosmogrf_LDADD = libcosmo.la -llikely $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 cosmostack_SOURCES = src/cosmostack.cc
 cosmostack_DEPENDENCIES = $(lib_LIBRARIES)
-cosmostack_LDADD = -lboost_program_options -L. -lcosmo
+cosmostack_LDADD = libcosmo.la -llikely $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
