@@ -77,6 +77,28 @@ double local::getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch, bool
     return std::sqrt(integrator.integrateSingular(0,1) + integrator.integrateUp(1));
 }
 
+double local::legendreP(int ell, double mu) {
+    double mu2(mu*mu);
+    switch(ell) {
+        case 0:
+        return 1;
+        case 2:
+        return (-1+mu2*3)/2;
+        case 4:
+        return (3-mu2*(30-mu2*35))/8;
+        case 6:
+        return (-5+mu2*(105-mu2*(315-mu2*231)))/16;
+        case 8:
+        return (35-mu2*(1260-mu2*(6930-mu2*(12012-mu2*6435))))/128;
+        case 10:
+        return (-63+mu2*(3465-mu2*(30030-mu2*(90090-mu2*(109395-mu2*46189)))))/256;
+        case 12:
+        return (231-mu2*(18018-mu2*(225225-mu2*(1021020-mu2*(2078505-mu2*(1939938-mu2*676039))))))/1024;
+        default:
+        return 0;
+    }
+}
+
 // explicit template instantiation for creating a function pointer to a TransferFunctionPowerSpectrum.
 
 #include "likely/function_impl.h"

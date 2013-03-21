@@ -56,6 +56,9 @@ namespace cosmo {
     double getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch,
         bool gaussian = false);
 	
+	// Evaluates the Legendre polynomial for even ell up to 12 and returns 0 for any other ell.
+    double legendreP(int ell, double mu);
+
 } // cosmo
 
 #endif // COSMO_TRANSFER_FUNCTION_POWER_SPECTRUM
