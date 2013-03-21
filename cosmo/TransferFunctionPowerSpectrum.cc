@@ -77,12 +77,6 @@ double local::getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch, bool
     return std::sqrt(integrator.integrateSingular(0,1) + integrator.integrateUp(1));
 }
 
-template <class P>
-local::GenericFunctionPtr local::createFunctionPtr(boost::shared_ptr<P> pimpl) {
-    GenericFunctionPtr fptr(new GenericFunction(boost::bind(&P::operator(),pimpl,_1)));
-    return fptr;
-}
-
 // explicit template instantiation for creating a function pointer to a TransferFunctionPowerSpectrum.
 
 #include "likely/function_impl.h"
