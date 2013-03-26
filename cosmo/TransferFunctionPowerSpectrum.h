@@ -5,6 +5,8 @@
 
 #include "cosmo/types.h"
 
+#include "likely/function.h"
+
 #include "boost/function.hpp"
 #include "boost/smart_ptr.hpp"
 
@@ -55,6 +57,13 @@ namespace cosmo {
 	// function (top-hat) window function is used.
     double getRmsAmplitude(PowerSpectrumPtr powerSpectrum, double rMpch,
         bool gaussian = false);
+	
+	// Evaluates the Legendre polynomial for even ell up to 12 and returns 0 for any other ell.
+    double legendreP(int ell, double mu);
+
+    // Returns the specified multipole projection of the function provided, calculated
+    // using numerical integration over 0 < mu < 1. Only even 0 <= ell <= 12 are implemented.
+    double getMultipole(GenericFunctionPtr fOfMuPtr, int ell, double epsAbs = 1e-6, double epsRel = 1e-6);
 	
 } // cosmo
 

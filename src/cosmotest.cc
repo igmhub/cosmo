@@ -21,6 +21,12 @@ int main(int argc, char **argv) {
 
     double pi(4*std::atan(1)), rootpi(std::sqrt(pi));
 
+    // Calculate Legendre polynomial values
+    double mu(0.125);
+    for(int ell = 0; ell <= 12; ell += 2) {
+        std::cout << "P(" << ell << "," << mu << ") = " << cosmo::legendreP(ell,mu) << std::endl;
+    }
+
     // Create a shared pointer to a power spectrum function object.
     cosmo::PowerSpectrumPtr powerPtr(new cosmo::PowerSpectrum(powerSpectrum));
     
