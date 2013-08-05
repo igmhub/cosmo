@@ -17,10 +17,13 @@ namespace lk = likely;
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
+    std::string infile;
     po::options_description cli("Correlation function estimator");
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
+        ("input,i", po::value<std::string>(&infile)->default_value(""),
+            "Filename to read field samples from")
         ;
 
     // do the command line parsing now
@@ -38,6 +41,26 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose"));
-    
+
+    // Read the input file
+    if(0 == infile.length()) {
+        std::cerr << "Missing infile parameter." << std::endl;
+        return -2;
+    }
+    std::vector<std::vector<double> > columns(5);
+    try {
+        std::ifstream in(infile.c_str());
+        lk::readVectors(in,columns);
+        in.close();
+    }
+    catch(std::exception const &e) {
+        std::cerr << "Error while reading " << infile << ": " << e.what() << std::endl;
+        return -3;
+    }
+    if(verbose) {
+        std::cout << "Read " << columns[0].size() << " rows from " << infile
+            << std::endl;
+    }
+
     return 0;
 }
