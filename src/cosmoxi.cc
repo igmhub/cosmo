@@ -9,10 +9,28 @@
 
 #include <iostream>
 #include <fstream>
-#include <string>
+#include <cmath>
 
 namespace po = boost::program_options;
 namespace lk = likely;
+
+void bruteForce(std::vector<std::vector<double> > const &columns) {
+    int n(columns[0].size()), npair(0), nused(0);
+    for(int i = 0; i < n-1; ++i) {
+        double xi = columns[0][i];
+        double yi = columns[1][i];
+        double zi = columns[2][i];
+        for(int j = i+1; j < n; ++j) {
+            double dx = xi - columns[0][j];
+            double dy = yi - columns[1][j];
+            double dz = zi - columns[2][j];
+            double r = std::sqrt(dx*dx+dy*dy+dz*dz);
+            npair++;
+            if(r < 200) nused++;
+        }
+    }
+    std::cout << "used " << nused << " of " << npair << " pairs." << std::endl;
+}
 
 int main(int argc, char **argv) {
     
@@ -61,6 +79,8 @@ int main(int argc, char **argv) {
         std::cout << "Read " << columns[0].size() << " rows from " << infile
             << std::endl;
     }
+
+    bruteForce(columns);
 
     return 0;
 }
