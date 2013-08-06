@@ -14,8 +14,10 @@
 namespace po = boost::program_options;
 namespace lk = likely;
 
-void bruteForce(std::vector<std::vector<double> > const &columns) {
+void bruteForce(std::vector<std::vector<double> > const &columns, lk::BinnedGrid const &grid, bool rmu,
+double x1min, double x1max, double x2min, double x2max) {
     int n(columns[0].size()), npair(0), nused(0);
+    std::vector<double> separation(2);
     for(int i = 0; i < n-1; ++i) {
         double xi = columns[0][i];
         double yi = columns[1][i];
@@ -24,9 +26,24 @@ void bruteForce(std::vector<std::vector<double> > const &columns) {
             double dx = xi - columns[0][j];
             double dy = yi - columns[1][j];
             double dz = zi - columns[2][j];
-            double r = std::sqrt(dx*dx+dy*dy+dz*dz);
+            if(rmu) {
+                separation[0] = std::sqrt(dx*dx+dy*dy+dz*dz);
+                separation[1] = std::fabs(dz/separation[0]);
+            }
+            else {
+                separation[0] = std::fabs(dz);
+                separation[1] = std::sqrt(dx*dx+dy*dy);
+            }
             npair++;
-            if(r < 200) nused++;
+            if(separation[0] < x1min || separation[0] >= x1max) continue;
+            if(separation[1] < x2min || separation[1] >= x2max) continue;
+            try {
+                int index = grid.getIndex(separation);
+                nused++;
+            }
+            catch(lk::RuntimeError const &e) {
+                std::cerr << "no bin found for i,j = " << i << ',' << j << std::endl;
+            }
         }
     }
     std::cout << "used " << nused << " of " << npair << " pairs." << std::endl;
@@ -35,13 +52,18 @@ void bruteForce(std::vector<std::vector<double> > const &columns) {
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
-    std::string infile;
+    std::string infile,axis1,axis2;
     po::options_description cli("Correlation function estimator");
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
         ("input,i", po::value<std::string>(&infile)->default_value(""),
             "Filename to read field samples from")
+        ("axis1", po::value<std::string>(&axis1)->default_value("[0:200]*50"),
+            "Axis-1 binning")
+        ("axis2", po::value<std::string>(&axis2)->default_value("[0:200]*50"),
+            "Axis-2 binning")
+        ("rmu", "Use (r,mu) binning instead of (rP,rT) binning")
         ;
 
     // do the command line parsing now
@@ -58,7 +80,7 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose"));
+    bool verbose(vm.count("verbose")),rmu(vm.count("rmu"));
 
     // Read the input file
     if(0 == infile.length()) {
@@ -80,7 +102,17 @@ int main(int argc, char **argv) {
             << std::endl;
     }
 
-    bruteForce(columns);
+    // Generate the correlation function grid and run the estimator
+    try {
+        lk::AbsBinningCPtr bins1 = lk::createBinning(axis1), bins2 = lk::createBinning(axis2);
+        double x1min(bins1->getBinLowEdge(0)), x1max(bins1->getBinHighEdge(bins1->getNBins()-1));
+        double x2min(bins2->getBinLowEdge(0)), x2max(bins2->getBinHighEdge(bins2->getNBins()-1));
+        lk::BinnedGrid grid(bins1,bins2);
+        bruteForce(columns,grid,rmu,x1min,x1max,x2min,x2max);
+    }
+    catch(std::exception const &e) {
+        std::cerr << "Error while running the estimator: " << e.what() << std::endl;
+    }
 
     return 0;
 }
