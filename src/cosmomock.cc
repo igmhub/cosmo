@@ -17,8 +17,7 @@ namespace lk = likely;
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
-    std::string rvectors,kvectors;
-    double pknorm;
+    std::string rvectors,kvectors,outfile;
     po::options_description cli("Mock generator");
     cli.add_options()
         ("help,h", "Prints this info and exits.")
@@ -27,8 +26,8 @@ int main(int argc, char **argv) {
             "Filename to read r-vectors from")
         ("kvectors", po::value<std::string>(&kvectors)->default_value(""),
             "Filename to read k-vectors from")
-        ("pknorm", po::value<double>(&pknorm)->default_value(54.1415),
-            "k^2 P(k) normalization constant")
+        ("output,o", po::value<std::string>(&outfile)->default_value("mock.dat"),
+            "Filename to save generated mock to")
         ;
 
     // do the command line parsing now
@@ -62,8 +61,9 @@ int main(int argc, char **argv) {
         std::cerr << "Error while reading " << rvectors << ": " << e.what() << std::endl;
         return -3;
     }
+    int npixels = rvec[0].size();
     if(verbose) {
-        std::cout << "Read " << rvec[0].size() << " k-vectors from " << rvectors
+        std::cout << "Read " << npixels << " k-vectors from " << rvectors
             << std::endl;
     }
 
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
         std::cerr << "Missing kvectors parameter." << std::endl;
         return -2;
     }
-    std::vector<std::vector<double> > kvec(3);
+    std::vector<std::vector<double> > kvec(5);
     try {
         std::ifstream in(kvectors.c_str());
         lk::readVectors(in,kvec);
@@ -82,10 +82,25 @@ int main(int argc, char **argv) {
         std::cerr << "Error while reading " << kvectors << ": " << e.what() << std::endl;
         return -3;
     }
+    int nmodes = kvec[0].size();
     if(verbose) {
-        std::cout << "Read " << kvec[0].size() << " k-vectors from " << kvectors
+        std::cout << "Read " << nmodes << " k-vectors from " << kvectors
             << std::endl;
     }
+
+    std::ofstream out(outfile.c_str());
+
+    // Evaluate realization (kvec) at each survey pixel (rvec)
+    for(int i = 0; i < npixels; ++i) {
+        double delta(0);
+        for(int j = 0; j < nmodes; ++j) {
+            double dot = kvec[0][j]*rvec[0][i]+kvec[1][j]*rvec[1][i]+kvec[2][j]*rvec[2][i];
+            delta += 2*kvec[3][j]*std::cos(dot+kvec[4][j]);
+        }
+        out << delta << std::endl;
+    }
+
+    out.close();
 
     return 0;
 }
