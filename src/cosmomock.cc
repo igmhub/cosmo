@@ -17,12 +17,14 @@ namespace lk = likely;
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
-    std::string kvectors;
+    std::string rvectors,kvectors;
     double pknorm;
     po::options_description cli("Mock generator");
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
+        ("rvectors", po::value<std::string>(&rvectors)->default_value(""),
+            "Filename to read r-vectors from")
         ("kvectors", po::value<std::string>(&kvectors)->default_value(""),
             "Filename to read k-vectors from")
         ("pknorm", po::value<double>(&pknorm)->default_value(54.1415),
@@ -45,15 +47,35 @@ int main(int argc, char **argv) {
     }
     bool verbose(vm.count("verbose")),rmu(vm.count("rmu"));
 
-    // Read the k vectors file
+    // Read the r-vectors file
+    if(0 == rvectors.length()) {
+        std::cerr << "Missing rvectors parameter." << std::endl;
+        return -2;
+    }
+    std::vector<std::vector<double> > rvec(3);
+    try {
+        std::ifstream in(rvectors.c_str());
+        lk::readVectors(in,rvec);
+        in.close();
+    }
+    catch(std::exception const &e) {
+        std::cerr << "Error while reading " << rvectors << ": " << e.what() << std::endl;
+        return -3;
+    }
+    if(verbose) {
+        std::cout << "Read " << rvec[0].size() << " k-vectors from " << rvectors
+            << std::endl;
+    }
+
+    // Read the k-vectors file
     if(0 == kvectors.length()) {
         std::cerr << "Missing kvectors parameter." << std::endl;
         return -2;
     }
-    std::vector<std::vector<double> > columns(3);
+    std::vector<std::vector<double> > kvec(3);
     try {
         std::ifstream in(kvectors.c_str());
-        lk::readVectors(in,columns);
+        lk::readVectors(in,kvec);
         in.close();
     }
     catch(std::exception const &e) {
@@ -61,7 +83,7 @@ int main(int argc, char **argv) {
         return -3;
     }
     if(verbose) {
-        std::cout << "Read " << columns[0].size() << " k-vectors from " << kvectors
+        std::cout << "Read " << kvec[0].size() << " k-vectors from " << kvectors
             << std::endl;
     }
 
