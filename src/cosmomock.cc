@@ -91,13 +91,14 @@ int main(int argc, char **argv) {
     std::ofstream out(outfile.c_str());
 
     // Evaluate realization (kvec) at each survey pixel (rvec)
+    double wgt = 1;
     for(int i = 0; i < npixels; ++i) {
         double delta(0);
         for(int j = 0; j < nmodes; ++j) {
             double dot = kvec[0][j]*rvec[0][i]+kvec[1][j]*rvec[1][i]+kvec[2][j]*rvec[2][i];
             delta += 2*kvec[3][j]*std::cos(dot+kvec[4][j]);
         }
-        out << delta << std::endl;
+        out << rvec[0][i] << ' ' << rvec[1][i] << ' ' << rvec[2][i] << ' ' << delta << ' ' << wgt << std::endl;
     }
 
     out.close();
