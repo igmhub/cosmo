@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     }
     int npixels = rvec[0].size();
     if(verbose) {
-        std::cout << "Read " << npixels << " k-vectors from " << rvectors
+        std::cout << "Read " << npixels << " pixels from " << rvectors
             << std::endl;
     }
 
@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
     }
     int nmodes = kvec[0].size();
     if(verbose) {
-        std::cout << "Read " << nmodes << " k-vectors from " << kvectors
+        std::cout << "Read " << nmodes << " k-modes from " << kvectors
             << std::endl;
     }
 
@@ -94,10 +94,12 @@ int main(int argc, char **argv) {
     double wgt = 1;
     for(int i = 0; i < npixels; ++i) {
         double delta(0);
+        double xi(rvec[0][i]),yi(rvec[1][i]),zi(rvec[2][i]);
         for(int j = 0; j < nmodes; ++j) {
-            double dot = kvec[0][j]*rvec[0][i]+kvec[1][j]*rvec[1][i]+kvec[2][j]*rvec[2][i];
-            delta += 2*kvec[3][j]*std::cos(dot+kvec[4][j]);
+            double dot = xi*kvec[0][j]+yi*kvec[1][j]+zi*kvec[2][j];
+            delta += kvec[3][j]*std::cos(dot+kvec[4][j]);
         }
+        delta *= 2;
         out << rvec[0][i] << ' ' << rvec[1][i] << ' ' << rvec[2][i] << ' ' << delta << ' ' << wgt << std::endl;
     }
 
