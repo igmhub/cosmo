@@ -15,13 +15,17 @@
 namespace po = boost::program_options;
 namespace lk = likely;
 
+// Brute force timing for 2M pairs in DR9-like volume:
+// used -603397146 of -1455759936 pairs.
+// 29805.930u 18.906s 8:17:02.56 100.0%    0+0k 0+4io 0pf+0w
 void bruteForce(std::vector<std::vector<double> > const &columns, lk::BinnedGrid const &grid, bool rmu,
 double x1min, double x1max, double x2min, double x2max, std::vector<double> &xi) {
     // create internal accumulation vectors
     int nbins = grid.getNBinsTotal();
     std::vector<double> dsum(nbins,0.), wsum(nbins,0.);
     // Do a brute force loop over all pairs
-    int n(columns[0].size()), npair(0), nused(0);
+    int n(columns[0].size());
+    long npair(0), nused(0);
     std::vector<double> separation(2);
     for(int i = 0; i < n-1; ++i) {
         double xi = columns[0][i];
