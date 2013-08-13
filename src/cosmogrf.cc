@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     double spacing;
     long npairs;
     int nx,ny,nz,seed,pairseed,nbins,nkbins;
-    std::string loadPowerFile, corrfile, powerfile;
+    std::string loadPowerFile, corrfile, powerfile, outfile;
     po::options_description cli("Gaussian random field generator");
     cli.add_options()
         ("help,h", "Prints this info and exits.")
@@ -55,6 +55,8 @@ int main(int argc, char **argv) {
             "Name of power spectrum output file, leave blank to skip.")
         ("nkbins", po::value<int>(&nkbins)->default_value(100),
             "Number of k bins to use for power spectrum measurement.")
+        ("output", po::value<std::string>(&outfile)->default_value(""),
+            "Filename to write delta field to.")
         ;
 
     // do the command line parsing now
@@ -165,8 +167,31 @@ int main(int argc, char **argv) {
 
     // Perform FFT to realspace.
     generator.transformFieldToR();
+
+    // Write delta field to file
+    if (outfile.length() > 0) {
+        try {
+            std::ofstream out(outfile.c_str());
+            double wgt = 1;
+            for(int ix = 0; ix < nx; ++ix) {
+                double x = (ix+0.5)*spacing;
+                for(int iy = 0; iy < ny; ++iy) {
+                    double y = (iy+0.5)*spacing;
+                    for(int iz = 0; iz < nz; ++iz) {
+                        double z = (iz+0.5)*spacing;
+                        out << x << ' ' << y << ' ' << z << ' ' 
+                            << generator.getField(ix,iy,iz) << ' ' << wgt << std::endl;
+                    }
+                }
+            }
+            out.close();
+        }
+        catch(std::exception const &e) {
+            std::cerr << "Error while saving delta field: " << e.what() << std::endl;
+        }
+    }
     
-    // Perform power spectrum estimate from k-space delta field.
+    // Perform correlation function estimate on r-space delta field.
     if (corrfile.length() > 0) {
         double rmin(0), rmax(200);
         double binsize = (rmax - rmin)/nbins;
