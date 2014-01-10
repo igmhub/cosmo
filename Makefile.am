@@ -6,7 +6,7 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS)
 
 # targets to build and install
 lib_LTLIBRARIES = libcosmo.la
-bin_PROGRAMS = cosmocalc cosmo3d cosmogrf cosmostack cosmoxi cosmomock
+bin_PROGRAMS = cosmocalc cosmo3d cosmogrf cosmostack cosmoxi cosmomock cosmotrans
 
 # extra targets that should not be installed
 noinst_PROGRAMS = cosmotest
@@ -89,3 +89,7 @@ cosmoxi_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPT
 cosmomock_SOURCES = src/cosmomock.cc
 cosmomock_DEPENDENCIES = $(lib_LIBRARIES)
 cosmomock_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+
+cosmotrans_SOURCES = src/cosmotrans.cc
+cosmotrans_DEPENDENCIES = $(lib_LIBRARIES)
+cosmotrans_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
