@@ -2,6 +2,7 @@
 
 #include "cosmo/cosmo.h"
 #include "likely/likely.h"
+#include "likely/function_impl.h"
 
 #include "boost/program_options.hpp"
 #include "boost/bind.hpp"
@@ -41,7 +42,7 @@ int main(int argc, char **argv) {
 
     cosmo::MultipoleTransform::Type type(cosmo::MultipoleTransform::SphericalBessel);
     boost::shared_ptr<Power> Pk(new Power());
-    lk::GenericFunctionPtr PkPtr(new lk::GenericFunction(boost::bind(&Power::operator(),Pk,_1)));
+    lk::GenericFunctionPtr PkPtr = lk::createFunctionPtr<Power>(Pk);
 
     try {
     	cosmo::MultipoleTransform mt(PkPtr,type,0,0.1,10.,1e-3);
