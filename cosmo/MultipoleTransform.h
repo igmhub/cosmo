@@ -16,10 +16,10 @@ namespace cosmo {
 		//   T(v) = Integrate[ S(ell,u,v)*func(u) , {u,0,Infinity} ]
 		//
 		// where S = u^2 j_ell(u*v) when type is SphericalBessel or
-		// S = u J_ell(u*v) when type is Hankel. The result will be value to
-		// the accuracy eps over the range umin < u < umax.
+		// S = u J_ell(u*v) when type is Hankel. The result T(v) will be
+		// evaluated to the accuracy eps over the range vmin < v < vmax.
 		MultipoleTransform(likely::GenericFunctionPtr func, Type type, int ell,
-			double umin, double umax, double eps);
+			double vmin, double vmax, double eps);
 		virtual ~MultipoleTransform();
 	private:
 	}; // MultipoleTransform
