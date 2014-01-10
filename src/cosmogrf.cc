@@ -25,8 +25,8 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     double spacing;
     long npairs;
-    int nx,ny,nz,seed,pairseed,nbins,nkbins;
-    std::string loadPowerFile, corrfile, powerfile, outfile;
+    int nx,ny,nz,seed,pairseed,nbins,nkbins,deltaSliceAvg;
+    std::string loadPowerFile, corrfile, powerfile, outfile, saveDeltaFile;
     po::options_description cli("Gaussian random field generator");
     cli.add_options()
         ("help,h", "Prints this info and exits.")
@@ -41,6 +41,10 @@ int main(int argc, char **argv) {
             "Grid size along z-axis (or zero for nz=ny).")
         ("load-power", po::value<std::string>(&loadPowerFile)->default_value(""),
             "Reads k,P(k) values (in h/Mpc units) to interpolate from the specified filename.")
+        ("save-delta-slice", po::value<std::string>(&saveDeltaFile)->default_value(""),
+            "Saves (x,y) slice of generated delta(r) field at z = 0")
+        ("delta-slice-avg", po::value<int>(&deltaSliceAvg)->default_value(1),
+            "Number of z slices to average at each (x,y) for save-delta-slice")
         ("seed", po::value<int>(&seed)->default_value(123),
             "Random seed to use for GRF.")
         ("corrfile", po::value<std::string>(&corrfile)->default_value(""),
@@ -80,12 +84,17 @@ int main(int argc, char **argv) {
     if(nkbins <= 0) {
         std::cerr << "nkbins must be > 0" << std::endl;
         return -3;
-    } 
+    }
     bool verbose(vm.count("verbose"));
 
     // Fill in any missing grid dimensions.
     if(0 == ny) ny = nx;
     if(0 == nz) nz = ny;
+
+    if(deltaSliceAvg < 1 || deltaSliceAvg > nz) {
+        std::cerr << "delta-slice-avg must be > 0 and <= nz" << std::endl;
+        return -4;
+    }
     
     double pi(4*std::atan(1));
     
@@ -192,6 +201,22 @@ int main(int argc, char **argv) {
     }
     
     // Perform correlation function estimate on r-space delta field.
+    if(saveDeltaFile.length() > 0) {
+        std::ofstream out(saveDeltaFile.c_str());
+         for(int ix = 0; ix < nx; ++ix) {
+            for(int iy = 0; iy < ny; ++iy) {
+                double sum(0);
+                for(int iz = 0; iz < deltaSliceAvg; ++iz) {
+                    sum += generator.getField(ix,iy,iz);
+                }
+                out << ' ' << sum/deltaSliceAvg;
+            }
+            out << std::endl;
+        }
+        out.close();
+    }
+    
+    // Perform correlation function estimate from r-space delta field.
     if (corrfile.length() > 0) {
         double rmin(0), rmax(200);
         double binsize = (rmax - rmin)/nbins;
