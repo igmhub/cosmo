@@ -4,13 +4,16 @@
 #include "cosmo/RuntimeError.h"
 
 #include <boost/math/special_functions/gamma.hpp>
+#include <boost/math/special_functions/bessel.hpp>
 
 #include <cmath>
+#include <cstdlib> // for abs(int)
+#include <vector>
 
 namespace local = cosmo;
 
-local::MultipoleTransform::MultipoleTransform(likely::GenericFunctionPtr func,
-Type type, int ell, double vmin, double vmax, double veps, int minSamplesPerDecade)
+local::MultipoleTransform::MultipoleTransform(Type type, int ell,
+double vmin, double vmax, double veps, int minSamplesPerDecade)
 {
 	// Input parameter validation
 	if(type != SphericalBessel && type != Hankel) {
@@ -69,14 +72,57 @@ Type type, int ell, double vmin, double vmax, double veps, int minSamplesPerDeca
 	double dsmax = c*std::pow(eps,s0);
 	// Calculate the ds value corresponding to the min required number of samples per
 	// decade, and use the smaller of these.
-	double dsmax2 = std::log(10)/minSamplesPerDecade;
-	if(dsmax2 < dsmax) dsmax = dsmax2;
-
+	double dsmaxAlt = std::log(10)/minSamplesPerDecade;
+	if(dsmaxAlt < dsmax) dsmax = dsmaxAlt;
+	// Calculate Nf and ds of eqn (3.5)
+	int Nf = (int)std::ceil(sN/dsmax);
+	double ds = sN/Nf;
 	// Calculate the geometric mean of the target v range of eqn (3.9)
 	double v0 = std::sqrt(vmin*vmax);
-	// Calculate the corresponding u0
+	// Calculate the corresponding u0 and its powers
 	double u0 = uv0/v0;
-
+	double u02 = u0*u0, u03 = u0*u02;
+	// Calculate Ng of eqn (3.1)
+	int Ng = (int)std::ceil(std::log(vmax/vmin)/(2*ds));
+	// Tabulate f(s) of eqn (1.4) or (2.2)
+	int Ntot = Nf + Ng;
+	std::vector<double> fdata(2*Ntot,0.);
+	for(int m = 0; m < Ntot; ++m) {
+		int n = m;
+		if(n >= Ntot) n -= 2*Ntot;
+		if(std::abs(n) > Nf) continue;
+		double bessel,s = n*ds;
+		arg = uv0*std::exp(s);
+		if(type == SphericalBessel) {
+			bessel = boost::math::sph_bessel(ell,arg);
+		}
+		else {
+			bessel = boost::math::cyl_bessel_j(ell,arg);
+		}
+		fdata[m] = std::exp(alpha*s)*bessel*ds;
+	}
+	// Calculate the Fourier transform of fdata
+	// ...
+	// Tabulate the u values where func(u) should be evaluated, the
+	// coefficients needed to rescale func(u(s)) to g(s), the v values
+	// for the convolution result, and the scale factors for the result.
+	std::vector<double> ugrid(2*Ntot), vgrid(2*Ntot), coef(2*Ntot), scale(2*Ntot);
+	for(int n = -Ntot; n < Ntot; ++n) {
+		double s = n*ds;
+		ugrid[n] = u0*std::exp(-s);
+		vgrid[n] = v0*std::exp(+s);
+		if(type == SphericalBessel) {
+			coef[n] = std::exp((3-alpha)*(-s))*u03;
+		}
+		else {
+			coef[n] = std::exp((2-alpha)*(-s))*u02;
+		}
+		scale[n] = std::pow(vgrid[n]/v0,-alpha)/ds;
+	}
 }
 
 local::MultipoleTransform::~MultipoleTransform() { }
+
+void local::MultipoleTransform::transform(likely::GenericFunctionPtr func,
+std::vector<double> const &vgrid, std::vector<double> &result) const {
+}

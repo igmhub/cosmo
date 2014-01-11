@@ -44,8 +44,12 @@ int main(int argc, char **argv) {
     boost::shared_ptr<Power> Pk(new Power());
     lk::GenericFunctionPtr PkPtr = lk::createFunctionPtr<Power>(Pk);
 
+    int npts(100);
+    std::vector<double> rvec(npts), xivec(npts);
+
     try {
-    	cosmo::MultipoleTransform mt(PkPtr,type,0,0.1,10.,1e-3);
+    	cosmo::MultipoleTransform mt(type,0,0.1,10.,1e-3,40);
+        mt.transform(PkPtr,rvec,xivec);
     }
     catch(std::runtime_error const &e) {
         std::cerr << "ERROR: exiting with an exception:\n  " << e.what() << std::endl;
