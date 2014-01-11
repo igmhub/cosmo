@@ -19,7 +19,7 @@ namespace cosmo {
 		// S = u J_ell(u*v) when type is Hankel. The result T(v) will be
 		// evaluated to the accuracy eps over the range vmin < v < vmax.
 		MultipoleTransform(likely::GenericFunctionPtr func, Type type, int ell,
-			double vmin, double vmax, double eps);
+			double vmin, double vmax, double veps, int minSamplesPerDecade = 40);
 		virtual ~MultipoleTransform();
 	private:
 	}; // MultipoleTransform
