@@ -102,7 +102,6 @@ _type(type),_pimpl(new Implementation())
 	// Calculate Nf and ds of eqn (3.5)
 	int Nf = (int)std::ceil(sN/dsmax);
 	double ds = sN/Nf;
-	std::cout << eps << ' ' << sN << ' ' << dsmax << ' ' << Nf << ' ' << ds << std::endl;
 	// Calculate the geometric mean of the target v range of eqn (3.9)
 	double v0 = std::sqrt(vmin*vmax);
 	// Calculate the corresponding u0 and its powers
@@ -110,7 +109,6 @@ _type(type),_pimpl(new Implementation())
 	double u02 = u0*u0, u03 = u0*u02;
 	// Calculate Ng of eqn (3.1)
 	int Ng = (int)std::ceil(std::log(vmax/vmin)/(2*ds));
-	std::cout << uv0 << ' ' << v0 << ' ' << u0 << ' ' << Ng << ' ' << alpha << std::endl;
 	// Tabulate f(s) of eqn (1.4) or (2.2)
 	int Ntot = Nf + Ng;
 #ifdef HAVE_LIBFFTW3F
@@ -146,14 +144,6 @@ _type(type),_pimpl(new Implementation())
 	}
 	// Calculate the Fourier transform of fdata
 	FFTW(execute)(_pimpl->fplan);
-#endif
-#ifdef HAVE_LIBFFTW3F
-	/*
-	for(int m = 0; m < 2*Ntot; ++m) {
-		std::cout << _pimpl->fdata[m][0] << "+i*" << _pimpl->fdata[m][1] << ", ";
-	}
-	std::cout << std::endl;
-	*/
 #endif
 	// Tabulate the u values where func(u) should be evaluated, the
 	// coefficients needed to rescale func(u(s)) to g(s), the v values
@@ -214,8 +204,6 @@ std::vector<double> &result) const {
 	// Rescale and copy the results back to the vector provided.
 	for(int m = 0; m < n; ++m) {
 		result[m] = _scale[m]*_pimpl->gdata[m][0];
-		std::cout << result[m] << ", ";
 	}
-	std::cout << std::endl;
 #endif
 }
