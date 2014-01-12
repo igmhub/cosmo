@@ -90,7 +90,7 @@ double vmin, double vmax, double veps, int minSamplesPerDecade)
 	// Tabulate f(s) of eqn (1.4) or (2.2)
 	int Ntot = Nf + Ng;
 	std::vector<double> fdata(2*Ntot,0.);
-	for(int m = 0; m < Ntot; ++m) {
+	for(int m = 0; m < 2*Ntot; ++m) {
 		int n = m;
 		if(n >= Ntot) n -= 2*Ntot;
 		if(std::abs(n) > Nf) continue;
