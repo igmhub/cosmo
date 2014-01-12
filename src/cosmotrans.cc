@@ -20,9 +20,22 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology multipole transforms");
+    int ell,minSamplesPerDecade;
+    double min,max,eps;
     cli.add_options()
         ("help,h", "Prints this info and exits.")
         ("verbose", "Prints additional information.")
+        ("hankel", "Performs a Hankel transform (default is spherical Bessel")
+        ("ell", po::value<int>(&ell)->default_value(0),
+            "multipole number of transform to calculate")
+        ("min", po::value<double>(&min)->default_value(0.1),
+            "minimum value of transformed coordinate")
+        ("max", po::value<double>(&max)->default_value(10.),
+            "maximum value of transformed coordinate")
+        ("eps", po::value<double>(&eps)->default_value(1e-3),
+            "desired transform accuracy")
+        ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
+            "minimum number of samples per decade to use for transform convolution")
         ;
     // do the command line parsing now
     po::variables_map vm;
@@ -38,9 +51,12 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose"));
+    bool verbose(vm.count("verbose")),hankel(vm.count("hankel"));
 
-    cosmo::MultipoleTransform::Type type(cosmo::MultipoleTransform::SphericalBessel);
+    cosmo::MultipoleTransform::Type ttype(hankel ?
+        cosmo::MultipoleTransform::SphericalBessel :
+        cosmo::MultipoleTransform::SphericalBessel);
+
     boost::shared_ptr<Power> Pk(new Power());
     lk::GenericFunctionPtr PkPtr = lk::createFunctionPtr<Power>(Pk);
 
@@ -48,7 +64,7 @@ int main(int argc, char **argv) {
     std::vector<double> rvec(npts), xivec(npts);
 
     try {
-    	cosmo::MultipoleTransform mt(type,0,0.1,10.,1e-3,40);
+    	cosmo::MultipoleTransform mt(ttype,ell,min,max,eps,minSamplesPerDecade);
         mt.transform(PkPtr,rvec,xivec);
     }
     catch(std::runtime_error const &e) {
