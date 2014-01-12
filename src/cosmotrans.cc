@@ -21,19 +21,20 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology multipole transforms");
     int ell,minSamplesPerDecade;
-    double min,max,eps;
+    double min,max,veps;
     cli.add_options()
-        ("help,h", "Prints this info and exits.")
-        ("verbose", "Prints additional information.")
-        ("hankel", "Performs a Hankel transform (default is spherical Bessel")
+        ("help,h", "prints this info and exits.")
+        ("verbose", "prints additional information.")
+        ("hankel", "performs a Hankel transform (default is spherical Bessel")
         ("ell", po::value<int>(&ell)->default_value(0),
             "multipole number of transform to calculate")
         ("min", po::value<double>(&min)->default_value(0.1),
             "minimum value of transformed coordinate")
         ("max", po::value<double>(&max)->default_value(10.),
             "maximum value of transformed coordinate")
-        ("eps", po::value<double>(&eps)->default_value(1e-3),
+        ("veps", po::value<double>(&veps)->default_value(1e-3),
             "desired transform accuracy")
+        ("measure", "does initial measurements to optimize FFT plan")
         ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
             "minimum number of samples per decade to use for transform convolution")
         ;
@@ -51,11 +52,16 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose")),hankel(vm.count("hankel"));
+    bool verbose(vm.count("verbose")),hankel(vm.count("hankel")),
+        measure(vm.count("measure"));
 
     cosmo::MultipoleTransform::Type ttype(hankel ?
         cosmo::MultipoleTransform::Hankel :
         cosmo::MultipoleTransform::SphericalBessel);
+
+    cosmo::MultipoleTransform::Strategy strategy(measure ?
+        cosmo::MultipoleTransform::MeasurePlan :
+        cosmo::MultipoleTransform::EstimatePlan);
 
     boost::shared_ptr<Power> Pk(new Power());
     lk::GenericFunctionPtr PkPtr = lk::createFunctionPtr<Power>(Pk);
@@ -64,7 +70,7 @@ int main(int argc, char **argv) {
     std::vector<double> rvec(npts), xivec(npts);
 
     try {
-    	cosmo::MultipoleTransform mt(ttype,ell,min,max,eps,minSamplesPerDecade);
+    	cosmo::MultipoleTransform mt(ttype,ell,min,max,veps,strategy,minSamplesPerDecade);
         std::vector<double> const& ugrid = mt.getUGrid(), vgrid = mt.getVGrid();
         if(verbose) {
             std::cout <<  "Will evaluate at " << ugrid.size() << " points covering "

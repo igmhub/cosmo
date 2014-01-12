@@ -31,7 +31,7 @@ namespace cosmo {
 } // cosmo::
 
 local::MultipoleTransform::MultipoleTransform(Type type, int ell,
-double vmin, double vmax, double veps, int minSamplesPerDecade) :
+double vmin, double vmax, double veps, Strategy strategy, int minSamplesPerDecade) :
 _type(type),_pimpl(new Implementation())
 {
 #ifndef HAVE_LIBFFTW3F
@@ -117,12 +117,13 @@ _type(type),_pimpl(new Implementation())
 	_pimpl->gdata = (FFTW(complex)*)FFTW(malloc)(sizeof(FFTW(complex))*2*Ntot);
 	// Build plans for doing transforms in place. FFTW is supposed to be smart
 	// about re-using plans with the same dimensions but different arrays.
+	int flags = (strategy == EstimatePlan) ? FFTW_ESTIMATE : FFTW_MEASURE;
 	_pimpl->fplan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->fdata,_pimpl->fdata,
-		FFTW_FORWARD,FFTW_ESTIMATE);
+		FFTW_FORWARD,flags);
 	_pimpl->gplan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->gdata,_pimpl->gdata,
-		FFTW_FORWARD,FFTW_ESTIMATE);
+		FFTW_FORWARD,flags);
 	_pimpl->fgplan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->gdata,_pimpl->gdata,
-		FFTW_BACKWARD,FFTW_ESTIMATE);
+		FFTW_BACKWARD,flags);
 	for(int m = 0; m < 2*Ntot; ++m) {
 		int n = m;
 		if(n >= Ntot) n -= 2*Ntot;

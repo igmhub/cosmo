@@ -15,6 +15,7 @@ namespace cosmo {
 	// an arbitrary real-valued function.
 	public:
 		enum Type { SphericalBessel, Hankel };
+		enum Strategy { EstimatePlan, MeasurePlan };
 		// Creates a new transform object for an arbitrary func(u) that evaluates:
 		//
 		//   T(v) = Integrate[ S(ell,u,v)*func(u) , {u,0,Infinity} ]
@@ -24,8 +25,8 @@ namespace cosmo {
 		// evaluated to an accuracy over the range vmin < v < vmax that is
 		// determined by the value of veps, with smaller values giving more
 		// accurate results and requiring correspondingly more memory and cpu.
-		MultipoleTransform(Type type, int ell,
-			double vmin, double vmax, double veps, int minSamplesPerDecade = 40);
+		MultipoleTransform(Type type, int ell, double vmin, double vmax, double veps,
+			Strategy strategy, int minSamplesPerDecade = 40);
 		virtual ~MultipoleTransform();
 		// Returns the grid of u values where a function to be transformed will be
 		// evaluated when calling the transform(...) method.
