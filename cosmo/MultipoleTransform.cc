@@ -25,7 +25,7 @@ namespace cosmo {
     struct MultipoleTransform::Implementation {
 #ifdef HAVE_LIBFFTW3F
         FFTW(complex) *fdata,*gdata;
-        FFTW(plan) plan;
+        FFTW(plan) fplan,gplan,fgplan;
 #endif
     };
 } // cosmo::
@@ -114,10 +114,17 @@ _type(type),_pimpl(new Implementation())
 	// Tabulate f(s) of eqn (1.4) or (2.2)
 	int Ntot = Nf + Ng;
 #ifdef HAVE_LIBFFTW3F
+	// Allocate SIMD aligned arrays using FFTW's allocator
 	_pimpl->fdata = (FFTW(complex)*)FFTW(malloc)(sizeof(FFTW(complex))*2*Ntot);
 	_pimpl->gdata = (FFTW(complex)*)FFTW(malloc)(sizeof(FFTW(complex))*2*Ntot);
-	_pimpl->plan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->fdata,_pimpl->fdata,
+	// Build plans for doing transforms in place. FFTW is supposed to be smart
+	// about re-using plans with the same dimensions but different arrays.
+	_pimpl->fplan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->fdata,_pimpl->fdata,
 		FFTW_FORWARD,FFTW_ESTIMATE);
+	_pimpl->gplan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->gdata,_pimpl->gdata,
+		FFTW_FORWARD,FFTW_ESTIMATE);
+	_pimpl->fgplan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->gdata,_pimpl->gdata,
+		FFTW_BACKWARD,FFTW_ESTIMATE);
 	for(int m = 0; m < 2*Ntot; ++m) {
 		int n = m;
 		if(n >= Ntot) n -= 2*Ntot;
@@ -138,7 +145,7 @@ _type(type),_pimpl(new Implementation())
 		}
 	}
 	// Calculate the Fourier transform of fdata
-	FFTW(execute)(_pimpl->plan);
+	FFTW(execute)(_pimpl->fplan);
 #endif
 #ifdef HAVE_LIBFFTW3F
 	/*
@@ -171,7 +178,9 @@ _type(type),_pimpl(new Implementation())
 
 local::MultipoleTransform::~MultipoleTransform() {
 #ifdef HAVE_LIBFFTW3F
-    FFTW(destroy_plan)(_pimpl->plan);
+    FFTW(destroy_plan)(_pimpl->fplan);
+    FFTW(destroy_plan)(_pimpl->gplan);
+    FFTW(destroy_plan)(_pimpl->fgplan);
     FFTW(free)(_pimpl->fdata);
     FFTW(free)(_pimpl->gdata);
 #endif
@@ -186,9 +195,26 @@ std::vector<double> &result) const {
 	// (re)initialize result vector to have correct size, if necessary
 	if(result.size() != n) std::vector<double>(n,0).swap(result);
 	for(int m = 0; m < n; ++m) {
-		_pimpl->gdata[m][0] = _coef[m]*funcTable[m];
+		_pimpl->gdata[m][0] = (FftwReal)(_coef[m]*funcTable[m]);
 		_pimpl->gdata[m][1] = 0.;
-		std::cout << _pimpl->gdata[m][0] << "+i*" << _pimpl->gdata[m][1] << ", ";
+	}
+	// Calculate the Fourier transform of gdata
+	FFTW(execute)(_pimpl->gplan);
+	// Multiply the transforms of fdata and gdata, saving the result in gdata
+	double norm(n);
+	for(int m = 0; m < n; ++m) {
+		double re1 = _pimpl->fdata[m][0], im1 = _pimpl->fdata[m][1];
+		double re2 = _pimpl->gdata[m][0], im2 = _pimpl->gdata[m][1];
+		_pimpl->gdata[m][0] = (FftwReal)((re1*re2 - im1*im2)/norm);
+		_pimpl->gdata[m][1] = (FftwReal)((re1*im2 + re2*im1)/norm);
+	}
+	// Calculate the inverse Fourier transform that gives the convolution of
+	// the original fdata and gdata, tabulated on vgrid.
+	FFTW(execute)(_pimpl->fgplan);
+	// Rescale and copy the results back to the vector provided.
+	for(int m = 0; m < n; ++m) {
+		result[m] = _scale[m]*_pimpl->gdata[m][0];
+		std::cout << result[m] << ", ";
 	}
 	std::cout << std::endl;
 #endif
