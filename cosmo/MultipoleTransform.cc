@@ -25,6 +25,9 @@ double vmin, double vmax, double veps, int minSamplesPerDecade)
 	if(vmin >= vmax) {
 		throw RuntimeError("MultipoleTransform: expected vmin < vmax.");
 	}
+	if(vmin <= 0) {
+		throw RuntimeError("MultipoleTransform: expected vmin > 0.");
+	}
 	if(veps <= 0) {
 		throw RuntimeError("MultipoleTransform: expected veps > 0.");
 	}
