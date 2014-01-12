@@ -32,13 +32,13 @@ namespace cosmo {
 
 local::MultipoleTransform::MultipoleTransform(Type type, int ell,
 double vmin, double vmax, double veps, int minSamplesPerDecade) :
-_pimpl(new Implementation())
+_type(type),_pimpl(new Implementation())
 {
 #ifndef HAVE_LIBFFTW3F
 	throw RuntimeError("MultipoleTransform: library not built with fftw3f support.");
 #endif
 	// Input parameter validation
-	if(type != SphericalBessel && type != Hankel) {
+	if(_type != SphericalBessel && _type != Hankel) {
 		throw RuntimeError("MultipoleTransform: invalid type.");
 	}
 	if(ell < 0) {
@@ -55,7 +55,7 @@ _pimpl(new Implementation())
 	}
 	double pi(atan2(0,-1));
 	double alpha, uv0, s0;
-	if(type == SphericalBessel) {
+	if(_type == SphericalBessel) {
 		// Calculate alpha and uv0 of eqn (1.6)
 		alpha = 0.5*(1-ell);
 		double gammaEll32 = boost::math::tgamma(ell+1.5);
@@ -84,7 +84,7 @@ _pimpl(new Implementation())
 	// Calculate Y of eqn (3.3)
 	double Y = uv0/(2*pi)*std::pow(eps,-s0);
 	// Calculate delta of eqn (3.2)
-	if(type == SphericalBessel) {
+	if(_type == SphericalBessel) {
 		arg = std::ceil(Y)/Y;
 	}
 	else {
@@ -102,6 +102,7 @@ _pimpl(new Implementation())
 	// Calculate Nf and ds of eqn (3.5)
 	int Nf = (int)std::ceil(sN/dsmax);
 	double ds = sN/Nf;
+	std::cout << eps << ' ' << sN << ' ' << dsmax << ' ' << Nf << ' ' << ds << std::endl;
 	// Calculate the geometric mean of the target v range of eqn (3.9)
 	double v0 = std::sqrt(vmin*vmax);
 	// Calculate the corresponding u0 and its powers
@@ -109,10 +110,12 @@ _pimpl(new Implementation())
 	double u02 = u0*u0, u03 = u0*u02;
 	// Calculate Ng of eqn (3.1)
 	int Ng = (int)std::ceil(std::log(vmax/vmin)/(2*ds));
+	std::cout << uv0 << ' ' << v0 << ' ' << u0 << ' ' << Ng << ' ' << alpha << std::endl;
 	// Tabulate f(s) of eqn (1.4) or (2.2)
 	int Ntot = Nf + Ng;
 #ifdef HAVE_LIBFFTW3F
 	_pimpl->fdata = (FFTW(complex)*)FFTW(malloc)(sizeof(FFTW(complex))*2*Ntot);
+	_pimpl->gdata = (FFTW(complex)*)FFTW(malloc)(sizeof(FFTW(complex))*2*Ntot);
 	_pimpl->plan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->fdata,_pimpl->fdata,
 		FFTW_FORWARD,FFTW_ESTIMATE);
 	for(int m = 0; m < 2*Ntot; ++m) {
@@ -124,7 +127,7 @@ _pimpl(new Implementation())
 		else {
 			double bessel,s = n*ds;
 			arg = uv0*std::exp(s);
-			if(type == SphericalBessel) {
+			if(_type == SphericalBessel) {
 				bessel = boost::math::sph_bessel(ell,arg);
 			}
 			else {
@@ -137,21 +140,32 @@ _pimpl(new Implementation())
 	// Calculate the Fourier transform of fdata
 	FFTW(execute)(_pimpl->plan);
 #endif
+#ifdef HAVE_LIBFFTW3F
+	/*
+	for(int m = 0; m < 2*Ntot; ++m) {
+		std::cout << _pimpl->fdata[m][0] << "+i*" << _pimpl->fdata[m][1] << ", ";
+	}
+	std::cout << std::endl;
+	*/
+#endif
 	// Tabulate the u values where func(u) should be evaluated, the
 	// coefficients needed to rescale func(u(s)) to g(s), the v values
 	// for the convolution result, and the scale factors for the result.
-	std::vector<double> ugrid(2*Ntot), vgrid(2*Ntot), coef(2*Ntot), scale(2*Ntot);
+	_ugrid.reserve(2*Ntot);
+	_vgrid.reserve(2*Ntot);
+	_coef.reserve(2*Ntot);
+	_scale.reserve(2*Ntot);
 	for(int n = -Ntot; n < Ntot; ++n) {
-		double s = n*ds;
-		ugrid[n] = u0*std::exp(-s);
-		vgrid[n] = v0*std::exp(+s);
-		if(type == SphericalBessel) {
-			coef[n] = std::exp((3-alpha)*(-s))*u03;
+		double v, s = n*ds;
+		_ugrid.push_back(u0*std::exp(-s));
+		_vgrid.push_back(v = v0*std::exp(+s));
+		if(_type == SphericalBessel) {
+			_coef.push_back(ds*std::exp((3-alpha)*(-s))*u03);
 		}
 		else {
-			coef[n] = std::exp((2-alpha)*(-s))*u02;
+			_coef.push_back(ds*std::exp((2-alpha)*(-s))*u02);
 		}
-		scale[n] = std::pow(vgrid[n]/v0,-alpha)/ds;
+		_scale.push_back(std::pow(v/v0,-alpha)/ds);
 	}
 }
 
@@ -163,6 +177,19 @@ local::MultipoleTransform::~MultipoleTransform() {
 #endif
 }
 
-void local::MultipoleTransform::transform(likely::GenericFunctionPtr func,
-std::vector<double> const &vgrid, std::vector<double> &result) const {
+void local::MultipoleTransform::transform(std::vector<double> const &funcTable,
+std::vector<double> &result) const {
+#ifndef HAVE_LIBFFTW3F
+	throw RuntimeError("MultipoleTransform: library not built with fftw3f support.");
+#else
+	int n(_ugrid.size());
+	// (re)initialize result vector to have correct size, if necessary
+	if(result.size() != n) std::vector<double>(n,0).swap(result);
+	for(int m = 0; m < n; ++m) {
+		_pimpl->gdata[m][0] = _coef[m]*funcTable[m];
+		_pimpl->gdata[m][1] = 0.;
+		std::cout << _pimpl->gdata[m][0] << "+i*" << _pimpl->gdata[m][1] << ", ";
+	}
+	std::cout << std::endl;
+#endif
 }

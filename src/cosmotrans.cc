@@ -13,7 +13,7 @@ namespace lk = likely;
 class Power {
 public:
 	Power() { }
-	double operator()(double k) const { return 1; }
+	double operator()(double k) const { return k; }
 };
 
 int main(int argc, char **argv) {
@@ -65,7 +65,19 @@ int main(int argc, char **argv) {
 
     try {
     	cosmo::MultipoleTransform mt(ttype,ell,min,max,eps,minSamplesPerDecade);
-        mt.transform(PkPtr,rvec,xivec);
+        std::vector<double> const& ugrid = mt.getUGrid(), vgrid = mt.getVGrid();
+        if(verbose) {
+            std::cout <<  "Will evaluate at " << ugrid.size() << " points covering "
+                << ugrid.front() << " to " << ugrid.back() << std::endl;
+            std::cout <<  "Results estimated at " << vgrid.size() << " points covering "
+                << vgrid.front() << " to " << vgrid.back() << std::endl;
+        }
+        std::vector<double> funcData(ugrid.size());
+        for(int i = 0; i < funcData.size(); ++i) {
+            funcData[i] = (*PkPtr)(ugrid[i]);
+        }
+        std::vector<double> results(vgrid.size());
+        mt.transform(funcData,results);
     }
     catch(std::runtime_error const &e) {
         std::cerr << "ERROR: exiting with an exception:\n  " << e.what() << std::endl;
