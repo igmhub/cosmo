@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     bool verbose(vm.count("verbose")),hankel(vm.count("hankel"));
 
     cosmo::MultipoleTransform::Type ttype(hankel ?
-        cosmo::MultipoleTransform::SphericalBessel :
+        cosmo::MultipoleTransform::Hankel :
         cosmo::MultipoleTransform::SphericalBessel);
 
     boost::shared_ptr<Power> Pk(new Power());
