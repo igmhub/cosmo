@@ -5,6 +5,8 @@
 
 #include "likely/function.h"
 
+#include "boost/smart_ptr.hpp"
+
 #include <vector>
 
 namespace cosmo {
@@ -29,6 +31,10 @@ namespace cosmo {
 		void transform(likely::GenericFunctionPtr func, std::vector<double> const &vgrid,
 			std::vector<double> &result) const;
 	private:
+		// We use an implementation subclass to avoid any public include dependency
+		// on fftw, since this is an optional package when building our library.
+		class Implementation;
+		boost::scoped_ptr<Implementation> _pimpl;
 	}; // MultipoleTransform
 } // cosmo
 

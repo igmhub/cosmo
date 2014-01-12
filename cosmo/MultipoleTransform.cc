@@ -3,6 +3,15 @@
 #include "cosmo/MultipoleTransform.h"
 #include "cosmo/RuntimeError.h"
 
+#include "config.h"
+#ifdef HAVE_LIBFFTW3F
+#include "fftw3.h"
+//#define FFTW(X) fftw_ ## X // double transforms
+#define FFTW(X) fftwf_ ## X // float transforms
+//#define FFTW(X) fftwl_ ## X // long double transforms
+typedef float FftwReal;
+#endif
+
 #include <boost/math/special_functions/gamma.hpp>
 #include <boost/math/special_functions/bessel.hpp>
 
@@ -12,9 +21,22 @@
 
 namespace local = cosmo;
 
+namespace cosmo {
+    struct MultipoleTransform::Implementation {
+#ifdef HAVE_LIBFFTW3F
+        FFTW(complex) *fdata,*gdata;
+        FFTW(plan) plan;
+#endif
+    };
+} // cosmo::
+
 local::MultipoleTransform::MultipoleTransform(Type type, int ell,
-double vmin, double vmax, double veps, int minSamplesPerDecade)
+double vmin, double vmax, double veps, int minSamplesPerDecade) :
+_pimpl(new Implementation())
 {
+#ifndef HAVE_LIBFFTW3F
+	throw RuntimeError("MultipoleTransform: library not built with fftw3f support.");
+#endif
 	// Input parameter validation
 	if(type != SphericalBessel && type != Hankel) {
 		throw RuntimeError("MultipoleTransform: invalid type.");
@@ -89,23 +111,32 @@ double vmin, double vmax, double veps, int minSamplesPerDecade)
 	int Ng = (int)std::ceil(std::log(vmax/vmin)/(2*ds));
 	// Tabulate f(s) of eqn (1.4) or (2.2)
 	int Ntot = Nf + Ng;
-	std::vector<double> fdata(2*Ntot,0.);
+#ifdef HAVE_LIBFFTW3F
+	_pimpl->fdata = (FFTW(complex)*)FFTW(malloc)(sizeof(FFTW(complex))*2*Ntot);
+	_pimpl->plan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->fdata,_pimpl->fdata,
+		FFTW_FORWARD,FFTW_ESTIMATE);
 	for(int m = 0; m < 2*Ntot; ++m) {
 		int n = m;
 		if(n >= Ntot) n -= 2*Ntot;
-		if(std::abs(n) > Nf) continue;
-		double bessel,s = n*ds;
-		arg = uv0*std::exp(s);
-		if(type == SphericalBessel) {
-			bessel = boost::math::sph_bessel(ell,arg);
+		if(std::abs(n) > Nf) {
+			_pimpl->fdata[m][0] = _pimpl->fdata[m][1] = 0.;
 		}
 		else {
-			bessel = boost::math::cyl_bessel_j(ell,arg);
+			double bessel,s = n*ds;
+			arg = uv0*std::exp(s);
+			if(type == SphericalBessel) {
+				bessel = boost::math::sph_bessel(ell,arg);
+			}
+			else {
+				bessel = boost::math::cyl_bessel_j(ell,arg);
+			}
+			_pimpl->fdata[m][0] = std::exp(alpha*s)*bessel*ds;
+			_pimpl->fdata[m][1] = 0.;
 		}
-		fdata[m] = std::exp(alpha*s)*bessel*ds;
 	}
 	// Calculate the Fourier transform of fdata
-	// ...
+	FFTW(execute)(_pimpl->plan);
+#endif
 	// Tabulate the u values where func(u) should be evaluated, the
 	// coefficients needed to rescale func(u(s)) to g(s), the v values
 	// for the convolution result, and the scale factors for the result.
@@ -124,7 +155,13 @@ double vmin, double vmax, double veps, int minSamplesPerDecade)
 	}
 }
 
-local::MultipoleTransform::~MultipoleTransform() { }
+local::MultipoleTransform::~MultipoleTransform() {
+#ifdef HAVE_LIBFFTW3F
+    FFTW(destroy_plan)(_pimpl->plan);
+    FFTW(free)(_pimpl->fdata);
+    FFTW(free)(_pimpl->gdata);
+#endif
+}
 
 void local::MultipoleTransform::transform(likely::GenericFunctionPtr func,
 std::vector<double> const &vgrid, std::vector<double> &result) const {
