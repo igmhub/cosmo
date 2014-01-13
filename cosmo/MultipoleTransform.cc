@@ -180,12 +180,6 @@ _pimpl(new Implementation())
 	}
 }
 
-local::MultipoleTransform::MultipoleTransform(
-MultipoleTransform const &other, int subsampling) :
-_type(other._type),_pimpl(new Implementation())
-{
-}
-
 local::MultipoleTransform::~MultipoleTransform() {
 #ifdef HAVE_LIBFFTW3F
     FFTW(destroy_plan)(_pimpl->fplan);

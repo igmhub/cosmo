@@ -29,10 +29,6 @@ namespace cosmo {
 		// S'(smax) = (-veps)*S'(0).
 		MultipoleTransform(Type type, int ell, double vmin, double vmax, double veps,
 			Strategy strategy, int minSamplesPerCycle = 2, int minSamplesPerDecade = 40);
-		// Creates a new transform object that has parameters as an existing transform
-		// object except that it uses a logarithmic spacing that is larger by the
-		// specified integer subsampling factor.
-		MultipoleTransform(MultipoleTransform const &other, int subsampling);
 		virtual ~MultipoleTransform();
 		// Returns the truncation fraction eps such that the symmetrized S' is
 		// assumed to be zero for |s| > smax with S'(smax) = eps*S'(0). This is the
