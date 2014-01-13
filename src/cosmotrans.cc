@@ -20,11 +20,14 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology multipole transforms");
+    std::string input;
     int ell,minSamplesPerCycle,minSamplesPerDecade;
-    double min,max,veps;
+    double min,max,veps,maxRelError;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
+        ("input,i", po::value<std::string>(&input)->default_value(""),
+            "name of filename to read k,P(k) values from")
         ("hankel", "performs a Hankel transform (default is spherical Bessel")
         ("ell", po::value<int>(&ell)->default_value(0),
             "multipole number of transform to calculate")
@@ -40,6 +43,8 @@ int main(int argc, char **argv) {
             "minimum number of samples per cycle to use for transform convolution")
         ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
             "minimum number of samples per decade to use for transform convolution")
+        ("max-rel-error", po::value<double>(&maxRelError)->default_value(1e-3),
+            "maximum allowed relative error for power-law extrapolation of input P(k)")
         ;
     // do the command line parsing now
     po::variables_map vm;
@@ -58,6 +63,15 @@ int main(int argc, char **argv) {
     bool verbose(vm.count("verbose")),hankel(vm.count("hankel")),
         measure(vm.count("measure")),dump(vm.count("dump"));
 
+    if(input.length() == 0) {
+        std::cerr << "Missing input filename." << std::endl;
+        return 1;
+    }
+    cosmo::TabulatedPowerCPtr power =
+        cosmo::createTabulatedPower(input,true,true,maxRelError);
+    lk::GenericFunctionPtr PkPtr =
+        lk::createFunctionPtr<const cosmo::TabulatedPower>(power);
+
     cosmo::MultipoleTransform::Type ttype(hankel ?
         cosmo::MultipoleTransform::Hankel :
         cosmo::MultipoleTransform::SphericalBessel);
@@ -65,12 +79,6 @@ int main(int argc, char **argv) {
     cosmo::MultipoleTransform::Strategy strategy(measure ?
         cosmo::MultipoleTransform::MeasurePlan :
         cosmo::MultipoleTransform::EstimatePlan);
-
-    boost::shared_ptr<Power> Pk(new Power());
-    lk::GenericFunctionPtr PkPtr = lk::createFunctionPtr<Power>(Pk);
-
-    int npts(100);
-    std::vector<double> rvec(npts), xivec(npts);
 
     try {
     	cosmo::MultipoleTransform mt(ttype,ell,min,max,veps,strategy,
