@@ -12,6 +12,7 @@
 #include "cosmo/BaryonPerturbations.h"
 #include "cosmo/BroadbandPower.h"
 
+#include "cosmo/TabulatedPower.h"
 #include "cosmo/TransferFunctionPowerSpectrum.h"
 #include "cosmo/PowerSpectrumCorrelationFunction.h"
 #include "cosmo/OneDimensionalPowerSpectrum.h"
