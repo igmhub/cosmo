@@ -3,8 +3,6 @@
 #ifndef COSMO_MULTIPOLE_TRANSFORM
 #define COSMO_MULTIPOLE_TRANSFORM
 
-#include "likely/function.h"
-
 #include "boost/smart_ptr.hpp"
 
 #include <vector>
