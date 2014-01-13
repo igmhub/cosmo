@@ -19,6 +19,9 @@ namespace cosmo {
     class AbsGaussianRandomFieldGenerator;
     typedef boost::shared_ptr<AbsGaussianRandomFieldGenerator> AbsGaussianRandomFieldGeneratorPtr;
 
+    class TabulatedPower;
+    typedef boost::shared_ptr<const TabulatedPower> TabulatedPowerCPtr;
+
     // Represents a function that returns a dimensionless transfer function value T(k)
     // given an input wavenumber k in 1/(Mpc/h).
     typedef boost::function<double (double)> TransferFunction;
