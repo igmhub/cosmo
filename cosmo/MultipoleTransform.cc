@@ -31,8 +31,10 @@ namespace cosmo {
 } // cosmo::
 
 local::MultipoleTransform::MultipoleTransform(Type type, int ell,
-double vmin, double vmax, double veps, Strategy strategy, int minSamplesPerDecade) :
-_type(type),_pimpl(new Implementation())
+double vmin, double vmax, double veps, Strategy strategy,
+int minSamplesPerCycle, int minSamplesPerDecade) :
+_type(type),_minSamplesPerCycle(minSamplesPerCycle),
+_pimpl(new Implementation())
 {
 #ifndef HAVE_LIBFFTW3F
 	throw RuntimeError("MultipoleTransform: library not built with fftw3f support.");
@@ -50,8 +52,14 @@ _type(type),_pimpl(new Implementation())
 	if(vmin <= 0) {
 		throw RuntimeError("MultipoleTransform: expected vmin > 0.");
 	}
-	if(veps <= 0) {
-		throw RuntimeError("MultipoleTransform: expected veps > 0.");
+	if(veps == 0) {
+		throw RuntimeError("MultipoleTransform: expected veps != 0.");
+	}
+	if(minSamplesPerCycle <= 0) {
+		throw RuntimeError("MultipoleTransform: expected minSamplesPerCycle > 0.");
+	}
+	if(minSamplesPerDecade <= 0) {
+		throw RuntimeError("MultipoleTransform: expected minSamplesPerDecade > 0.");
 	}
 	double pi(atan2(0,-1));
 	double alpha, uv0, s0;
@@ -72,17 +80,22 @@ _type(type),_pimpl(new Implementation())
 		s0 = 4./(2*ell+1);
 	}
 	// Calculate c of eqn (3.4)
-	double c = pi/uv0;
-	// Calculate eps from veps using the approx of eqn (3.7)
-	double L0 = veps/c;
-	if(L0 > 0.35) {
-		throw RuntimeError("MultipoleTransform: veps to large for eqn (3.9) approx.");
+	double arg, c = 2*pi/minSamplesPerCycle/uv0;
+	if(veps > 0) {
+		// Calculate eps from veps using the approx of eqn (3.7)
+		double L0 = veps/c;
+		if(L0 > 0.35) {
+			throw RuntimeError("MultipoleTransform: veps to large for eqn (3.9) approx.");
+		}
+		double L1 = std::log(L0), L2 = std::log(-L1), L1sq(L1*L1);
+		arg = 6*L1sq*L1sq + 6*L1sq*L2*(L1+1) - 3*L1*L2*(L2-2) + L2*(2*L2*L2-9*L2+6);
+		_eps = std::pow(-L0/(6*L1sq*L1)*arg,1./s0);
 	}
-	double L1 = std::log(L0), L2 = std::log(-L1), L1sq(L1*L1);
-	double arg = 6*L1sq*L1sq + 6*L1sq*L2*(L1+1) - 3*L1*L2*(L2-2) + L2*(2*L2*L2-9*L2+6);
-	double eps = std::pow(-L0/(6*L1sq*L1)*arg,1./s0);
+	else {
+		_eps = -veps;
+	}
 	// Calculate Y of eqn (3.3)
-	double Y = uv0/(2*pi)*std::pow(eps,-s0);
+	double Y = uv0/(2*pi)*std::pow(_eps,-s0);
 	// Calculate delta of eqn (3.2)
 	if(_type == SphericalBessel) {
 		arg = std::ceil(Y)/Y;
@@ -92,9 +105,9 @@ _type(type),_pimpl(new Implementation())
 	}
 	double delta = std::log(arg);
 	// Calculate sN of eqn (3.2)
-	double sN = -s0*std::log(eps) + delta;
+	double sN = -s0*std::log(_eps) + delta;
 	// Calculate dsmax of eqn (3.4)
-	double dsmax = c*std::pow(eps,s0);
+	double dsmax = c*std::pow(_eps,s0);
 	// Calculate the ds value corresponding to the min required number of samples per
 	// decade, and use the smaller of these.
 	double dsmaxAlt = std::log(10)/minSamplesPerDecade;

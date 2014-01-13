@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology multipole transforms");
-    int ell,minSamplesPerDecade;
+    int ell,minSamplesPerCycle,minSamplesPerDecade;
     double min,max,veps;
     cli.add_options()
         ("help,h", "prints this info and exits.")
@@ -35,6 +35,8 @@ int main(int argc, char **argv) {
         ("veps", po::value<double>(&veps)->default_value(1e-3),
             "desired transform accuracy")
         ("measure", "does initial measurements to optimize FFT plan")
+        ("min-samples-per-cycle", po::value<int>(&minSamplesPerCycle)->default_value(2),
+            "minimum number of samples per cycle to use for transform convolution")
         ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
             "minimum number of samples per decade to use for transform convolution")
         ;
@@ -70,9 +72,11 @@ int main(int argc, char **argv) {
     std::vector<double> rvec(npts), xivec(npts);
 
     try {
-    	cosmo::MultipoleTransform mt(ttype,ell,min,max,veps,strategy,minSamplesPerDecade);
+    	cosmo::MultipoleTransform mt(ttype,ell,min,max,veps,strategy,
+            minSamplesPerCycle,minSamplesPerDecade);
         std::vector<double> const& ugrid = mt.getUGrid(), vgrid = mt.getVGrid();
         if(verbose) {
+            std::cout << "Truncation fraction is " << mt.getTruncationFraction() << std::endl;
             std::cout <<  "Will evaluate at " << ugrid.size() << " points covering "
                 << ugrid.front() << " to " << ugrid.back() << std::endl;
             std::cout <<  "Results estimated at " << vgrid.size() << " points covering "
@@ -84,6 +88,10 @@ int main(int argc, char **argv) {
         }
         std::vector<double> results(vgrid.size());
         mt.transform(funcData,results);
+        for(int i = 0; i < results.size(); ++i) {
+            std::cout << results[i] << ", ";
+        }
+        std::cout << std::endl;
     }
     catch(std::runtime_error const &e) {
         std::cerr << "ERROR: exiting with an exception:\n  " << e.what() << std::endl;

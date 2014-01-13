@@ -25,9 +25,19 @@ namespace cosmo {
 		// evaluated to an accuracy over the range vmin < v < vmax that is
 		// determined by the value of veps, with smaller values giving more
 		// accurate results and requiring correspondingly more memory and cpu.
+		// If veps > 0, then it roughly corresponds to 1/Nf, the number of
+		// logarithmically spaced points where S is tabulated. Alternatively,
+		// when veps < 0 then the symmetrized S' is truncated at smax with
+		// S'(smax) = (-veps)*S'(0).
 		MultipoleTransform(Type type, int ell, double vmin, double vmax, double veps,
-			Strategy strategy, int minSamplesPerDecade = 40);
+			Strategy strategy, int minSamplesPerCycle = 2, int minSamplesPerDecade = 40);
 		virtual ~MultipoleTransform();
+		// Returns the truncation fraction eps such that the symmetrized S' is
+		// assumed to be zero for |s| > smax with S'(smax) = eps*S'(0). This is the
+		// same value that can specified directly in the constructor using veps = -eps.
+		double getTruncationFraction() const;
+		// Returns the minimum number of samples per cycle for this transformer.
+		int getMinSamplesPerCycle() const;
 		// Returns the grid of u values where a function to be transformed will be
 		// evaluated when calling the transform(...) method.
 		std::vector<double> const &getUGrid() const;
@@ -42,6 +52,8 @@ namespace cosmo {
 			std::vector<double> &result) const;
 	private:
 		Type _type;
+		double _eps;
+		int _minSamplesPerCycle;
 		std::vector<double> _ugrid, _vgrid, _coef, _scale;
 		// We use an implementation subclass to avoid any public include dependency
 		// on fftw, since this is an optional package when building our library.
@@ -49,6 +61,12 @@ namespace cosmo {
 		boost::scoped_ptr<Implementation> _pimpl;
 	}; // MultipoleTransform
 
+	inline double MultipoleTransform::getTruncationFraction() const {
+		return _eps;
+	}
+	inline int MultipoleTransform::getMinSamplesPerCycle() const {
+		return _minSamplesPerCycle;
+	}
 	inline std::vector<double> const &MultipoleTransform::getUGrid() const {
 		return _ugrid;
 	}
