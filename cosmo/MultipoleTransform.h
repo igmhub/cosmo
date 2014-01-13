@@ -40,6 +40,9 @@ namespace cosmo {
 		double getTruncationFraction() const;
 		// Returns the minimum number of samples per cycle for this transformer.
 		int getMinSamplesPerCycle() const;
+		// Returns the number of logarithmically spaced points where the symmetrized S'
+		// is evaluated for convolution.
+		int getNumPoints() const;
 		// Returns the grid of u values where a function to be transformed will be
 		// evaluated when calling the transform(...) method.
 		std::vector<double> const &getUGrid() const;
@@ -55,7 +58,7 @@ namespace cosmo {
 	private:
 		Type _type;
 		double _eps;
-		int _minSamplesPerCycle;
+		int _minSamplesPerCycle, _Nf;
 		std::vector<double> _ugrid, _vgrid, _coef, _scale;
 		// We use an implementation subclass to avoid any public include dependency
 		// on fftw, since this is an optional package when building our library.
@@ -68,6 +71,9 @@ namespace cosmo {
 	}
 	inline int MultipoleTransform::getMinSamplesPerCycle() const {
 		return _minSamplesPerCycle;
+	}
+	inline int MultipoleTransform::getNumPoints() const {
+		return _Nf;
 	}
 	inline std::vector<double> const &MultipoleTransform::getUGrid() const {
 		return _ugrid;

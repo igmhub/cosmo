@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
         ("veps", po::value<double>(&veps)->default_value(1e-3),
             "desired transform accuracy")
         ("measure", "does initial measurements to optimize FFT plan")
+        ("dump", "dumps transform result to stdout")
         ("min-samples-per-cycle", po::value<int>(&minSamplesPerCycle)->default_value(2),
             "minimum number of samples per cycle to use for transform convolution")
         ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
@@ -55,7 +56,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose")),hankel(vm.count("hankel")),
-        measure(vm.count("measure"));
+        measure(vm.count("measure")),dump(vm.count("dump"));
 
     cosmo::MultipoleTransform::Type ttype(hankel ?
         cosmo::MultipoleTransform::Hankel :
@@ -77,6 +78,7 @@ int main(int argc, char **argv) {
         std::vector<double> const& ugrid = mt.getUGrid(), vgrid = mt.getVGrid();
         if(verbose) {
             std::cout << "Truncation fraction is " << mt.getTruncationFraction() << std::endl;
+            std::cout << "Transform evaluated at " << mt.getNumPoints() << " points." << std::endl;
             std::cout <<  "Will evaluate at " << ugrid.size() << " points covering "
                 << ugrid.front() << " to " << ugrid.back() << std::endl;
             std::cout <<  "Results estimated at " << vgrid.size() << " points covering "
@@ -88,10 +90,12 @@ int main(int argc, char **argv) {
         }
         std::vector<double> results(vgrid.size());
         mt.transform(funcData,results);
-        for(int i = 0; i < results.size(); ++i) {
-            std::cout << results[i] << ", ";
+        if(dump) {
+            for(int i = 0; i < results.size(); ++i) {
+                std::cout << results[i] << ", ";
+            }
+            std::cout << std::endl;
         }
-        std::cout << std::endl;
     }
     catch(std::runtime_error const &e) {
         std::cerr << "ERROR: exiting with an exception:\n  " << e.what() << std::endl;

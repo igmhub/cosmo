@@ -113,8 +113,8 @@ _pimpl(new Implementation())
 	double dsmaxAlt = std::log(10)/minSamplesPerDecade;
 	if(dsmaxAlt < dsmax) dsmax = dsmaxAlt;
 	// Calculate Nf and ds of eqn (3.5)
-	int Nf = (int)std::ceil(sN/dsmax);
-	double ds = sN/Nf;
+	_Nf = (int)std::ceil(sN/dsmax);
+	double ds = sN/_Nf;
 	// Calculate the geometric mean of the target v range of eqn (3.9)
 	double v0 = std::sqrt(vmin*vmax);
 	// Calculate the corresponding u0 and its powers
@@ -123,7 +123,7 @@ _pimpl(new Implementation())
 	// Calculate Ng of eqn (3.1)
 	int Ng = (int)std::ceil(std::log(vmax/vmin)/(2*ds));
 	// Tabulate f(s) of eqn (1.4) or (2.2)
-	int Ntot = Nf + Ng;
+	int Ntot = _Nf + Ng;
 #ifdef HAVE_LIBFFTW3F
 	// Allocate SIMD aligned arrays using FFTW's allocator
 	_pimpl->fdata = (FFTW(complex)*)FFTW(malloc)(sizeof(FFTW(complex))*2*Ntot);
@@ -140,7 +140,7 @@ _pimpl(new Implementation())
 	for(int m = 0; m < 2*Ntot; ++m) {
 		int n = m;
 		if(n >= Ntot) n -= 2*Ntot;
-		if(std::abs(n) > Nf) {
+		if(std::abs(n) > _Nf) {
 			_pimpl->fdata[m][0] = _pimpl->fdata[m][1] = 0.;
 		}
 		else {
