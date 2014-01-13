@@ -87,19 +87,25 @@ double local::TabulatedPower::operator()(double k) const {
 	// Return 0 without complaining if k <= 0
 	if(k <= 0) return 0;
 	// Extrapolate if enabled.
-	if(k < _kmin && _extrapolateBelow) {
-		return (*_extrapolateBelow)(k);
+	if(k < _kmin) {
+		if(_extrapolateBelow) {
+			return (*_extrapolateBelow)(k);
+		}
+		else {
+			throw RuntimeError("TabulatedPower: extrapolation below kmin not enabled.");
+		}
+	}
+	else if(k > _kmax) {
+		if(_extrapolateAbove) {
+			return (*_extrapolateAbove)(k);
+		}
+		else {
+			throw RuntimeError("TabulatedPower: extrapolation above kmax not enabled.");
+		}
 	}
 	else {
-		throw RuntimeError("TabulatedPower: cannot extrapolate below kmin.");
+		// We must have kmin <= k <= kmax so interpolate in log(k)
+		double logk = std::log(k);
+		return (*_interpolator)(logk);
 	}
-	if(k > _kmax && _extrapolateAbove) {
-		return (*_extrapolateAbove)(k);
-	}
-	else {
-		throw RuntimeError("TabulatedPower: cannot extrapolate above kmax.");
-	}
-	// We must have kmin <= k <= kmax so interpolate in log(k)
-	double logk = std::log(k);
-	return (*_interpolator)(logk);
 }
