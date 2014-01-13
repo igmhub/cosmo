@@ -7,6 +7,9 @@
 #include "boost/program_options.hpp"
 #include "boost/bind.hpp"
 
+#include <iostream>
+#include <fstream>
+
 namespace po = boost::program_options;
 namespace lk = likely;
 
@@ -20,7 +23,7 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology multipole transforms");
-    std::string input;
+    std::string input,output;
     int ell,minSamplesPerCycle,minSamplesPerDecade;
     double min,max,veps,maxRelError;
     cli.add_options()
@@ -28,6 +31,8 @@ int main(int argc, char **argv) {
         ("verbose", "prints additional information.")
         ("input,i", po::value<std::string>(&input)->default_value(""),
             "name of filename to read k,P(k) values from")
+        ("output,o", po::value<std::string>(&output)->default_value(""),
+            "name of filename to save r,xi(r) values to")
         ("hankel", "performs a Hankel transform (default is spherical Bessel")
         ("ell", po::value<int>(&ell)->default_value(0),
             "multipole number of transform to calculate")
@@ -98,11 +103,12 @@ int main(int argc, char **argv) {
         }
         std::vector<double> results(vgrid.size());
         mt.transform(funcData,results);
-        if(dump) {
+        if(output.length() > 0) {
+            std::ofstream out(output.c_str());
             for(int i = 0; i < results.size(); ++i) {
-                std::cout << results[i] << ", ";
+                out << vgrid[i] << ' ' << results[i] << std::endl;
             }
-            std::cout << std::endl;
+            out.close();
         }
     }
     catch(std::runtime_error const &e) {
