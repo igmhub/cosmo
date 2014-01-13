@@ -22,7 +22,7 @@ namespace cosmo {
 
 local::TabulatedPower::TabulatedPower(
 std::vector<double> const &k, std::vector<double> const &Pk,
-bool extrapolateBelow, bool extrapolateAbove)
+bool extrapolateBelow, bool extrapolateAbove, double maxRelError)
 {
 	// Check that input vectors have the same size
 	if(k.size() != Pk.size()) {
@@ -53,7 +53,9 @@ bool extrapolateBelow, bool extrapolateAbove)
 		// Check how well the extrapolation does at k[1]
 		double P1 = (*_extrapolateBelow)(k[1]);
 		double relerr = std::fabs((P1-Pk[1])/Pk[1]);
-		std::cout << P1 << ' ' << Pk[1] << ' ' << relerr << std::endl;
+		if(relerr > maxRelError) {
+			throw RuntimeError("TabulatedPower: cannot reliably extrapolate below kmin.");
+		}
 	}
 	// Estimate a power law for extrapolating above kmax, if requested
 	if(extrapolateAbove) {
@@ -62,18 +64,20 @@ bool extrapolateBelow, bool extrapolateAbove)
 		// Check how well the extrapolation does at k[n-2]
 		double Pn2 = (*_extrapolateAbove)(k[n-2]);
 		double relerr = std::fabs((Pn2-Pk[n-2])/Pk[n-2]);
-		std::cout << Pn2 << ' ' << Pk[n-2] << ' ' << relerr << std::endl;
+		if(relerr > maxRelError) {
+			throw RuntimeError("TabulatedPower: cannot reliably extrapolate above kmax.");
+		}
 	}
 }
 
 local::TabulatedPowerCPtr local::createTabulatedPower(std::string const &filename,
-bool extrapolateBelow, bool extrapolateAbove)
+bool extrapolateBelow, bool extrapolateAbove, double maxRelError)
 {
 	std::vector<std::vector<double> > columns(2);
     std::ifstream input(filename.c_str());
     likely::readVectors(input, columns);
     TabulatedPowerCPtr power(new TabulatedPower(columns[0],columns[1],
-    	extrapolateBelow,extrapolateAbove));
+    	extrapolateBelow,extrapolateAbove,maxRelError));
     return power;
 }
 
