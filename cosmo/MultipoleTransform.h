@@ -44,18 +44,22 @@ namespace cosmo {
 		// evaluated when calling the transform(...) method.
 		std::vector<double> const &getUGrid() const;
 		// Returns the grid of v values where our transformed result will be estimated
-		// after calling the transform(...) method. Note that the range of v values will
-		// generally be larger than [vmin,vmax].
+		// after calling the transform(...) method. The algorithm internally uses a
+		// range of v values that is much larger than [vmin,vmax] but this function only
+		// returns the subrange that is guaranteed to be free of convolution aliasing
+		// artifacts, and also guaranteed to extend beyond [vmin,vmax] by at least
+		// interpolationPadding points on each side.
 		std::vector<double> const &getVGrid() const;
 		// Estimates the transform of func on our v grid using the the specified
 		// values of func(u) tabulated on our u grid. The results are saved in
-		// the results vector provided, which will be resized if necesary.
+		// the results vector provided, which will be resized to our vgrid size
+		// if necessary.
 		void transform(std::vector<double> const &funcTable,
 			std::vector<double> &result) const;
 	private:
 		Type _type;
 		double _eps;
-		int _minSamplesPerCycle, _Nf;
+		int _minSamplesPerCycle, _Nf, _cleanBegin, _cleanEnd;
 		std::vector<double> _ugrid, _vgrid, _coef, _scale;
 		// We use an implementation subclass to avoid any public include dependency
 		// on fftw, since this is an optional package when building our library.
