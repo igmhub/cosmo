@@ -32,7 +32,7 @@ namespace cosmo {
 
 local::MultipoleTransform::MultipoleTransform(Type type, int ell,
 double vmin, double vmax, double veps, Strategy strategy,
-int minSamplesPerCycle, int minSamplesPerDecade) :
+int minSamplesPerCycle, int minSamplesPerDecade, int interpolationPadding) :
 _type(type),_minSamplesPerCycle(minSamplesPerCycle),
 _pimpl(new Implementation())
 {
@@ -121,7 +121,7 @@ _pimpl(new Implementation())
 	double u0 = uv0/v0;
 	double u02 = u0*u0, u03 = u0*u02;
 	// Calculate Ng of eqn (3.1)
-	int Ng = (int)std::ceil(std::log(vmax/vmin)/(2*ds));
+	int Ng = (int)std::ceil(std::log(vmax/vmin)/(2*ds)+interpolationPadding);
 	// Tabulate f(s) of eqn (1.4) or (2.2)
 	int Ntot = _Nf + Ng;
 #ifdef HAVE_LIBFFTW3F

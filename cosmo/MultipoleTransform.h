@@ -28,7 +28,8 @@ namespace cosmo {
 		// when veps < 0 then the symmetrized S' is truncated at smax with
 		// S'(smax) = (-veps)*S'(0).
 		MultipoleTransform(Type type, int ell, double vmin, double vmax, double veps,
-			Strategy strategy, int minSamplesPerCycle = 2, int minSamplesPerDecade = 40);
+			Strategy strategy, int minSamplesPerCycle = 2, int minSamplesPerDecade = 40,
+			int interpolationPadding = 3);
 		virtual ~MultipoleTransform();
 		// Returns the truncation fraction eps such that the symmetrized S' is
 		// assumed to be zero for |s| > smax with S'(smax) = eps*S'(0). This is the
