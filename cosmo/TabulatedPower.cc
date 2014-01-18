@@ -52,7 +52,7 @@ bool extrapolateBelow, bool extrapolateAbove, double maxRelError)
 		_extrapolateBelow.reset(new PowerLawExtrapolator(k[0],Pk[0],k[2],Pk[2]));
 		// Check how well the extrapolation does at k[1]
 		double P1 = (*_extrapolateBelow)(k[1]);
-		double relerr = std::fabs((P1-Pk[1])/Pk[1]);
+		double relerr = std::fabs(P1/Pk[1]-1.);
 		if(relerr > maxRelError) {
 			throw RuntimeError("TabulatedPower: cannot reliably extrapolate below kmin.");
 		}
@@ -63,7 +63,7 @@ bool extrapolateBelow, bool extrapolateAbove, double maxRelError)
 		_extrapolateAbove.reset(new PowerLawExtrapolator(k[n-3],Pk[n-3],k[n-1],Pk[n-1]));
 		// Check how well the extrapolation does at k[n-2]
 		double Pn2 = (*_extrapolateAbove)(k[n-2]);
-		double relerr = std::fabs((Pn2-Pk[n-2])/Pk[n-2]);
+		double relerr = std::fabs(Pn2/Pk[n-2]-1.);
 		if(relerr > maxRelError) {
 			throw RuntimeError("TabulatedPower: cannot reliably extrapolate above kmax.");
 		}
