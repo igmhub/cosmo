@@ -22,7 +22,7 @@ namespace cosmo {
 
 local::TabulatedPower::TabulatedPower(
 std::vector<double> const &k, std::vector<double> const &Pk,
-bool extrapolateBelow, bool extrapolateAbove, double maxRelError)
+bool extrapolateBelow, bool extrapolateAbove, double maxRelError, bool verbose)
 {
 	// Check that input vectors have the same size
 	if(k.size() != Pk.size()) {
@@ -45,6 +45,10 @@ bool extrapolateBelow, bool extrapolateAbove, double maxRelError)
 	// Remember our interpolation limits
 	_kmin = k.front();
 	_kmax = k.back();
+	if(verbose) {
+		std::cout << "TabulatedPower: using " << k.size() << " points covering "
+			<< _kmin << " <= k <= " << _kmax << std::endl;
+	}
 	// Build a spline interpolator in log(k) and P(k)
 	_interpolator.reset(new likely::Interpolator(logk,Pk,"cspline"));
 	// Estimate a power law for extrapolating below kmin, if requested
@@ -53,6 +57,10 @@ bool extrapolateBelow, bool extrapolateAbove, double maxRelError)
 		// Check how well the extrapolation does at k[1]
 		double P1 = (*_extrapolateBelow)(k[1]);
 		double relerr = std::fabs(P1/Pk[1]-1.);
+		if(verbose) {
+			std::cout << "TabulatedPower: relative error for extrapolation below is "
+				<< relerr << std::endl;
+		}
 		if(relerr > maxRelError) {
 			throw RuntimeError("TabulatedPower: cannot reliably extrapolate below kmin.");
 		}
@@ -64,21 +72,14 @@ bool extrapolateBelow, bool extrapolateAbove, double maxRelError)
 		// Check how well the extrapolation does at k[n-2]
 		double Pn2 = (*_extrapolateAbove)(k[n-2]);
 		double relerr = std::fabs(Pn2/Pk[n-2]-1.);
+		if(verbose) {
+			std::cout << "TabulatedPower: relative error for extrapolation above is "
+				<< relerr << std::endl;
+		}
 		if(relerr > maxRelError) {
 			throw RuntimeError("TabulatedPower: cannot reliably extrapolate above kmax.");
 		}
 	}
-}
-
-local::TabulatedPowerCPtr local::createTabulatedPower(std::string const &filename,
-bool extrapolateBelow, bool extrapolateAbove, double maxRelError)
-{
-	std::vector<std::vector<double> > columns(2);
-    std::ifstream input(filename.c_str());
-    likely::readVectors(input, columns);
-    TabulatedPowerCPtr power(new TabulatedPower(columns[0],columns[1],
-    	extrapolateBelow,extrapolateAbove,maxRelError));
-    return power;
 }
 
 local::TabulatedPower::~TabulatedPower() { }
@@ -108,4 +109,15 @@ double local::TabulatedPower::operator()(double k) const {
 		double logk = std::log(k);
 		return (*_interpolator)(logk);
 	}
+}
+
+local::TabulatedPowerCPtr local::createTabulatedPower(std::string const &filename,
+bool extrapolateBelow, bool extrapolateAbove, double maxRelError, bool verbose)
+{
+	std::vector<std::vector<double> > columns(2);
+    std::ifstream input(filename.c_str());
+    likely::readVectors(input, columns);
+    TabulatedPowerCPtr power(new TabulatedPower(columns[0],columns[1],
+    	extrapolateBelow,extrapolateAbove,maxRelError,verbose));
+    return power;
 }

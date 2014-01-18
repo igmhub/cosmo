@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     cosmo::TabulatedPowerCPtr power =
-        cosmo::createTabulatedPower(input,true,true,maxRelError);
+        cosmo::createTabulatedPower(input,true,true,maxRelError,verbose);
     lk::GenericFunctionPtr PkPtr =
         lk::createFunctionPtr<const cosmo::TabulatedPower>(power);
 

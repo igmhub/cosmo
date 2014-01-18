@@ -28,7 +28,7 @@ namespace cosmo {
 		// Similarly for extrapolation above the maximum k.
 		TabulatedPower(std::vector<double> const &k, std::vector<double> const &Pk,
 			bool extrapolateBelow = false, bool extrapolateAbove = false,
-			double maxRelError = 1e-3);
+			double maxRelError = 1e-3, bool verbose = false);
 		virtual ~TabulatedPower();
 		// Evaluates P(k) for the specified k. Always returns 0 for k <= 0.
 		double operator()(double k) const;
@@ -43,7 +43,7 @@ namespace cosmo {
 	// the specified filename. Additional options are as described above.
 	TabulatedPowerCPtr createTabulatedPower(std::string const &filename,
 			bool extrapolateBelow = false, bool extrapolateAbove = false,
-			double maxRelError = 1e-3);
+			double maxRelError = 1e-3, bool verbose = false);
 } // cosmo
 
 #endif // COSMO_TABULATED_POWER
