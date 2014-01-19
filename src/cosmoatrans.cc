@@ -18,8 +18,8 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology multipole transforms");
     std::string input,output;
-    int ell,npoints;
-    double min,max,relerr,abserr,abspow,margin,maxRelError;
+    int ell,npoints,minSamplesPerDecade;
+    double min,max,relerr,abserr,abspow,margin,vepsGuess,maxRelError;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
@@ -44,6 +44,10 @@ int main(int argc, char **argv) {
             "absolute error weighting power")
         ("margin", po::value<double>(&margin)->default_value(2.),
             "termination criteria margin to use for initialization")
+        ("veps-guess", po::value<double>(&vepsGuess)->default_value(0.01),
+            "initial guess of veps value to use")
+        ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
+            "minimum number of samples per decade to use for transform convolution")
         ("max-rel-error", po::value<double>(&maxRelError)->default_value(1e-3),
             "maximum allowed relative error for power-law extrapolation of input P(k)")
         ;
@@ -84,8 +88,9 @@ int main(int argc, char **argv) {
 
     try {
     	cosmo::AdaptiveMultipoleTransform mt(ttype,ell,points,relerr,abserr,abspow);
-        mt.initialize(PkPtr,margin);
+        double veps = mt.initialize(PkPtr,minSamplesPerDecade,margin,vepsGuess);
         if(verbose) {
+            std::cout << "Using veps = " << veps << std::endl;
         }
         std::vector<double> results(npoints);
         mt.transform(PkPtr,results);

@@ -7,8 +7,7 @@ namespace local = cosmo;
 
 local::AdaptiveMultipoleTransform::AdaptiveMultipoleTransform(MultipoleTransform::Type type,
 int ell, std::vector<double>const &vpoints, double relerr, double abserr, double abspow)
-: _type(type), _ell(ell), _vpoints(vpoints), _relerr(relerr), _abserr(abserr), _abspow(abspow),
-_initialized(false)
+: _type(type), _ell(ell), _vpoints(vpoints), _relerr(relerr), _abserr(abserr), _abspow(abspow)
 {
 	// Input parameter validation
 	if(_type != MultipoleTransform::SphericalBessel && _type != MultipoleTransform::Hankel) {
@@ -38,14 +37,30 @@ _initialized(false)
 
 local::AdaptiveMultipoleTransform::~AdaptiveMultipoleTransform() { }
 
-void local::AdaptiveMultipoleTransform::initialize(
-likely::GenericFunctionPtr f, double margin) {
-	_initialized = true;
+double local::AdaptiveMultipoleTransform::initialize(
+likely::GenericFunctionPtr f, int minSamplesPerDecade, double margin, double vepsGuess) {
+	if(margin < 1) {
+		throw RuntimeError("AdaptiveMultipoleTransform: expected margin >= 1.");
+	}
+	MultipoleTransform::Strategy strategy(MultipoleTransform::EstimatePlan);
+	int minSamplesPerCycle(2),interpolationPadding(3);
+	// Create our first pair of transformers, if necessary
+	if(!_mtGood || !_mtBetter) {
+		if(vepsGuess <= 0) {
+			throw RuntimeError("AdaptiveMultipoleTransform: expected vepsGuess > 0.");
+		}
+		_mtBetter.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, vepsGuess,
+			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
+		_mtGood.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, 2*vepsGuess,
+			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
+		_veps = vepsGuess;
+	}
+	return _veps;
 }
 
 bool local::AdaptiveMultipoleTransform::transform(
 likely::GenericFunctionPtr f, std::vector<double> &results) const {
-	if(!_initialized) {
+	if(!_mtGood || !_mtBetter) {
 		throw RuntimeError("AdaptiveMultipoleTransform: must initialize before transforming.");
 	}
 	return true;

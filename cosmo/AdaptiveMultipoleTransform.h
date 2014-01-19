@@ -7,6 +7,8 @@
 
 #include "likely/function.h"
 
+#include "boost/smart_ptr.hpp"
+
 #include <vector>
 
 namespace cosmo {
@@ -27,8 +29,10 @@ namespace cosmo {
 		// Initializes for the specified function by automatically determining a suitable veps.
 		// The termination criteria provided in the constructor will be tighted by a factor
 		// 1/margin so that the nominal criteria are more likely to be met with other
-		// similar functions.
-		void initialize(likely::GenericFunctionPtr f, double margin = 2);
+		// similar functions. If this is the first time we have been initialized, uses
+		// vepsGuess as an initial guess. Returns the selected veps value.
+		double initialize(likely::GenericFunctionPtr f, int minSamplesPerDecade= 40,
+			double margin = 2, double vepsGuess = 0.01);
 		// Calculates the transform of the specified function using the veps determined
 		// from the most recent call to initialize(). Returns true if the termination
 		// criteria are met. Results are stored in the vector provided, which will be
@@ -38,8 +42,8 @@ namespace cosmo {
 		MultipoleTransform::Type _type;
 		int _ell;
 		std::vector<double> _vpoints;
-		double _relerr, _abserr, _abspow, _vmin, _vmax;
-		bool _initialized;
+		double _relerr, _abserr, _abspow, _vmin, _vmax, _veps;
+		boost::scoped_ptr<MultipoleTransform> _mtGood, _mtBetter;
 	}; // AdaptiveMultipoleTransform
 } // cosmo
 
