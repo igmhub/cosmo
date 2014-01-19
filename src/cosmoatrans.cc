@@ -18,8 +18,8 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology multipole transforms");
     std::string input,output;
-    int ell,minSamplesPerCycle,minSamplesPerDecade;
-    double min,max,veps,maxRelError;
+    int ell,npoints;
+    double min,max,relerr,abserr,abspow,margin,maxRelError;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
@@ -30,18 +30,20 @@ int main(int argc, char **argv) {
         ("hankel", "performs a Hankel transform (default is spherical Bessel")
         ("ell", po::value<int>(&ell)->default_value(0),
             "multipole number of transform to calculate")
-        ("min", po::value<double>(&min)->default_value(0.1),
+        ("min", po::value<double>(&min)->default_value(10.),
             "minimum value of transformed coordinate")
-        ("max", po::value<double>(&max)->default_value(10.),
+        ("max", po::value<double>(&max)->default_value(200.),
             "maximum value of transformed coordinate")
-        ("veps", po::value<double>(&veps)->default_value(1e-3),
-            "desired transform accuracy")
-        ("measure", "does initial measurements to optimize FFT plan")
-        ("dump", "dumps transform result to stdout")
-        ("min-samples-per-cycle", po::value<int>(&minSamplesPerCycle)->default_value(2),
-            "minimum number of samples per cycle to use for transform convolution")
-        ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
-            "minimum number of samples per decade to use for transform convolution")
+        ("npoints", po::value<int>(&npoints)->default_value(50),
+            "number of points spanning [min,max] to use")
+        ("relerr", po::value<double>(&relerr)->default_value(1e-2),
+            "relative error termination goal")
+        ("abserr", po::value<double>(&abserr)->default_value(1e-3),
+            "absolute error termination goal")
+        ("abspow", po::value<double>(&abspow)->default_value(0.),
+            "absolute error weighting power")
+        ("margin", po::value<double>(&margin)->default_value(2.),
+            "termination criteria margin to use for initialization")
         ("max-rel-error", po::value<double>(&maxRelError)->default_value(1e-3),
             "maximum allowed relative error for power-law extrapolation of input P(k)")
         ;
@@ -59,8 +61,7 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose")),hankel(vm.count("hankel")),
-        measure(vm.count("measure")),dump(vm.count("dump"));
+    bool verbose(vm.count("verbose")),hankel(vm.count("hankel"));
 
     if(input.length() == 0) {
         std::cerr << "Missing input filename." << std::endl;
@@ -75,32 +76,23 @@ int main(int argc, char **argv) {
         cosmo::MultipoleTransform::Hankel :
         cosmo::MultipoleTransform::SphericalBessel);
 
-    cosmo::MultipoleTransform::Strategy strategy(measure ?
-        cosmo::MultipoleTransform::MeasurePlan :
-        cosmo::MultipoleTransform::EstimatePlan);
+    std::vector<double> points;
+    double dv = (max-min)/(npoints-1.);
+    for(int i = 0; i < npoints; ++i) {
+        points.push_back(min + i*dv);
+    }
 
     try {
-    	cosmo::MultipoleTransform mt(ttype,ell,min,max,veps,strategy,
-            minSamplesPerCycle,minSamplesPerDecade);
-        std::vector<double> const& ugrid = mt.getUGrid(), vgrid = mt.getVGrid();
+    	cosmo::AdaptiveMultipoleTransform mt(ttype,ell,points,relerr,abserr,abspow);
+        mt.initialize(PkPtr,margin);
         if(verbose) {
-            std::cout << "Truncation fraction is " << mt.getTruncationFraction() << std::endl;
-            std::cout << "Transform evaluated at " << mt.getNumPoints() << " points." << std::endl;
-            std::cout <<  "Will evaluate at " << ugrid.size() << " points covering "
-                << ugrid.front() << " to " << ugrid.back() << std::endl;
-            std::cout <<  "Results estimated at " << vgrid.size() << " points covering "
-                << vgrid.front() << " to " << vgrid.back() << std::endl;
         }
-        std::vector<double> funcData(ugrid.size());
-        for(int i = 0; i < funcData.size(); ++i) {
-            funcData[i] = (*PkPtr)(ugrid[i]);
-        }
-        std::vector<double> results(vgrid.size());
-        mt.transform(funcData,results);
+        std::vector<double> results(npoints);
+        mt.transform(PkPtr,results);
         if(output.length() > 0) {
             std::ofstream out(output.c_str());
-            for(int i = 0; i < results.size(); ++i) {
-                out << vgrid[i] << ' ' << results[i] << std::endl;
+            for(int i = 0; i < npoints; ++i) {
+                out << points[i] << ' ' << results[i] << std::endl;
             }
             out.close();
         }
