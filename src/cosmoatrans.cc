@@ -13,12 +13,6 @@
 namespace po = boost::program_options;
 namespace lk = likely;
 
-class Power {
-public:
-	Power() { }
-	double operator()(double k) const { return k; }
-};
-
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
