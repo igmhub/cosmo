@@ -30,14 +30,13 @@ int main(int argc, char **argv) {
         ("hankel", "performs a Hankel transform (default is spherical Bessel")
         ("ell", po::value<int>(&ell)->default_value(0),
             "multipole number of transform to calculate")
-        ("min", po::value<double>(&min)->default_value(0.1),
+        ("min", po::value<double>(&min)->default_value(10.),
             "minimum value of transformed coordinate")
-        ("max", po::value<double>(&max)->default_value(10.),
+        ("max", po::value<double>(&max)->default_value(200.),
             "maximum value of transformed coordinate")
         ("veps", po::value<double>(&veps)->default_value(1e-3),
             "desired transform accuracy")
         ("measure", "does initial measurements to optimize FFT plan")
-        ("dump", "dumps transform result to stdout")
         ("min-samples-per-cycle", po::value<int>(&minSamplesPerCycle)->default_value(2),
             "minimum number of samples per cycle to use for transform convolution")
         ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
@@ -60,7 +59,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose")),hankel(vm.count("hankel")),
-        measure(vm.count("measure")),dump(vm.count("dump"));
+        measure(vm.count("measure"));
 
     if(input.length() == 0) {
         std::cerr << "Missing input filename." << std::endl;
