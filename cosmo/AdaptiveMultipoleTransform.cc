@@ -7,7 +7,8 @@ namespace local = cosmo;
 
 local::AdaptiveMultipoleTransform::AdaptiveMultipoleTransform(MultipoleTransform::Type type,
 int ell, std::vector<double>const &vpoints, double relerr, double abserr, double abspow)
-: _type(type), _ell(ell), _vpoints(vpoints), _relerr(relerr), _abserr(abserr), _abspow(abspow)
+: _type(type), _ell(ell), _vpoints(vpoints), _relerr(relerr), _abserr(abserr), _abspow(abspow),
+_initialized(false)
 {
 	// Input parameter validation
 	if(_type != MultipoleTransform::SphericalBessel && _type != MultipoleTransform::Hankel) {
@@ -36,3 +37,16 @@ int ell, std::vector<double>const &vpoints, double relerr, double abserr, double
 }
 
 local::AdaptiveMultipoleTransform::~AdaptiveMultipoleTransform() { }
+
+void local::AdaptiveMultipoleTransform::initialize(
+likely::GenericFunctionPtr f, double margin) {
+	_initialized = true;
+}
+
+bool local::AdaptiveMultipoleTransform::transform(
+likely::GenericFunctionPtr f, std::vector<double> &results) const {
+	if(!_initialized) {
+		throw RuntimeError("AdaptiveMultipoleTransform: must initialize before transforming.");
+	}
+	return true;
+}
