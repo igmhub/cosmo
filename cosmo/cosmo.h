@@ -18,6 +18,7 @@
 #include "cosmo/OneDimensionalPowerSpectrum.h"
 #include "cosmo/RsdCorrelationFunction.h"
 #include "cosmo/MultipoleTransform.h"
+#include "cosmo/AdaptiveMultipoleTransform.h"
 
 #include "cosmo/AbsGaussianRandomFieldGenerator.h"
 #include "cosmo/FftGaussianRandomFieldGenerator.h"
