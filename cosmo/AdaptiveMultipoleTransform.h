@@ -30,9 +30,11 @@ namespace cosmo {
 		// The termination criteria provided in the constructor will be tighted by a factor
 		// 1/margin so that the nominal criteria are more likely to be met with other
 		// similar functions. If this is the first time we have been initialized, uses
-		// vepsGuess as an initial guess. Returns the selected veps value.
-		double initialize(likely::GenericFunctionPtr f, int minSamplesPerDecade= 40,
-			double margin = 2, double vepsGuess = 0.01);
+		// vepsMax as a starting point, then reduces it by factors of 2 until the termination
+		// criteria are met. Results are stored in the vector provided, which will be
+		// resized if necessary. Returns the selected veps value.
+		double initialize(likely::GenericFunctionPtr f, std::vector<double> &result,
+			int minSamplesPerDecade= 40, double margin = 2, double vepsMax = 0.01);
 		// Calculates the transform of the specified function using the veps determined
 		// from the most recent call to initialize(). Returns true if the termination
 		// criteria are met. Results are stored in the vector provided, which will be

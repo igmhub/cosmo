@@ -78,7 +78,8 @@ bool local::AdaptiveMultipoleTransform::_isTerminated(double margin) const {
 }
 
 double local::AdaptiveMultipoleTransform::initialize(
-likely::GenericFunctionPtr f, int minSamplesPerDecade, double margin, double vepsGuess) {
+likely::GenericFunctionPtr f, std::vector<double> &result,
+int minSamplesPerDecade, double margin, double vepsMax) {
 	if(margin < 1) {
 		throw RuntimeError("AdaptiveMultipoleTransform: expected margin >= 1.");
 	}
@@ -86,23 +87,28 @@ likely::GenericFunctionPtr f, int minSamplesPerDecade, double margin, double vep
 	int minSamplesPerCycle(2),interpolationPadding(3);
 	// Create our first pair of transformers, if necessary
 	if(!_mtGood || !_mtBetter) {
-		if(vepsGuess <= 0) {
+		if(vepsMax <= 0) {
 			throw RuntimeError("AdaptiveMultipoleTransform: expected vepsGuess > 0.");
 		}
-		_mtGood.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, 2*vepsGuess,
+		_veps = vepsMax;
+		_mtGood.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, 2*_veps,
 			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
 		_evaluate(f,_mtGood,_resultsGood);
-		_mtBetter.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, vepsGuess,
+		_mtBetter.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, _veps,
 			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
 		_evaluate(f,_mtBetter,_resultsBetter);
-		_veps = vepsGuess;
 	}
 	int tries(0), npoints(_vpoints.size());
 	while(1) {
 		// Give up after 100 tries
 		if(++tries > 100) throw RuntimeError("AdaptiveMultipoleTransform: initialized failed.");
 		// Check our termination criteria
-		if(_isTerminated(margin)) return _veps;
+		if(_isTerminated(margin)) {
+			// We are done
+			if(result.size() != npoints) std::vector<double>(npoints).swap(result);
+			std::copy(_resultsBetter.begin(),_resultsBetter.end(),result.begin());
+			return _veps;
+		}
 		// reduce veps by half and try again
 		_mtGood = _mtBetter;
 		_resultsGood.swap(_resultsBetter);
