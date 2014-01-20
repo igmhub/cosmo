@@ -43,14 +43,6 @@ namespace cosmo {
 	
 	// The scoped global functions below provide generic power spectrum utilities...
 	
-	// Creates and returns a shared pointer to a generic function object that wraps a
-	// shared pointer pimpl to an implementation function object of class P. The
-	// returned shared pointer creates a new reference to the input shared pointer so that
-	// the input object is guaranteed to stay alive as long as the returned object does.
-	typedef boost::function<double (double)> GenericFunction;
-    typedef boost::shared_ptr<GenericFunction> GenericFunctionPtr;
-	template <class P> GenericFunctionPtr createFunctionPtr(boost::shared_ptr<P> pimpl);
-	
 	// Returns the RMS amplitude of fluctuations inside a sphere of the specified
 	// radius in Mpc/h for the specified power spectrum function. Use gaussian = true
 	// for a Gaussian window function with the specified radius. Otherwise, a step
@@ -63,7 +55,7 @@ namespace cosmo {
 
     // Returns the specified multipole projection of the function provided, calculated
     // using numerical integration over 0 < mu < 1. Only even 0 <= ell <= 12 are implemented.
-    double getMultipole(GenericFunctionPtr fOfMuPtr, int ell, double epsAbs = 1e-6, double epsRel = 1e-6);
+    double getMultipole(likely::GenericFunctionPtr fOfMuPtr, int ell, double epsAbs = 1e-6, double epsRel = 1e-6);
 	
 } // cosmo
 
