@@ -59,10 +59,10 @@ MultipoleTransformCPtr transform,std::vector<double> &result) {
 	(*transform).transform(fgrid,ftgrid);
 	// Interpolate transform[f](v) to _vpoints
 	likely::Interpolator interpolator(vgrid,ftgrid,"cspline");
-	if(result.size() != _vpoints.size()) std::vector<double>().swap(result);
-	result.reserve(_vpoints.size());
-	BOOST_FOREACH(double v, _vpoints) {
-		result.push_back(interpolator(v));
+	int npoints(_vpoints.size());
+	if(result.size() != npoints) std::vector<double>(npoints).swap(result);
+	for(int i = 0; i < npoints; ++i) {
+		result[i] = interpolator(_vpoints[i]);
 	}
 }
 
