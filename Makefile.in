@@ -93,7 +93,7 @@ am_libcosmo_la_OBJECTS = AbsHomogeneousUniverse.lo \
 	AbsGaussianRandomFieldGenerator.lo \
 	FftGaussianRandomFieldGenerator.lo \
 	TestFftGaussianRandomFieldGenerator.lo MultipoleTransform.lo \
-	AdaptiveMultipoleTransform.lo
+	AdaptiveMultipoleTransform.lo DistortedPowerCorrelation.lo
 libcosmo_la_OBJECTS = $(am_libcosmo_la_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS)
 am_cosmo3d_OBJECTS = cosmo3d.$(OBJEXT)
@@ -314,7 +314,8 @@ libcosmo_la_SOURCES = \
 	cosmo/FftGaussianRandomFieldGenerator.cc \
 	cosmo/TestFftGaussianRandomFieldGenerator.cc \
 	cosmo/MultipoleTransform.cc \
-	cosmo/AdaptiveMultipoleTransform.cc
+	cosmo/AdaptiveMultipoleTransform.cc \
+	cosmo/DistortedPowerCorrelation.cc
 
 
 # library headers to install (nobase prefix preserves any subdirectories)
@@ -339,7 +340,8 @@ nobase_include_HEADERS = \
 	cosmo/FftGaussianRandomFieldGenerator.h \
 	cosmo/TestFftGaussianRandomFieldGenerator.h \
 	cosmo/MultipoleTransform.h \
-	cosmo/AdaptiveMultipoleTransform.h
+	cosmo/AdaptiveMultipoleTransform.h \
+	cosmo/DistortedPowerCorrelation.h
 
 
 # instructions for building each program
@@ -552,6 +554,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AdaptiveMultipoleTransform.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BaryonPerturbations.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BroadbandPower.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DistortedPowerCorrelation.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FftGaussianRandomFieldGenerator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HomogeneousUniverseCalculator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/LambdaCdmRadiationUniverse.Plo@am__quote@
@@ -705,6 +708,13 @@ AdaptiveMultipoleTransform.lo: cosmo/AdaptiveMultipoleTransform.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/AdaptiveMultipoleTransform.cc' object='AdaptiveMultipoleTransform.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o AdaptiveMultipoleTransform.lo `test -f 'cosmo/AdaptiveMultipoleTransform.cc' || echo '$(srcdir)/'`cosmo/AdaptiveMultipoleTransform.cc
+
+DistortedPowerCorrelation.lo: cosmo/DistortedPowerCorrelation.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT DistortedPowerCorrelation.lo -MD -MP -MF $(DEPDIR)/DistortedPowerCorrelation.Tpo -c -o DistortedPowerCorrelation.lo `test -f 'cosmo/DistortedPowerCorrelation.cc' || echo '$(srcdir)/'`cosmo/DistortedPowerCorrelation.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/DistortedPowerCorrelation.Tpo $(DEPDIR)/DistortedPowerCorrelation.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/DistortedPowerCorrelation.cc' object='DistortedPowerCorrelation.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o DistortedPowerCorrelation.lo `test -f 'cosmo/DistortedPowerCorrelation.cc' || echo '$(srcdir)/'`cosmo/DistortedPowerCorrelation.cc
 
 cosmo3d.o: src/cosmo3d.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmo3d.o -MD -MP -MF $(DEPDIR)/cosmo3d.Tpo -c -o cosmo3d.o `test -f 'src/cosmo3d.cc' || echo '$(srcdir)/'`src/cosmo3d.cc

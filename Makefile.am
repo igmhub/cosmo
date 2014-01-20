@@ -39,7 +39,8 @@ libcosmo_la_SOURCES = \
 	cosmo/FftGaussianRandomFieldGenerator.cc \
 	cosmo/TestFftGaussianRandomFieldGenerator.cc \
 	cosmo/MultipoleTransform.cc \
-	cosmo/AdaptiveMultipoleTransform.cc
+	cosmo/AdaptiveMultipoleTransform.cc \
+	cosmo/DistortedPowerCorrelation.cc
 
 # library headers to install (nobase prefix preserves any subdirectories)
 # Anything that includes config.h should *not* be listed here.
@@ -63,7 +64,8 @@ nobase_include_HEADERS = \
 	cosmo/FftGaussianRandomFieldGenerator.h \
 	cosmo/TestFftGaussianRandomFieldGenerator.h \
 	cosmo/MultipoleTransform.h \
-	cosmo/AdaptiveMultipoleTransform.h
+	cosmo/AdaptiveMultipoleTransform.h \
+	cosmo/DistortedPowerCorrelation.h
 
 # instructions for building each program
 
