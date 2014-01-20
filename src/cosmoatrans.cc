@@ -1,5 +1,15 @@
 // Created 10-Jan-2014 by David Kirkby (University of California, Irvine) <dkirkby@uci.edu>
 
+// Sample timing results using:
+//
+// ./cosmoatrans -i ../../baofit/models/PlanckWPBestFitLCDM_matterpower.dat OPTIONS
+//
+//   TIME  OPTIONS
+//  15.26s --repeat 100000
+//  11.16s --repeat 100000 --optimize
+//   9.82s --repeat 100000 --bypass
+//   6.69s --repeat 100000 --optimize --bypass
+
 #include "cosmo/cosmo.h"
 #include "likely/likely.h"
 #include "likely/function_impl.h"
@@ -18,7 +28,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology multipole transforms");
     std::string input,output;
-    int ell,npoints,minSamplesPerDecade;
+    int ell,npoints,minSamplesPerDecade,repeat;
     double min,max,relerr,abserr,abspow,margin,vepsMax,vepsMin,maxRelError;
     cli.add_options()
         ("help,h", "prints this info and exits.")
@@ -54,6 +64,8 @@ int main(int argc, char **argv) {
             "maximum allowed relative error for power-law extrapolation of input P(k)")
         ("optimize", "optimizes transform FFTs")
         ("bypass", "bypasses the termination test for transforms")
+        ("repeat", po::value<int>(&repeat)->default_value(1),
+            "number of times to repeat identical transform")
         ;
     // do the command line parsing now
     po::variables_map vm;
@@ -99,7 +111,10 @@ int main(int argc, char **argv) {
         if(verbose) {
             std::cout << "Using veps = " << veps << std::endl;
         }
-        bool ok = mt.transform(PkPtr,result,bypass);
+        bool ok;
+        for(int i = 0; i < repeat; ++i) {
+            ok = mt.transform(PkPtr,result,bypass);
+        }
         if(!ok) {
             std::cerr << "Transform fails termination test." << std::endl;
         }
