@@ -92,12 +92,12 @@ int main(int argc, char **argv) {
         if(verbose) {
             std::cout << "Using veps = " << veps << std::endl;
         }
-        std::vector<double> results(npoints);
-        mt.transform(PkPtr,results);
+        std::vector<double> result(npoints);
+        mt.transform(PkPtr,result);
         if(output.length() > 0) {
             std::ofstream out(output.c_str());
             for(int i = 0; i < npoints; ++i) {
-                out << points[i] << ' ' << results[i] << std::endl;
+                out << points[i] << ' ' << result[i] << std::endl;
             }
             out.close();
         }

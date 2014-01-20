@@ -8,7 +8,7 @@
 #include "boost/foreach.hpp"
 
 #include <cmath>
-#include <iostream>
+#include <algorithm>
 
 namespace local = cosmo;
 
@@ -45,7 +45,7 @@ int ell, std::vector<double>const &vpoints, double relerr, double abserr, double
 local::AdaptiveMultipoleTransform::~AdaptiveMultipoleTransform() { }
 
 void local::AdaptiveMultipoleTransform::_evaluate(likely::GenericFunctionPtr f,
-MultipoleTransformCPtr transform,std::vector<double> &result) {
+MultipoleTransformCPtr transform,std::vector<double> &result) const {
 	// Look up this transforms grids
 	std::vector<double> const &ugrid = transform->getUGrid(), &vgrid = transform->getVGrid();
 	// Prepare a grid of tabulated f(u) values
@@ -64,6 +64,17 @@ MultipoleTransformCPtr transform,std::vector<double> &result) {
 	for(int i = 0; i < npoints; ++i) {
 		result[i] = interpolator(_vpoints[i]);
 	}
+}
+
+bool local::AdaptiveMultipoleTransform::_isTerminated(double margin) const {
+	for(int i = 0; i < _vpoints.size(); ++i) {
+		double v(_vpoints[i]),fe(_resultsGood[i]),f2e(_resultsBetter[i]);
+		double df = std::fabs(fe - f2e);
+		if(df > _abserr*std::pow(v,_abspow)/margin && df > _relerr*std::fabs(f2e)/margin) {
+			return false;
+		}
+	}
+	return true;
 }
 
 double local::AdaptiveMultipoleTransform::initialize(
@@ -88,21 +99,10 @@ likely::GenericFunctionPtr f, int minSamplesPerDecade, double margin, double vep
 	}
 	int tries(0), npoints(_vpoints.size());
 	while(1) {
-		std::cout << "try " << tries << ", veps = " << _veps << std::endl;
 		// Give up after 100 tries
 		if(++tries > 100) throw RuntimeError("AdaptiveMultipoleTransform: initialized failed.");
 		// Check our termination criteria
-		bool done(true);
-		for(int i = 0; i < npoints; ++i) {
-			double v(_vpoints[i]),fe(_resultsGood[i]),f2e(_resultsBetter[i]);
-			double df = std::fabs(fe - f2e);
-			std::cout << i << ' ' << v << ' ' << ' ' << fe << ' ' << f2e << ' ' << df << ' ' << df/std::fabs(f2e) << std::endl;
-			if(df > _abserr*std::pow(v,_abspow)/margin && df > _relerr*std::fabs(f2e)/margin) {
-				done = false;
-				break;
-			}
-		}
-		if(done) return _veps;
+		if(_isTerminated(margin)) return _veps;
 		// reduce veps by half and try again
 		_mtGood = _mtBetter;
 		_resultsGood.swap(_resultsBetter);
@@ -118,5 +118,14 @@ likely::GenericFunctionPtr f, std::vector<double> &result) const {
 	if(!_mtGood || !_mtBetter) {
 		throw RuntimeError("AdaptiveMultipoleTransform: must initialize before transforming.");
 	}
-	return true;
+	_evaluate(f,_mtBetter,_resultsBetter);
+	bool accurate(true);
+	if(true) {
+		_evaluate(f,_mtGood,_resultsGood);
+		accurate = _isTerminated();
+	}
+	int npoints = _vpoints.size();
+	if(result.size() != npoints) std::vector<double>(npoints).swap(result);
+	std::copy(_resultsBetter.begin(),_resultsBetter.end(),result.begin());
+	return accurate;
 }

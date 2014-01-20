@@ -41,12 +41,14 @@ namespace cosmo {
 	private:
 		MultipoleTransform::Type _type;
 		int _ell;
-		std::vector<double> _vpoints, _resultsGood, _resultsBetter;
+		std::vector<double> _vpoints;
+		mutable std::vector<double> _resultsGood, _resultsBetter;
 		double _relerr, _abserr, _abspow, _vmin, _vmax, _veps;
 		typedef boost::shared_ptr<const MultipoleTransform> MultipoleTransformCPtr;
 		MultipoleTransformCPtr _mtGood, _mtBetter;
 		void _evaluate(likely::GenericFunctionPtr f,
-			MultipoleTransformCPtr transform, std::vector<double> &result);
+			MultipoleTransformCPtr transform, std::vector<double> &result) const;
+		bool _isTerminated(double margin = 1) const;
 	}; // AdaptiveMultipoleTransform
 } // cosmo
 
