@@ -3,6 +3,13 @@
 #include "cosmo/AdaptiveMultipoleTransform.h"
 #include "cosmo/RuntimeError.h"
 
+#include "likely/Interpolator.h"
+
+#include "boost/foreach.hpp"
+
+#include <cmath>
+#include <iostream>
+
 namespace local = cosmo;
 
 local::AdaptiveMultipoleTransform::AdaptiveMultipoleTransform(MultipoleTransform::Type type,
@@ -37,6 +44,28 @@ int ell, std::vector<double>const &vpoints, double relerr, double abserr, double
 
 local::AdaptiveMultipoleTransform::~AdaptiveMultipoleTransform() { }
 
+void local::AdaptiveMultipoleTransform::_evaluate(likely::GenericFunctionPtr f,
+MultipoleTransformCPtr transform,std::vector<double> &result) {
+	// Look up this transforms grids
+	std::vector<double> const &ugrid = transform->getUGrid(), &vgrid = transform->getVGrid();
+	// Prepare a grid of tabulated f(u) values
+	std::vector<double> fgrid;
+	fgrid.reserve(ugrid.size());
+	BOOST_FOREACH(double u, ugrid) {
+		fgrid.push_back((*f)(u));
+	}
+	// Calculate the corresponding grid of transform[f](v) values
+	std::vector<double> ftgrid;
+	(*transform).transform(fgrid,ftgrid);
+	// Interpolate transform[f](v) to _vpoints
+	likely::Interpolator interpolator(vgrid,ftgrid,"cspline");
+	if(result.size() != _vpoints.size()) std::vector<double>().swap(result);
+	result.reserve(_vpoints.size());
+	BOOST_FOREACH(double v, _vpoints) {
+		result.push_back(interpolator(v));
+	}
+}
+
 double local::AdaptiveMultipoleTransform::initialize(
 likely::GenericFunctionPtr f, int minSamplesPerDecade, double margin, double vepsGuess) {
 	if(margin < 1) {
@@ -49,17 +78,43 @@ likely::GenericFunctionPtr f, int minSamplesPerDecade, double margin, double vep
 		if(vepsGuess <= 0) {
 			throw RuntimeError("AdaptiveMultipoleTransform: expected vepsGuess > 0.");
 		}
-		_mtBetter.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, vepsGuess,
-			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
 		_mtGood.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, 2*vepsGuess,
 			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
+		_evaluate(f,_mtGood,_resultsGood);
+		_mtBetter.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, vepsGuess,
+			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
+		_evaluate(f,_mtBetter,_resultsBetter);
 		_veps = vepsGuess;
 	}
-	return _veps;
+	int tries(0), npoints(_vpoints.size());
+	while(1) {
+		std::cout << "try " << tries << ", veps = " << _veps << std::endl;
+		// Give up after 100 tries
+		if(++tries > 100) throw RuntimeError("AdaptiveMultipoleTransform: initialized failed.");
+		// Check our termination criteria
+		bool done(true);
+		for(int i = 0; i < npoints; ++i) {
+			double v(_vpoints[i]),fe(_resultsGood[i]),f2e(_resultsBetter[i]);
+			double df = std::fabs(fe - f2e);
+			std::cout << i << ' ' << v << ' ' << ' ' << fe << ' ' << f2e << ' ' << df << ' ' << df/std::fabs(f2e) << std::endl;
+			if(df > _abserr*std::pow(v,_abspow)/margin && df > _relerr*std::fabs(f2e)/margin) {
+				done = false;
+				break;
+			}
+		}
+		if(done) return _veps;
+		// reduce veps by half and try again
+		_mtGood = _mtBetter;
+		_resultsGood.swap(_resultsBetter);
+		_veps /= 2;
+		_mtBetter.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, _veps,
+			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
+		_evaluate(f,_mtBetter,_resultsBetter);
+	}
 }
 
 bool local::AdaptiveMultipoleTransform::transform(
-likely::GenericFunctionPtr f, std::vector<double> &results) const {
+likely::GenericFunctionPtr f, std::vector<double> &result) const {
 	if(!_mtGood || !_mtBetter) {
 		throw RuntimeError("AdaptiveMultipoleTransform: must initialize before transforming.");
 	}

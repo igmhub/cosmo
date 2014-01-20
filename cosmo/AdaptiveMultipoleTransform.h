@@ -37,13 +37,16 @@ namespace cosmo {
 		// from the most recent call to initialize(). Returns true if the termination
 		// criteria are met. Results are stored in the vector provided, which will be
 		// resized if necessary.
-		bool transform(likely::GenericFunctionPtr f, std::vector<double> &results) const;
+		bool transform(likely::GenericFunctionPtr f, std::vector<double> &result) const;
 	private:
 		MultipoleTransform::Type _type;
 		int _ell;
-		std::vector<double> _vpoints;
+		std::vector<double> _vpoints, _resultsGood, _resultsBetter;
 		double _relerr, _abserr, _abspow, _vmin, _vmax, _veps;
-		boost::scoped_ptr<MultipoleTransform> _mtGood, _mtBetter;
+		typedef boost::shared_ptr<const MultipoleTransform> MultipoleTransformCPtr;
+		MultipoleTransformCPtr _mtGood, _mtBetter;
+		void _evaluate(likely::GenericFunctionPtr f,
+			MultipoleTransformCPtr transform, std::vector<double> &result);
 	}; // AdaptiveMultipoleTransform
 } // cosmo
 
