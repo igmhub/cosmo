@@ -26,7 +26,10 @@ namespace cosmo {
 		// If veps > 0, then it roughly corresponds to 1/Nf, the number of
 		// logarithmically spaced points where S is tabulated. Alternatively,
 		// when veps < 0 then the symmetrized S' is truncated at smax with
-		// S'(smax) = (-veps)*S'(0).
+		// S'(smax) = (-veps)*S'(0). The strategy selects a tradeoff between
+		// initialization and transform speeds (via the FFTW plan strategy option).
+		// Different strategies can give different numerical results at the level
+		// of roundoff errors.
 		MultipoleTransform(Type type, int ell, double vmin, double vmax, double veps,
 			Strategy strategy, int minSamplesPerCycle = 2, int minSamplesPerDecade = 40,
 			int interpolationPadding = 3);

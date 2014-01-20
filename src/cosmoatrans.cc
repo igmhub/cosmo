@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     po::options_description cli("Cosmology multipole transforms");
     std::string input,output;
     int ell,npoints,minSamplesPerDecade;
-    double min,max,relerr,abserr,abspow,margin,vepsMax,maxRelError;
+    double min,max,relerr,abserr,abspow,margin,vepsMax,vepsMin,maxRelError;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
@@ -46,10 +46,14 @@ int main(int argc, char **argv) {
             "termination criteria margin to use for initialization")
         ("veps-max", po::value<double>(&vepsMax)->default_value(0.01),
             "maximum value of veps value to use")
+        ("veps-min", po::value<double>(&vepsMin)->default_value(1e-6),
+            "minimum value of veps value to use")
         ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
             "minimum number of samples per decade to use for transform convolution")
         ("max-rel-error", po::value<double>(&maxRelError)->default_value(1e-3),
             "maximum allowed relative error for power-law extrapolation of input P(k)")
+        ("optimize", "optimizes transform FFTs")
+        ("bypass", "bypasses the termination test for transforms")
         ;
     // do the command line parsing now
     po::variables_map vm;
@@ -65,7 +69,8 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose")),hankel(vm.count("hankel"));
+    bool verbose(vm.count("verbose")),hankel(vm.count("hankel")),
+        optimize(vm.count("optimize")), bypass(vm.count("bypass"));
 
     if(input.length() == 0) {
         std::cerr << "Missing input filename." << std::endl;
@@ -89,11 +94,15 @@ int main(int argc, char **argv) {
     try {
     	cosmo::AdaptiveMultipoleTransform mt(ttype,ell,points,relerr,abserr,abspow);
         std::vector<double> result(npoints);
-        double veps = mt.initialize(PkPtr,result,minSamplesPerDecade,margin,vepsMax);
+        double veps = mt.initialize(PkPtr,result,minSamplesPerDecade,margin,
+            vepsMax,vepsMin,optimize);
         if(verbose) {
             std::cout << "Using veps = " << veps << std::endl;
         }
-        mt.transform(PkPtr,result);
+        bool ok = mt.transform(PkPtr,result,bypass);
+        if(!ok) {
+            std::cerr << "Transform fails termination test." << std::endl;
+        }
         if(output.length() > 0) {
             std::ofstream out(output.c_str());
             for(int i = 0; i < npoints; ++i) {

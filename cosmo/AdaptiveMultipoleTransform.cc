@@ -77,9 +77,20 @@ bool local::AdaptiveMultipoleTransform::_isTerminated(double margin) const {
 	return true;
 }
 
+void local::AdaptiveMultipoleTransform::_saveResult(std::vector<double> &result) const {
+	int npoints(_vpoints.size());
+	if(result.size() != npoints) {
+		// Replace results with a vector of the required size
+		std::vector<double>(npoints).swap(result);
+	}
+	// Swap the contents of result and our internal result vector. This just swaps
+	// pointers so is fast, and leaves our internal result vector with undefined contents.
+	_resultsBetter.swap(result);
+}
+
 double local::AdaptiveMultipoleTransform::initialize(
 likely::GenericFunctionPtr f, std::vector<double> &result,
-int minSamplesPerDecade, double margin, double vepsMax) {
+int minSamplesPerDecade, double margin, double vepsMax, double vepsMin, bool optimize) {
 	if(margin < 1) {
 		throw RuntimeError("AdaptiveMultipoleTransform: expected margin >= 1.");
 	}
@@ -98,21 +109,27 @@ int minSamplesPerDecade, double margin, double vepsMax) {
 			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
 		_evaluate(f,_mtBetter,_resultsBetter);
 	}
-	int tries(0), npoints(_vpoints.size());
-	while(1) {
-		// Give up after 100 tries
-		if(++tries > 100) throw RuntimeError("AdaptiveMultipoleTransform: initialized failed.");
+	while(_veps > vepsMin) {
 		// Check our termination criteria
 		if(_isTerminated(margin)) {
-			// We are done
-			if(result.size() != npoints) std::vector<double>(npoints).swap(result);
-			std::copy(_resultsBetter.begin(),_resultsBetter.end(),result.begin());
+			_saveResult(result);
+			if(optimize) {
+				// Recreate transform objects using the MeasurePlan strategy
+				strategy = MultipoleTransform::MeasurePlan;
+				_mtGood.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, 2*_veps,
+					strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
+				_mtBetter.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, _veps,
+					strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
+			}
 			return _veps;
 		}
 		// reduce veps by half and try again
+		_veps /= 2;
+		if(_veps < vepsMin) {
+			throw RuntimeError("AdaptiveMultipoleTransform: reached vepsMin without convergence.");
+		}
 		_mtGood = _mtBetter;
 		_resultsGood.swap(_resultsBetter);
-		_veps /= 2;
 		_mtBetter.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, _veps,
 			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
 		_evaluate(f,_mtBetter,_resultsBetter);
@@ -120,18 +137,16 @@ int minSamplesPerDecade, double margin, double vepsMax) {
 }
 
 bool local::AdaptiveMultipoleTransform::transform(
-likely::GenericFunctionPtr f, std::vector<double> &result) const {
+likely::GenericFunctionPtr f, std::vector<double> &result, bool bypassTerminationTest) const {
 	if(!_mtGood || !_mtBetter) {
 		throw RuntimeError("AdaptiveMultipoleTransform: must initialize before transforming.");
 	}
 	_evaluate(f,_mtBetter,_resultsBetter);
 	bool accurate(true);
-	if(true) {
+	if(!bypassTerminationTest) {
 		_evaluate(f,_mtGood,_resultsGood);
 		accurate = _isTerminated();
 	}
-	int npoints = _vpoints.size();
-	if(result.size() != npoints) std::vector<double>(npoints).swap(result);
-	std::copy(_resultsBetter.begin(),_resultsBetter.end(),result.begin());
+	_saveResult(result);
 	return accurate;
 }
