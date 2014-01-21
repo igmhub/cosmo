@@ -36,6 +36,10 @@ namespace cosmo {
     // input pair separation in Mpc/h.
     typedef boost::function<double (double)> CorrelationFunction;
     typedef boost::shared_ptr<CorrelationFunction> CorrelationFunctionPtr;
+
+    // Represents a function of (r,mu)
+    typedef boost::function<double (double,double)> RMuFunction;
+    typedef boost::shared_ptr<const RMuFunction> RMuFunctionCPtr;
     
 } // cosmo
 
