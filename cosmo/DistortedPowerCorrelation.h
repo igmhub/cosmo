@@ -43,8 +43,9 @@ namespace cosmo {
 		int _ellMax;
 		bool _symmetric;
 		std::vector<double> _rgrid;
+		mutable std::vector<std::vector<double> > _xiMoments;
 		typedef boost::shared_ptr<AdaptiveMultipoleTransform> AdaptiveMultipoleTransformPtr;
-		std::vector<AdaptiveMultipoleTransformPtr> _moments;
+		std::vector<AdaptiveMultipoleTransformPtr> _transformer;
 	}; // DistortedPowerCorrelation
 } // cosmo
 

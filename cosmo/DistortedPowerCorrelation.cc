@@ -39,19 +39,18 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow)
 	// create a transform object for each moment
 	int dell = symmetric ? 2 : 1;
 	int nell = symmetric ? ellMax/2 : ellMax;
-	_moments.reserve(nell);
+	_transformer.reserve(nell);
+	_xiMoments.reserve(nell);
 	for(int ell = 0; ell < ellMax; ell += dell) {
 		// use the same relerr for each ell and share abserr equally
 		AdaptiveMultipoleTransformPtr amt(new AdaptiveMultipoleTransform(
 			MultipoleTransform::SphericalBessel,ell,_rgrid,relerr,abserr/nell,abspow));
-		_moments.push_back(amt);
+		_transformer.push_back(amt);
+		_xiMoments.push_back(std::vector<double>(nr,0.));
 	}
 }
 
 local::DistortedPowerCorrelation::~DistortedPowerCorrelation() { }
-
-void local::DistortedPowerCorrelation::initialize() {
-}
 
 double local::DistortedPowerCorrelation::getPower(double k, double mu) const {
 	return (*_power)(k)*(*_distortion)(k,mu);
@@ -64,10 +63,28 @@ double local::DistortedPowerCorrelation::getPowerMultipole(double k, int ell) co
 	return getMultipole(fOfMuPtr, ell);
 }
 
-void local::DistortedPowerCorrelation::transform() const {
+void local::DistortedPowerCorrelation::initialize() {
 	// Loop over multipoles
-	int nr(_rgrid.size()), dell = _symmetric ? 2 : 1;
+	int dell = _symmetric ? 2 : 1;
 	for(int ell = 0; ell < _ellMax; ell += dell) {
 		// Build a function object that evaluates this multipole for arbitrary k
-	}	
+		likely::GenericFunctionPtr fOfKPtr(
+			new likely::GenericFunction(boost::bind(
+				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
+		std::vector<double> result;
+		_transformer[ell]->initialize(fOfKPtr,_xiMoments[ell]);
+	}
+}
+
+void local::DistortedPowerCorrelation::transform() const {
+	// Loop over multipoles
+	int dell = _symmetric ? 2 : 1;
+	for(int ell = 0; ell < _ellMax; ell += dell) {
+		// Build a function object that evaluates this multipole for arbitrary k
+		likely::GenericFunctionPtr fOfKPtr(
+			new likely::GenericFunction(boost::bind(
+				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
+		std::vector<double> result;
+		_transformer[ell]->transform(fOfKPtr,_xiMoments[ell]);
+	}
 }
