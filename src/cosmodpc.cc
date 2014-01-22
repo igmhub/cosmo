@@ -31,8 +31,8 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology distorted power correlation function");
     std::string input,output;
-    int ellMax,nr,repeat;
-    double rmin,rmax,relerr,abserr,abspow,margin,maxRelError;
+    int ellMax,nr,repeat,nk,nmu;
+    double rmin,rmax,relerr,abserr,abspow,margin,maxRelError,kmin,kmax;
     double beta,bias;
     cli.add_options()
         ("help,h", "prints this info and exits.")
@@ -66,6 +66,14 @@ int main(int argc, char **argv) {
         ("bypass", "bypasses the termination test for transforms")
         ("repeat", po::value<int>(&repeat)->default_value(1),
             "number of times to repeat identical transform")
+        ("kmin", po::value<double>(&kmin)->default_value(0.005),
+            "minimum value of comoving separation to use")
+        ("kmax", po::value<double>(&kmax)->default_value(0.35),
+            "maximum value of comoving separation to use")
+        ("nk", po::value<int>(&nk)->default_value(100),
+            "number of log-spaced k values for saving results")
+        ("nmu", po::value<int>(&nmu)->default_value(10),
+            "number of equally spaced mu_k and mu_r values for saving results")
         ;
     // do the command line parsing now
     po::variables_map vm;
@@ -113,9 +121,25 @@ int main(int argc, char **argv) {
             std::cerr << "Transform fails termination test." << std::endl;
         }
         if(output.length() > 0) {
-            std::ofstream out(output.c_str());
-            // ...
-            out.close();
+            int dell = symmetric ? 2 : 1;
+            double dmu = symmetric ? 1./(nmu-1.) : 2./(nmu-1.);
+            // Write out values tabulated for log-spaced k
+            double dk = std::pow(kmax/kmin,1./(nk-1.));
+            std::string kfile = output + ".k.dat";
+            std::ofstream kout(kfile.c_str());
+            for(int i = 0; i < nk; ++i) {
+                double k = kmin*std::pow(dk,i);
+                kout << k;
+                for(int j = 0; j < nmu; ++j) {
+                    double mu = 1 - j*dmu;
+                    kout << ' ' << dpc.getPower(k,mu);
+                }
+                for(int ell = 0; ell <= ellMax; ell += dell) {
+                    kout << ' ' << dpc.getPowerMultipole(k,ell);
+                }
+                kout << std::endl;
+            }
+            kout.close();
         }
     }
     catch(std::runtime_error const &e) {
