@@ -1,4 +1,6 @@
 // Created 10-Jan-2014 by David Kirkby (University of California, Irvine) <dkirkby@uci.edu>
+// A driver and test program for the MultipoleTransform class.
+// Calculates the 3D or 2D transform of a tabulated multipole read from a file.
 
 #include "cosmo/cosmo.h"
 #include "likely/likely.h"
@@ -24,10 +26,10 @@ int main(int argc, char **argv) {
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
         ("input,i", po::value<std::string>(&input)->default_value(""),
-            "name of filename to read k,P(k) values from")
+            "name of filename to read k,P_ell(k) values from")
         ("output,o", po::value<std::string>(&output)->default_value(""),
-            "name of filename to save r,xi(r) values to")
-        ("hankel", "performs a Hankel transform (default is spherical Bessel")
+            "name of filename to save r,xi_ell(r) values to")
+        ("hankel", "performs a 2D Hankel transform (default is 3D spherical Bessel")
         ("ell", po::value<int>(&ell)->default_value(0),
             "multipole number of transform to calculate")
         ("min", po::value<double>(&min)->default_value(10.),
