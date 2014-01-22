@@ -4,7 +4,6 @@
 #define COSMO_ADAPTIVE_MULTIPOLE_TRANSFORM
 
 #include "cosmo/MultipoleTransform.h"
-#include "cosmo/TransferFunctionPowerSpectrum.h"
 
 #include "likely/function.h"
 

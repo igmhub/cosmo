@@ -2,6 +2,7 @@
 
 #include "cosmo/DistortedPowerCorrelation.h"
 #include "cosmo/AdaptiveMultipoleTransform.h"
+#include "cosmo/TransferFunctionPowerSpectrum.h"
 #include "cosmo/RuntimeError.h"
 
 #include "boost/foreach.hpp"
@@ -38,10 +39,10 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow)
 	}
 	// create a transform object for each moment
 	int dell = symmetric ? 2 : 1;
-	int nell = symmetric ? ellMax/2 : ellMax;
+	int nell = 1+ellMax/dell;
 	_transformer.reserve(nell);
 	_xiMoments.reserve(nell);
-	for(int ell = 0; ell < ellMax; ell += dell) {
+	for(int ell = 0; ell <= ellMax; ell += dell) {
 		// use the same relerr for each ell and share abserr equally
 		AdaptiveMultipoleTransformPtr amt(new AdaptiveMultipoleTransform(
 			MultipoleTransform::SphericalBessel,ell,_rgrid,relerr,abserr/nell,abspow));
@@ -66,25 +67,26 @@ double local::DistortedPowerCorrelation::getPowerMultipole(double k, int ell) co
 void local::DistortedPowerCorrelation::initialize() {
 	// Loop over multipoles
 	int dell = _symmetric ? 2 : 1;
-	for(int ell = 0; ell < _ellMax; ell += dell) {
+	for(int ell = 0; ell <= _ellMax; ell += dell) {
 		// Build a function object that evaluates this multipole for arbitrary k
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
-		std::vector<double> result;
-		_transformer[ell]->initialize(fOfKPtr,_xiMoments[ell]);
+		std::cout << "initializing ell = " << ell << std::endl;
+		_transformer[ell/dell]->initialize(fOfKPtr,_xiMoments[ell/dell]);
 	}
 }
 
-void local::DistortedPowerCorrelation::transform() const {
+bool local::DistortedPowerCorrelation::transform(bool bypassTerminationTest) const {
 	// Loop over multipoles
 	int dell = _symmetric ? 2 : 1;
-	for(int ell = 0; ell < _ellMax; ell += dell) {
+	for(int ell = 0; ell <= _ellMax; ell += dell) {
 		// Build a function object that evaluates this multipole for arbitrary k
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
-		std::vector<double> result;
-		_transformer[ell]->transform(fOfKPtr,_xiMoments[ell]);
+		std::cout << "transforming ell = " << ell << std::endl;
+		_transformer[ell/dell]->transform(fOfKPtr,_xiMoments[ell/dell]);
 	}
+	return true;
 }

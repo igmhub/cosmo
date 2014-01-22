@@ -34,8 +34,10 @@ namespace cosmo {
 		double getPowerMultipole(double k, int ell) const;
 		// Initializes our multipole estimates and correlation transforms.
 		void initialize();
-		// Transforms the k-space power multipoles to r space.
-		void transform() const;
+		// Transforms the k-space power multipoles to r space. Returns true if the termination
+		// criteria are met, unless bypassTerminationTest is true (in which case we
+		// always return true and transforms will be somewhat faster).
+		bool transform(bool bypassTerminationTest = false) const;
 	private:
 		likely::GenericFunctionPtr _power;
 		RMuFunctionCPtr _distortion;

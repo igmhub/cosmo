@@ -1,16 +1,6 @@
-// Created 10-Jan-2014 by David Kirkby (University of California, Irvine) <dkirkby@uci.edu>
-// A driver and test program for the AdaptiveMultipoleTransform class.
-// Calculates the 3D or 2D transform of a tabulated multipole read from a file.
-
-// Sample timing results using:
-//
-// ./cosmoatrans -i ../../baofit/models/PlanckWPBestFitLCDM_matterpower.dat OPTIONS
-//
-//   TIME  OPTIONS
-//  15.26s --repeat 100000
-//  11.16s --repeat 100000 --optimize
-//   9.82s --repeat 100000 --bypass
-//   6.69s --repeat 100000 --optimize --bypass
+// Created 22-Jan-2014 by David Kirkby (University of California, Irvine) <dkirkby@uci.edu>
+// A driver and test program for the DistortedPowerCorrelation class.
+// Calculates the 3D correlation function corresponding to a distorted power spectrum.
 
 #include "cosmo/cosmo.h"
 #include "likely/likely.h"
@@ -25,43 +15,51 @@
 namespace po = boost::program_options;
 namespace lk = likely;
 
+class RedshiftSpaceDistortion {
+public:
+    RedshiftSpaceDistortion(double beta, double bias = 1) : _beta(beta), _bias(bias) { }
+    double operator()(double k, double mu) const {
+        double tmp = _bias*(1 + _beta*mu*mu);
+        return tmp*tmp;
+    }
+private:
+    double _beta,_bias;
+};
+
 int main(int argc, char **argv) {
     
     // Configure command-line option processing
-    po::options_description cli("Cosmology adaptive multipole transforms");
+    po::options_description cli("Cosmology distorted power correlation function");
     std::string input,output;
-    int ell,npoints,minSamplesPerDecade,repeat;
-    double min,max,relerr,abserr,abspow,margin,vepsMax,vepsMin,maxRelError;
+    int ellMax,nr,repeat;
+    double rmin,rmax,relerr,abserr,abspow,margin,maxRelError;
+    double beta,bias;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
         ("input,i", po::value<std::string>(&input)->default_value(""),
-            "name of filename to read k,P_ell(k) values from")
+            "name of filename to read k,P(k) values from")
         ("output,o", po::value<std::string>(&output)->default_value(""),
-            "name of filename to save r,xi_ell(r) values to")
-        ("hankel", "performs a 2D Hankel transform (default is 3D spherical Bessel")
-        ("ell", po::value<int>(&ell)->default_value(0),
-            "multipole number of transform to calculate")
-        ("min", po::value<double>(&min)->default_value(10.),
-            "minimum value of transformed coordinate")
-        ("max", po::value<double>(&max)->default_value(200.),
-            "maximum value of transformed coordinate")
-        ("npoints", po::value<int>(&npoints)->default_value(50),
-            "number of points spanning [min,max] to use")
+            "base name for saving results")
+        ("rmin", po::value<double>(&rmin)->default_value(10.),
+            "minimum value of comoving separation to use")
+        ("rmax", po::value<double>(&rmax)->default_value(200.),
+            "maximum value of comoving separation to use")
+        ("nr", po::value<int>(&nr)->default_value(191),
+            "number of points spanning [rmin,rmax] to use")
+        ("ell-max", po::value<int>(&ellMax)->default_value(4),
+            "maximum multipole to use for transforms")
+        ("symmetric", "distortion is symmetric in mu")
+        ("beta", po::value<double>(&beta)->default_value(1.4),
+            "redshift-space distortion parameter")
+        ("bias", po::value<double>(&bias)->default_value(1.0),
+            "linear tracer bias")
         ("relerr", po::value<double>(&relerr)->default_value(1e-2),
             "relative error termination goal")
         ("abserr", po::value<double>(&abserr)->default_value(1e-3),
             "absolute error termination goal")
         ("abspow", po::value<double>(&abspow)->default_value(0.),
             "absolute error weighting power")
-        ("margin", po::value<double>(&margin)->default_value(2.),
-            "termination criteria margin to use for initialization")
-        ("veps-max", po::value<double>(&vepsMax)->default_value(0.01),
-            "maximum value of veps value to use")
-        ("veps-min", po::value<double>(&vepsMin)->default_value(1e-6),
-            "minimum value of veps value to use")
-        ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
-            "minimum number of samples per decade to use for transform convolution")
         ("max-rel-error", po::value<double>(&maxRelError)->default_value(1e-3),
             "maximum allowed relative error for power-law extrapolation of input P(k)")
         ("optimize", "optimizes transform FFTs")
@@ -83,48 +81,40 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose")),hankel(vm.count("hankel")),
+    bool verbose(vm.count("verbose")), symmetric(vm.count("symmetric")),
         optimize(vm.count("optimize")), bypass(vm.count("bypass"));
 
     if(input.length() == 0) {
         std::cerr << "Missing input filename." << std::endl;
         return 1;
     }
+
     cosmo::TabulatedPowerCPtr power =
         cosmo::createTabulatedPower(input,true,true,maxRelError,verbose);
     lk::GenericFunctionPtr PkPtr =
         lk::createFunctionPtr<const cosmo::TabulatedPower>(power);
 
-    cosmo::MultipoleTransform::Type ttype(hankel ?
-        cosmo::MultipoleTransform::Hankel :
-        cosmo::MultipoleTransform::SphericalBessel);
-
-    std::vector<double> points;
-    double dv = (max-min)/(npoints-1.);
-    for(int i = 0; i < npoints; ++i) {
-        points.push_back(min + i*dv);
-    }
+    boost::shared_ptr<RedshiftSpaceDistortion> rsd(new RedshiftSpaceDistortion(beta,bias));
+    cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(&RedshiftSpaceDistortion::operator(),rsd,_1,_2)));
 
     try {
-    	cosmo::AdaptiveMultipoleTransform mt(ttype,ell,points,relerr,abserr,abspow);
-        std::vector<double> result(npoints);
-        double veps = mt.initialize(PkPtr,result,minSamplesPerDecade,margin,
-            vepsMax,vepsMin,optimize);
+    	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,rmin,rmax,nr,ellMax,
+            symmetric,relerr,abserr,abspow);
+        std::cout << "ctor done" << std::endl;
+        dpc.initialize();
         if(verbose) {
-            std::cout << "Using veps = " << veps << std::endl;
+            std::cout << "initialized" << std::endl;
         }
         bool ok;
         for(int i = 0; i < repeat; ++i) {
-            ok = mt.transform(PkPtr,result,bypass);
+            ok = dpc.transform(bypass);
         }
         if(!ok) {
             std::cerr << "Transform fails termination test." << std::endl;
         }
         if(output.length() > 0) {
             std::ofstream out(output.c_str());
-            for(int i = 0; i < npoints; ++i) {
-                out << points[i] << ' ' << result[i] << std::endl;
-            }
+            // ...
             out.close();
         }
     }
