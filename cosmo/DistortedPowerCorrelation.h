@@ -32,6 +32,8 @@ namespace cosmo {
 		double getPower(double k, double mu) const;
 		// Returns the specified multipole of P(k,mu) evaluated at k
 		double getPowerMultipole(double k, int ell) const;
+		// Returns the specified multipole of xi(r,mu) evaluated a r
+		double getCorrelationMultipole(double r, int ell) const;
 		// Initializes our multipole estimates and correlation transforms.
 		void initialize();
 		// Transforms the k-space power multipoles to r space. Returns true if the termination

@@ -140,6 +140,19 @@ int main(int argc, char **argv) {
                 kout << std::endl;
             }
             kout.close();
+            // Write out values tabulated for linear-spaced r
+            double dr = (rmax-rmin)/(nr-1.);
+            std::string rfile = output + ".r.dat";
+            std::ofstream rout(rfile.c_str());
+            for(int i = 0; i < nr; ++i) {
+                double r = rmin + i*dr;
+                rout << r;
+                for(int ell = 0; ell <= ellMax; ell += dell) {
+                    rout << ' ' << dpc.getCorrelationMultipole(r,ell);
+                }
+                rout << std::endl;                
+            }
+            rout.close();
         }
     }
     catch(std::runtime_error const &e) {

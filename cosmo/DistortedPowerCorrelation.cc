@@ -58,10 +58,20 @@ double local::DistortedPowerCorrelation::getPower(double k, double mu) const {
 }
 
 double local::DistortedPowerCorrelation::getPowerMultipole(double k, int ell) const {
+	if(ell < 0 || ell > _ellMax || (_symmetric && (ell%2))) {
+		throw RuntimeError("DistortedPowerCorrelation::getPowerMultipole: invalid ell.");
+	}
 	likely::GenericFunctionPtr fOfMuPtr(
 		new likely::GenericFunction(boost::bind(
 			&DistortedPowerCorrelation::getPower,this,k,_1)));
 	return getMultipole(fOfMuPtr, ell);
+}
+
+double local::DistortedPowerCorrelation::getCorrelationMultipole(double r, int ell) const {
+	if(ell < 0 || ell > _ellMax || (_symmetric && (ell%2))) {
+		throw RuntimeError("DistortedPowerCorrelation::getCorrelationMultipole: invalid ell.");
+	}
+	return 0;
 }
 
 void local::DistortedPowerCorrelation::initialize() {
