@@ -32,12 +32,18 @@ namespace cosmo {
 		virtual ~TabulatedPower();
 		// Evaluates P(k) for the specified k. Always returns 0 for k <= 0.
 		double operator()(double k) const;
+		// Returns the interpolation limits
+		double getKMin() const;
+		double getKMax() const;
 	private:
 		double _kmin, _kmax;
 		class PowerLawExtrapolator;
 		boost::scoped_ptr<PowerLawExtrapolator> _extrapolateBelow, _extrapolateAbove;
 		likely::InterpolatorPtr _interpolator;
 	}; // TabulatedPower
+
+	inline double TabulatedPower::getKMin() const { return _kmin; }
+	inline double TabulatedPower::getKMax() const { return _kmax; }
 
 	// Creates a new tabulated power object using k and P(k) vectors read from
 	// the specified filename. Additional options are as described above.
