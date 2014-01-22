@@ -2,13 +2,15 @@
 
 #include "cosmo/DistortedPowerCorrelation.h"
 #include "cosmo/AdaptiveMultipoleTransform.h"
-
 #include "cosmo/RuntimeError.h"
+
+#include "boost/foreach.hpp"
+#include "boost/bind.hpp"
 
 namespace local = cosmo;
 
-local::DistortedPowerCorrelation::DistortedPowerCorrelation(
-TabulatedPowerCPtr power, RMuFunctionCPtr distortion, double rmin, double rmax, int nr,
+local::DistortedPowerCorrelation::DistortedPowerCorrelation(likely::GenericFunctionPtr power,
+RMuFunctionCPtr distortion, double rmin, double rmax, int nr,
 int ellMax, bool symmetric, double relerr, double abserr, double abspow)
 : _power(power), _distortion(distortion), _ellMax(ellMax), _symmetric(symmetric),
 _relerr(relerr), _abserr(abserr), _abspow(abspow)
@@ -36,10 +38,12 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow)
 	}
 	// create a transform object for each moment
 	int dell = symmetric ? 2 : 1;
-	_moments.reserve(symmetric ? ellMax/2 : ellMax);
+	int nell = symmetric ? ellMax/2 : ellMax;
+	_moments.reserve(nell);
 	for(int ell = 0; ell < ellMax; ell += dell) {
+		// use the same relerr for each ell and share abserr equally
 		AdaptiveMultipoleTransformPtr amt(new AdaptiveMultipoleTransform(
-			MultipoleTransform::SphericalBessel,ell,_rgrid,relerr,abserr,abspow));
+			MultipoleTransform::SphericalBessel,ell,_rgrid,relerr,abserr/nell,abspow));
 		_moments.push_back(amt);
 	}
 }
@@ -47,5 +51,23 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow)
 local::DistortedPowerCorrelation::~DistortedPowerCorrelation() { }
 
 void local::DistortedPowerCorrelation::initialize() {
+}
 
+double local::DistortedPowerCorrelation::getPower(double k, double mu) const {
+	return (*_power)(k)*(*_distortion)(k,mu);
+}
+
+double local::DistortedPowerCorrelation::getPowerMultipole(double k, int ell) const {
+	likely::GenericFunctionPtr fOfMuPtr(
+		new likely::GenericFunction(boost::bind(
+			&DistortedPowerCorrelation::getPower,this,k,_1)));
+	return getMultipole(fOfMuPtr, ell);
+}
+
+void local::DistortedPowerCorrelation::transform() const {
+	// Loop over multipoles
+	int nr(_rgrid.size()), dell = _symmetric ? 2 : 1;
+	for(int ell = 0; ell < _ellMax; ell += dell) {
+		// Build a function object that evaluates this multipole for arbitrary k
+	}	
 }

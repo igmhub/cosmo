@@ -3,7 +3,8 @@
 #ifndef COSMO_ADAPTIVE_MULTIPOLE_TRANSFORM
 #define COSMO_ADAPTIVE_MULTIPOLE_TRANSFORM
 
-#include "MultipoleTransform.h"
+#include "cosmo/MultipoleTransform.h"
+#include "cosmo/TransferFunctionPowerSpectrum.h"
 
 #include "likely/function.h"
 
