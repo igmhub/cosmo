@@ -39,7 +39,7 @@ build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = cosmocalc$(EXEEXT) cosmo3d$(EXEEXT) cosmogrf$(EXEEXT) \
 	cosmostack$(EXEEXT) cosmoxi$(EXEEXT) cosmomock$(EXEEXT) \
-	cosmotrans$(EXEEXT) cosmoatrans$(EXEEXT)
+	cosmotrans$(EXEEXT) cosmoatrans$(EXEEXT) cosmodpc$(EXEEXT)
 noinst_PROGRAMS = cosmotest$(EXEEXT)
 subdir = .
 DIST_COMMON = $(am__configure_deps) $(nobase_include_HEADERS) \
@@ -103,6 +103,8 @@ am_cosmoatrans_OBJECTS = cosmoatrans.$(OBJEXT)
 cosmoatrans_OBJECTS = $(am_cosmoatrans_OBJECTS)
 am_cosmocalc_OBJECTS = cosmocalc.$(OBJEXT)
 cosmocalc_OBJECTS = $(am_cosmocalc_OBJECTS)
+am_cosmodpc_OBJECTS = cosmodpc.$(OBJEXT)
+cosmodpc_OBJECTS = $(am_cosmodpc_OBJECTS)
 am_cosmogrf_OBJECTS = cosmogrf.$(OBJEXT)
 cosmogrf_OBJECTS = $(am_cosmogrf_OBJECTS)
 am_cosmomock_OBJECTS = cosmomock.$(OBJEXT)
@@ -130,12 +132,14 @@ CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libcosmo_la_SOURCES) $(cosmo3d_SOURCES) \
 	$(cosmoatrans_SOURCES) $(cosmocalc_SOURCES) \
-	$(cosmogrf_SOURCES) $(cosmomock_SOURCES) $(cosmostack_SOURCES) \
-	$(cosmotest_SOURCES) $(cosmotrans_SOURCES) $(cosmoxi_SOURCES)
+	$(cosmodpc_SOURCES) $(cosmogrf_SOURCES) $(cosmomock_SOURCES) \
+	$(cosmostack_SOURCES) $(cosmotest_SOURCES) \
+	$(cosmotrans_SOURCES) $(cosmoxi_SOURCES)
 DIST_SOURCES = $(libcosmo_la_SOURCES) $(cosmo3d_SOURCES) \
 	$(cosmoatrans_SOURCES) $(cosmocalc_SOURCES) \
-	$(cosmogrf_SOURCES) $(cosmomock_SOURCES) $(cosmostack_SOURCES) \
-	$(cosmotest_SOURCES) $(cosmotrans_SOURCES) $(cosmoxi_SOURCES)
+	$(cosmodpc_SOURCES) $(cosmogrf_SOURCES) $(cosmomock_SOURCES) \
+	$(cosmostack_SOURCES) $(cosmotest_SOURCES) \
+	$(cosmotrans_SOURCES) $(cosmoxi_SOURCES)
 DATA = $(pkgconfig_DATA)
 HEADERS = $(nobase_include_HEADERS)
 ETAGS = etags
@@ -372,6 +376,9 @@ cosmotrans_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_
 cosmoatrans_SOURCES = src/cosmoatrans.cc
 cosmoatrans_DEPENDENCIES = $(lib_LIBRARIES)
 cosmoatrans_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+cosmodpc_SOURCES = src/cosmodpc.cc
+cosmodpc_DEPENDENCIES = $(lib_LIBRARIES)
+cosmodpc_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -524,6 +531,9 @@ cosmoatrans$(EXEEXT): $(cosmoatrans_OBJECTS) $(cosmoatrans_DEPENDENCIES)
 cosmocalc$(EXEEXT): $(cosmocalc_OBJECTS) $(cosmocalc_DEPENDENCIES) 
 	@rm -f cosmocalc$(EXEEXT)
 	$(CXXLINK) $(cosmocalc_OBJECTS) $(cosmocalc_LDADD) $(LIBS)
+cosmodpc$(EXEEXT): $(cosmodpc_OBJECTS) $(cosmodpc_DEPENDENCIES) 
+	@rm -f cosmodpc$(EXEEXT)
+	$(CXXLINK) $(cosmodpc_OBJECTS) $(cosmodpc_LDADD) $(LIBS)
 cosmogrf$(EXEEXT): $(cosmogrf_OBJECTS) $(cosmogrf_DEPENDENCIES) 
 	@rm -f cosmogrf$(EXEEXT)
 	$(CXXLINK) $(cosmogrf_OBJECTS) $(cosmogrf_LDADD) $(LIBS)
@@ -569,6 +579,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmo3d.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmoatrans.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmocalc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmodpc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmogrf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmomock.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmostack.Po@am__quote@
@@ -757,6 +768,20 @@ cosmocalc.obj: src/cosmocalc.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmocalc.cc' object='cosmocalc.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmocalc.obj `if test -f 'src/cosmocalc.cc'; then $(CYGPATH_W) 'src/cosmocalc.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmocalc.cc'; fi`
+
+cosmodpc.o: src/cosmodpc.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmodpc.o -MD -MP -MF $(DEPDIR)/cosmodpc.Tpo -c -o cosmodpc.o `test -f 'src/cosmodpc.cc' || echo '$(srcdir)/'`src/cosmodpc.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/cosmodpc.Tpo $(DEPDIR)/cosmodpc.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmodpc.cc' object='cosmodpc.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmodpc.o `test -f 'src/cosmodpc.cc' || echo '$(srcdir)/'`src/cosmodpc.cc
+
+cosmodpc.obj: src/cosmodpc.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmodpc.obj -MD -MP -MF $(DEPDIR)/cosmodpc.Tpo -c -o cosmodpc.obj `if test -f 'src/cosmodpc.cc'; then $(CYGPATH_W) 'src/cosmodpc.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmodpc.cc'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/cosmodpc.Tpo $(DEPDIR)/cosmodpc.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmodpc.cc' object='cosmodpc.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmodpc.obj `if test -f 'src/cosmodpc.cc'; then $(CYGPATH_W) 'src/cosmodpc.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmodpc.cc'; fi`
 
 cosmogrf.o: src/cosmogrf.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmogrf.o -MD -MP -MF $(DEPDIR)/cosmogrf.Tpo -c -o cosmogrf.o `test -f 'src/cosmogrf.cc' || echo '$(srcdir)/'`src/cosmogrf.cc
