@@ -29,12 +29,21 @@ namespace cosmo {
 			double rmin, double rmax, int nr, int ellMax, bool symmetric = true,
 			double relerr = 1e-2, double abserr = 1e-3, double abspow = 0);
 		virtual ~DistortedPowerCorrelation();
-		// Returns the value of P(k,mu) = P(k)*D(k,mu)
+		// Returns the value of P(k,mu) = P(k)*D(k,mu). This is fast to evaluate and
+		// does not require that initialize() be called first.
 		double getPower(double k, double mu) const;
-		// Returns the specified multipole of P(k,mu) evaluated at k
+		// Returns the specified multipole of P(k,mu) evaluated at k. This method calculates
+		// the relevant numerical 1D integral each time it is called, so is relatively slow,
+		// but does not require that initialize() be called first.
 		double getPowerMultipole(double k, int ell) const;
-		// Returns the specified multipole of xi(r,mu) evaluated a r
+		// Returns the specified multipole of xi(r,mu) evaluated at r. This is relatively fast
+		// to evaluate, only involving some interpolation, but requires that initialize()
+		// be called first.
 		double getCorrelationMultipole(double r, int ell) const;
+		// Returns the correlation function xi(r,mu). This is relatively fast
+		// to evaluate, only involving some interpolation, but requires that initialize()
+		// be called first.
+		double getCorrelation(double r, double mu) const;
 		// Initializes our multipole estimates and correlation transforms.
 		void initialize();
 		// Transforms the k-space power multipoles to r space. Returns true if the termination
@@ -46,7 +55,7 @@ namespace cosmo {
 		RMuFunctionCPtr _distortion;
 		double _relerr,_abserr,_abspow;
 		int _ellMax;
-		bool _symmetric;
+		bool _symmetric, _initialized;
 		std::vector<double> _rgrid;
 		mutable std::vector<std::vector<double> > _xiMoments;
 		mutable std::vector<likely::InterpolatorPtr> _interpolator;

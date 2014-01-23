@@ -16,7 +16,7 @@ local::DistortedPowerCorrelation::DistortedPowerCorrelation(likely::GenericFunct
 RMuFunctionCPtr distortion, double rmin, double rmax, int nr,
 int ellMax, bool symmetric, double relerr, double abserr, double abspow)
 : _power(power), _distortion(distortion), _ellMax(ellMax), _symmetric(symmetric),
-_relerr(relerr), _abserr(abserr), _abspow(abspow)
+_relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
 {
 	if(rmax <= rmin) {
 		throw RuntimeError("DistortedPowerCorrelation: expected rmin < rmax.");
@@ -59,6 +59,9 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow)
 local::DistortedPowerCorrelation::~DistortedPowerCorrelation() { }
 
 double local::DistortedPowerCorrelation::getPower(double k, double mu) const {
+	if(mu < 0 || mu > 1) {
+		throw RuntimeError("DistortedPowerCorrelation::getPower: expected 0 <= mu <= 1.");
+	}
 	return (*_power)(k)*(*_distortion)(k,mu);
 }
 
@@ -73,6 +76,9 @@ double local::DistortedPowerCorrelation::getPowerMultipole(double k, int ell) co
 }
 
 double local::DistortedPowerCorrelation::getCorrelationMultipole(double r, int ell) const {
+	if(!_initialized) {
+		throw RuntimeError("DistortedPowerCorrelation::getCorrelationMultipole: not initialized.");
+	}
 	if(ell < 0 || ell > _ellMax || (_symmetric && (ell%2))) {
 		throw RuntimeError("DistortedPowerCorrelation::getCorrelationMultipole: invalid ell.");
 	}
@@ -81,6 +87,21 @@ double local::DistortedPowerCorrelation::getCorrelationMultipole(double r, int e
 	}
 	int idx = _symmetric ? ell/2 : ell;
 	return (*_interpolator[idx])(r);
+}
+
+double local::DistortedPowerCorrelation::getCorrelation(double r, double mu) const {
+	if(!_initialized) {
+		throw RuntimeError("DistortedPowerCorrelation::getCorrelation: not initialized.");
+	}
+	if(mu < 0 || mu > 1) {
+		throw RuntimeError("DistortedPowerCorrelation::getPower: expected 0 <= mu <= 1.");
+	}
+	double result(0);
+	int dell = _symmetric ? 2 : 1;
+	for(int ell = 0; ell <= _ellMax; ell += dell) {
+		result += getCorrelationMultipole(r,ell)*legendreP(ell,mu);
+	}
+	return result;
 }
 
 void local::DistortedPowerCorrelation::initialize() {
@@ -95,6 +116,7 @@ void local::DistortedPowerCorrelation::initialize() {
 		std::cout << "initializing ell = " << ell << std::endl;
 		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx]);
 	}
+	_initialized = true;
 }
 
 bool local::DistortedPowerCorrelation::transform(bool bypassTerminationTest) const {

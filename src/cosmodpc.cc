@@ -108,7 +108,6 @@ int main(int argc, char **argv) {
     try {
     	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,rmin,rmax,nr,ellMax,
             symmetric,relerr,abserr,abspow);
-        std::cout << "ctor done" << std::endl;
         dpc.initialize();
         if(verbose) {
             std::cout << "initialized" << std::endl;
@@ -147,6 +146,10 @@ int main(int argc, char **argv) {
             for(int i = 0; i < nr; ++i) {
                 double r = rmin + i*dr;
                 rout << r;
+                for(int j = 0; j < nmu; ++j) {
+                    double mu = 1 - j*dmu;
+                    rout << ' ' << dpc.getCorrelation(r,mu);
+                }
                 for(int ell = 0; ell <= ellMax; ell += dell) {
                     rout << ' ' << dpc.getCorrelationMultipole(r,ell);
                 }
