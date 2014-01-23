@@ -5,6 +5,8 @@
 #include "cosmo/TransferFunctionPowerSpectrum.h"
 #include "cosmo/RuntimeError.h"
 
+#include "likely/Interpolator.h"
+
 #include "boost/foreach.hpp"
 #include "boost/bind.hpp"
 
@@ -42,12 +44,15 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow)
 	int nell = 1+ellMax/dell;
 	_transformer.reserve(nell);
 	_xiMoments.reserve(nell);
+	_interpolator.reserve(nell);
 	for(int ell = 0; ell <= ellMax; ell += dell) {
+		double coef = multipoleTransformNormalization(ell,3,+1);
 		// use the same relerr for each ell and share abserr equally
 		AdaptiveMultipoleTransformPtr amt(new AdaptiveMultipoleTransform(
-			MultipoleTransform::SphericalBessel,ell,_rgrid,relerr,abserr/nell,abspow));
+			MultipoleTransform::SphericalBessel,ell,coef,_rgrid,relerr,abserr/nell,abspow));
 		_transformer.push_back(amt);
 		_xiMoments.push_back(std::vector<double>(nr,0.));
+		_interpolator.push_back(likely::InterpolatorPtr());
 	}
 }
 
@@ -71,19 +76,24 @@ double local::DistortedPowerCorrelation::getCorrelationMultipole(double r, int e
 	if(ell < 0 || ell > _ellMax || (_symmetric && (ell%2))) {
 		throw RuntimeError("DistortedPowerCorrelation::getCorrelationMultipole: invalid ell.");
 	}
-	return 0;
+	if(r < _rgrid.front() || r > _rgrid.back()) {
+		throw RuntimeError("DistortedPowerCorrelation::getCorrelationMultipole: r out of range.");
+	}
+	int idx = _symmetric ? ell/2 : ell;
+	return (*_interpolator[idx])(r);
 }
 
 void local::DistortedPowerCorrelation::initialize() {
 	// Loop over multipoles
 	int dell = _symmetric ? 2 : 1;
 	for(int ell = 0; ell <= _ellMax; ell += dell) {
+		int idx(ell/dell);
 		// Build a function object that evaluates this multipole for arbitrary k
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
 		std::cout << "initializing ell = " << ell << std::endl;
-		_transformer[ell/dell]->initialize(fOfKPtr,_xiMoments[ell/dell]);
+		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx]);
 	}
 }
 
@@ -91,12 +101,15 @@ bool local::DistortedPowerCorrelation::transform(bool bypassTerminationTest) con
 	// Loop over multipoles
 	int dell = _symmetric ? 2 : 1;
 	for(int ell = 0; ell <= _ellMax; ell += dell) {
+		int idx(ell/dell);
 		// Build a function object that evaluates this multipole for arbitrary k
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
 		std::cout << "transforming ell = " << ell << std::endl;
-		_transformer[ell/dell]->transform(fOfKPtr,_xiMoments[ell/dell]);
+		_transformer[idx]->transform(fOfKPtr,_xiMoments[idx]);
+		// (re)create the interpolator for this moment
+		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
 	}
 	return true;
 }

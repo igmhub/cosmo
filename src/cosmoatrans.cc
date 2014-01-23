@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
     po::options_description cli("Cosmology adaptive multipole transforms");
     std::string input,output;
     int ell,npoints,minSamplesPerDecade,repeat;
-    double min,max,relerr,abserr,abspow,margin,vepsMax,vepsMin,maxRelError;
+    double min,max,scale,relerr,abserr,abspow,margin,vepsMax,vepsMin,maxRelError;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
@@ -42,6 +42,8 @@ int main(int argc, char **argv) {
         ("hankel", "performs a 2D Hankel transform (default is 3D spherical Bessel")
         ("ell", po::value<int>(&ell)->default_value(0),
             "multipole number of transform to calculate")
+        ("scale", po::value<double>(&scale)->default_value(0),
+            "coeficient for scaling transform (or use default scaling if zero)")
         ("min", po::value<double>(&min)->default_value(10.),
             "minimum value of transformed coordinate")
         ("max", po::value<double>(&max)->default_value(200.),
@@ -99,6 +101,14 @@ int main(int argc, char **argv) {
         cosmo::MultipoleTransform::Hankel :
         cosmo::MultipoleTransform::SphericalBessel);
 
+    if(0 == scale) {
+        scale = cosmo::multipoleTransformNormalization(ell,hankel ? 2:3,+1);
+        if(verbose) {
+            std::cout << "Using default scale " << scale << " for k-to-r transforms"
+                << std::endl;
+        }
+    }
+
     std::vector<double> points;
     double dv = (max-min)/(npoints-1.);
     for(int i = 0; i < npoints; ++i) {
@@ -106,7 +116,7 @@ int main(int argc, char **argv) {
     }
 
     try {
-    	cosmo::AdaptiveMultipoleTransform mt(ttype,ell,points,relerr,abserr,abspow);
+    	cosmo::AdaptiveMultipoleTransform mt(ttype,ell,scale,points,relerr,abserr,abspow);
         std::vector<double> result(npoints);
         double veps = mt.initialize(PkPtr,result,minSamplesPerDecade,margin,
             vepsMax,vepsMin,optimize);

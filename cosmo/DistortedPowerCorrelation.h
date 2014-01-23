@@ -4,6 +4,7 @@
 #define COSMO_DISTORTED_POWER_CORRELATION
 
 #include "cosmo/types.h"
+#include "likely/types.h"
 #include "likely/function.h"
 
 #include "boost/smart_ptr.hpp"
@@ -48,6 +49,7 @@ namespace cosmo {
 		bool _symmetric;
 		std::vector<double> _rgrid;
 		mutable std::vector<std::vector<double> > _xiMoments;
+		mutable std::vector<likely::InterpolatorPtr> _interpolator;
 		typedef boost::shared_ptr<AdaptiveMultipoleTransform> AdaptiveMultipoleTransformPtr;
 		std::vector<AdaptiveMultipoleTransformPtr> _transformer;
 	}; // DistortedPowerCorrelation

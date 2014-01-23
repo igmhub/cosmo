@@ -22,8 +22,9 @@ namespace cosmo {
 		// transforms will be provided at the specified vpoints, which will also be
 		// used to adaptively monitor numerical errors. The numerical termination
 		// criteria is that |f(2*veps) - f(veps)| < max(abserr*v^abspow,relerr*|f(veps)|)
-		// for each point v in vpoints.
-		AdaptiveMultipoleTransform(MultipoleTransform::Type type, int ell,
+		// for each point v in vpoints. Transforms will be multiplied by the specified
+		// scale (which therefore affects the meaning of abserr).
+		AdaptiveMultipoleTransform(MultipoleTransform::Type type, int ell, double scale,
 			std::vector<double> const &vpoints, double relerr, double abserr, double abspow = 0);
 		virtual ~AdaptiveMultipoleTransform();
 		// Initializes for the specified function by automatically determining a suitable veps.
@@ -55,7 +56,7 @@ namespace cosmo {
 		int _ell;
 		std::vector<double> _vpoints;
 		mutable std::vector<double> _resultsGood, _resultsBetter;
-		double _relerr, _abserr, _abspow, _vmin, _vmax, _veps;
+		double _scale, _relerr, _abserr, _abspow, _vmin, _vmax, _veps;
 		typedef boost::shared_ptr<const MultipoleTransform> MultipoleTransformCPtr;
 		MultipoleTransformCPtr _mtGood, _mtBetter;
 		void _evaluate(likely::GenericFunctionPtr f,

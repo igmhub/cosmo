@@ -13,8 +13,10 @@
 namespace local = cosmo;
 
 local::AdaptiveMultipoleTransform::AdaptiveMultipoleTransform(MultipoleTransform::Type type,
-int ell, std::vector<double>const &vpoints, double relerr, double abserr, double abspow)
-: _type(type), _ell(ell), _vpoints(vpoints), _relerr(relerr), _abserr(abserr), _abspow(abspow)
+int ell, double scale, std::vector<double>const &vpoints,
+double relerr, double abserr, double abspow)
+: _type(type), _ell(ell), _scale(scale), _vpoints(vpoints),
+_relerr(relerr), _abserr(abserr), _abspow(abspow)
 {
 	// Input parameter validation
 	if(_type != MultipoleTransform::SphericalBessel && _type != MultipoleTransform::Hankel) {
@@ -22,6 +24,9 @@ int ell, std::vector<double>const &vpoints, double relerr, double abserr, double
 	}
 	if(_ell < 0) {
 		throw RuntimeError("AdaptiveMultipoleTransform: expected ell >= 0.");
+	}
+	if(_scale == 0) {
+		throw RuntimeError("AdaptiveMultipoleTransform: expected scale != 0.");
 	}
 	if(_relerr <= 0 && _abserr <= 0) {
 		throw RuntimeError("AdaptiveMultipoleTransform: invalid termination criteria.");
@@ -62,7 +67,7 @@ MultipoleTransformCPtr transform,std::vector<double> &result) const {
 	int npoints(_vpoints.size());
 	if(result.size() != npoints) std::vector<double>(npoints).swap(result);
 	for(int i = 0; i < npoints; ++i) {
-		result[i] = interpolator(_vpoints[i]);
+		result[i] = _scale*interpolator(_vpoints[i]);
 	}
 }
 
