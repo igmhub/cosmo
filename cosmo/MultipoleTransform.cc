@@ -225,3 +225,22 @@ std::vector<double> &result) const {
 	}
 #endif
 }
+
+double local::multipoleTransformNormalization(int ell, int ndim, int dir,
+double a, double b) {
+	if(ndim < 2 || ndim > 3) {
+		throw RuntimeError("multipoleTransformNormalization: expected ndim = 2 or 3.");
+	}
+	if(dir*dir != 1) {
+		throw RuntimeError("multipoleTransformNormalization: expected dir = +1 or -1.");
+	}
+	double twopi(4*std::atan2(1,0));
+	// calculate the Fourier normalization factor
+	double fnorm = std::pow(twopi,-0.5*ndim*(1+dir*a));
+	if(b != 1) fnorm *= std::pow(std::fabs(b),0.5*ndim);
+	// calculate the coefficient of the Hankel (ndim = 2) or spherical Bessel (ndim = 3)
+	// transform (up to a factor of i when ell is odd)
+	double coef = ((ndim == 2) ? twopi : (2*twopi))*fnorm*std::pow(dir*b,ell);
+	if((ell/2) % 2) coef = -coef;
+	return coef;
+}

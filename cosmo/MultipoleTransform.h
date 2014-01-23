@@ -86,6 +86,26 @@ namespace cosmo {
 		return _vgrid;
 	}
 
+	// Returns the coefficient of the Hankel (ndim = 2) or spherical Bessel (ndim = 3)
+	// transform of...
+	//   ...f_ell(r) that gives f~_ell(k) [dir = +1]
+	//   ...f~_ell(k) that gives f_ell(r) [dir = -1]
+	//
+	// The assumed Fourier convention is specified by the parameters (a,b) such that:
+	//
+	//   f(vec{r}) = N_n(a,b)   Integral[ d^nk exp(+b(k.r)) f~(vec{k}) ]
+	//   f~(vec{k}) = N~_n(a,b) Integral[ d^nr exp(+b(k.r)) f(vec{r}) ]
+	//
+	// where:
+	//
+	//   N_n(a,b)  = |b|^(n/2) (2pi)^(-n(1+a)/2)
+	//   N~_n(a,b) = |b|^(/n2) (2pi)^(-n(1-a)/2)
+	//
+	// If ell is even, then the coefficient is real. However, if ell is odd, then the
+	// coefficient is pure imaginary and the return value should be multiplied by i.
+	double multipoleTransformNormalization(int ell, int ndim, int dir,
+		double a = 1, double b = 1);
+
 } // cosmo
 
 #endif // COSMO_MULTIPOLE_TRANSFORM
