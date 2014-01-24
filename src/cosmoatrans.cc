@@ -18,6 +18,7 @@
 
 #include "boost/program_options.hpp"
 #include "boost/bind.hpp"
+#include "boost/lexical_cast.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -133,7 +134,8 @@ int main(int argc, char **argv) {
         if(output.length() > 0) {
             std::ofstream out(output.c_str());
             for(int i = 0; i < npoints; ++i) {
-                out << points[i] << ' ' << result[i] << std::endl;
+                out << boost::lexical_cast<std::string>(points[i]) << ' '
+                << boost::lexical_cast<std::string>(result[i]) << std::endl;
             }
             out.close();
         }

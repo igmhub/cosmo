@@ -8,6 +8,7 @@
 
 #include "boost/program_options.hpp"
 #include "boost/bind.hpp"
+#include "boost/lexical_cast.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -134,13 +135,13 @@ int main(int argc, char **argv) {
             std::ofstream kout(kfile.c_str());
             for(int i = 0; i < nk; ++i) {
                 double k = kmin*std::pow(dk,i);
-                kout << k;
+                kout << boost::lexical_cast<std::string>(k);
                 for(int j = 0; j < nmu; ++j) {
                     double mu = 1 - j*dmu;
-                    kout << ' ' << dpc.getPower(k,mu);
+                    kout << ' ' << boost::lexical_cast<std::string>(dpc.getPower(k,mu));
                 }
                 for(int ell = 0; ell <= ellMax; ell += dell) {
-                    kout << ' ' << dpc.getPowerMultipole(k,ell);
+                    kout << ' ' << boost::lexical_cast<std::string>(dpc.getPowerMultipole(k,ell));
                 }
                 kout << std::endl;
             }
@@ -151,13 +152,13 @@ int main(int argc, char **argv) {
             std::ofstream rout(rfile.c_str());
             for(int i = 0; i < nr; ++i) {
                 double r = rmin + i*dr;
-                rout << r;
+                rout << boost::lexical_cast<std::string>(r);
                 for(int j = 0; j < nmu; ++j) {
                     double mu = 1 - j*dmu;
-                    rout << ' ' << dpc.getCorrelation(r,mu);
+                    rout << ' ' << boost::lexical_cast<std::string>(dpc.getCorrelation(r,mu));
                 }
                 for(int ell = 0; ell <= ellMax; ell += dell) {
-                    rout << ' ' << dpc.getCorrelationMultipole(r,ell);
+                    rout << ' ' << boost::lexical_cast<std::string>(dpc.getCorrelationMultipole(r,ell));
                 }
                 rout << std::endl;                
             }
