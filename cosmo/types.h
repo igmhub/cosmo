@@ -22,6 +22,10 @@ namespace cosmo {
     class TabulatedPower;
     typedef boost::shared_ptr<const TabulatedPower> TabulatedPowerCPtr;
 
+    class AdaptiveMultipoleTransform;
+    typedef boost::shared_ptr<AdaptiveMultipoleTransform> AdaptiveMultipoleTransformPtr;
+    typedef boost::shared_ptr<const AdaptiveMultipoleTransform> AdaptiveMultipoleTransformCPtr;
+
     // Represents a function that returns a dimensionless transfer function value T(k)
     // given an input wavenumber k in 1/(Mpc/h).
     typedef boost::function<double (double)> TransferFunction;

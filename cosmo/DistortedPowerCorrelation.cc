@@ -113,7 +113,6 @@ void local::DistortedPowerCorrelation::initialize() {
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
-		std::cout << "initializing ell = " << ell << std::endl;
 		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx]);
 	}
 	_initialized = true;
@@ -134,4 +133,13 @@ bool local::DistortedPowerCorrelation::transform(bool bypassTerminationTest) con
 		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
 	}
 	return true;
+}
+
+local::AdaptiveMultipoleTransformCPtr local::DistortedPowerCorrelation::getTransform(int ell) const {
+	if(ell < 0 || ell > _ellMax || (_symmetric && (ell%2))) {
+		throw RuntimeError("DistortedPowerCorrelation::getTransform: invalid ell.");
+	}
+	int dell = _symmetric ? 2 : 1;
+	int idx(ell/dell);
+	return _transformer[idx];
 }

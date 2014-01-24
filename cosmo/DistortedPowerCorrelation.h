@@ -50,6 +50,8 @@ namespace cosmo {
 		// criteria are met, unless bypassTerminationTest is true (in which case we
 		// always return true and transforms will be somewhat faster).
 		bool transform(bool bypassTerminationTest = false) const;
+		// Returns a shared const pointer to the specified transform.
+		AdaptiveMultipoleTransformCPtr getTransform(int ell) const;
 	private:
 		likely::GenericFunctionPtr _power;
 		RMuFunctionCPtr _distortion;
@@ -59,7 +61,6 @@ namespace cosmo {
 		std::vector<double> _rgrid;
 		mutable std::vector<std::vector<double> > _xiMoments;
 		mutable std::vector<likely::InterpolatorPtr> _interpolator;
-		typedef boost::shared_ptr<AdaptiveMultipoleTransform> AdaptiveMultipoleTransformPtr;
 		std::vector<AdaptiveMultipoleTransformPtr> _transformer;
 	}; // DistortedPowerCorrelation
 } // cosmo

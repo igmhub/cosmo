@@ -105,12 +105,18 @@ int main(int argc, char **argv) {
     boost::shared_ptr<RedshiftSpaceDistortion> rsd(new RedshiftSpaceDistortion(beta,bias));
     cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(&RedshiftSpaceDistortion::operator(),rsd,_1,_2)));
 
+    int dell(symmetric ? 2:1);
+
     try {
     	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,rmin,rmax,nr,ellMax,
             symmetric,relerr,abserr,abspow);
         dpc.initialize();
         if(verbose) {
-            std::cout << "initialized" << std::endl;
+            for(int ell = 0; ell <= ellMax; ell += dell) {
+                cosmo::AdaptiveMultipoleTransformCPtr amt = dpc.getTransform(ell);
+                std::cout << "initialized ell = " << ell << " transform with veps = "
+                    << amt->getVEps() << std::endl;
+            }
         }
         bool ok;
         for(int i = 0; i < repeat; ++i) {
