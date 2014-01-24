@@ -10,7 +10,8 @@
 namespace cosmo {
 	class MultipoleTransform {
 	// Calculates 2D (Hankel) or 3D (spherical Bessel) multipole transforms of
-	// an arbitrary real-valued function.
+	// an arbitrary real-valued function. For details on the method, see
+	// https://www.authorea.com/users/4112/articles/4271
 	public:
 		enum Type { SphericalBessel, Hankel };
 		enum Strategy { EstimatePlan, MeasurePlan };
@@ -21,7 +22,7 @@ namespace cosmo {
 		// where S = u^2 j_ell(u*v) when type is SphericalBessel or
 		// S = u J_ell(u*v) when type is Hankel. The result T(v) will be
 		// evaluated to an accuracy over the range vmin < v < vmax that is
-		// determined by the value of veps, with smaller values giving more
+		// determined by the value of |veps|, with smaller values giving more
 		// accurate results and requiring correspondingly more memory and cpu.
 		// If veps > 0, then it roughly corresponds to 1/Nf, the number of
 		// logarithmically spaced points where S is tabulated. Alternatively,

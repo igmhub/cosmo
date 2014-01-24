@@ -4,12 +4,14 @@
 #include "cosmo/RuntimeError.h"
 
 #include "config.h"
-#ifdef HAVE_LIBFFTW3F
+#ifdef HAVE_LIBFFTW3
 #include "fftw3.h"
-//#define FFTW(X) fftw_ ## X // double transforms
-#define FFTW(X) fftwf_ ## X // float transforms
+#define FFTW(X) fftw_ ## X // double transforms
+typedef double FftwReal;
+//#define FFTW(X) fftwf_ ## X // float transforms
+//typedef float FftwReal;
 //#define FFTW(X) fftwl_ ## X // long double transforms
-typedef float FftwReal;
+//typedef long double FftwReal;
 #endif
 
 #include <boost/math/special_functions/gamma.hpp>
@@ -23,7 +25,7 @@ namespace local = cosmo;
 
 namespace cosmo {
     struct MultipoleTransform::Implementation {
-#ifdef HAVE_LIBFFTW3F
+#ifdef HAVE_LIBFFTW3
         FFTW(complex) *fdata,*gdata;
         FFTW(plan) fplan,gplan,fgplan;
 #endif
@@ -36,7 +38,7 @@ int minSamplesPerCycle, int minSamplesPerDecade, int interpolationPadding) :
 _type(type),_minSamplesPerCycle(minSamplesPerCycle),
 _pimpl(new Implementation())
 {
-#ifndef HAVE_LIBFFTW3F
+#ifndef HAVE_LIBFFTW3
 	throw RuntimeError("MultipoleTransform: library not built with fftw3f support.");
 #endif
 	// Input parameter validation
@@ -124,7 +126,7 @@ _pimpl(new Implementation())
 	int Ng = (int)std::ceil(std::log(vmax/vmin)/(2*ds)+interpolationPadding);
 	// Tabulate f(s) of eqn (1.4) or (2.2)
 	int Ntot = _Nf + Ng;
-#ifdef HAVE_LIBFFTW3F
+#ifdef HAVE_LIBFFTW3
 	// Allocate SIMD aligned arrays using FFTW's allocator
 	_pimpl->fdata = (FFTW(complex)*)FFTW(malloc)(sizeof(FFTW(complex))*2*Ntot);
 	_pimpl->gdata = (FFTW(complex)*)FFTW(malloc)(sizeof(FFTW(complex))*2*Ntot);
@@ -138,6 +140,7 @@ _pimpl(new Implementation())
 	_pimpl->fgplan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->gdata,_pimpl->gdata,
 		FFTW_BACKWARD,flags);
 	for(int m = 0; m < 2*Ntot; ++m) {
+		double xarg;
 		int n = m;
 		if(n >= Ntot) n -= 2*Ntot;
 		if(std::abs(n) > _Nf) {
@@ -145,12 +148,12 @@ _pimpl(new Implementation())
 		}
 		else {
 			double bessel,s = n*ds;
-			arg = uv0*std::exp(s);
+			xarg = uv0*std::exp(s);
 			if(_type == SphericalBessel) {
-				bessel = boost::math::sph_bessel(ell,arg);
+				bessel = boost::math::sph_bessel(ell,xarg);
 			}
 			else {
-				bessel = boost::math::cyl_bessel_j(ell,arg);
+				bessel = boost::math::cyl_bessel_j(ell,xarg);
 			}
 			_pimpl->fdata[m][0] = std::exp(alpha*s)*bessel*ds;
 			_pimpl->fdata[m][1] = 0.;
@@ -185,7 +188,7 @@ _pimpl(new Implementation())
 }
 
 local::MultipoleTransform::~MultipoleTransform() {
-#ifdef HAVE_LIBFFTW3F
+#ifdef HAVE_LIBFFTW3
     FFTW(destroy_plan)(_pimpl->fplan);
     FFTW(destroy_plan)(_pimpl->gplan);
     FFTW(destroy_plan)(_pimpl->fgplan);
@@ -196,7 +199,7 @@ local::MultipoleTransform::~MultipoleTransform() {
 
 void local::MultipoleTransform::transform(std::vector<double> const &funcTable,
 std::vector<double> &result) const {
-#ifndef HAVE_LIBFFTW3F
+#ifndef HAVE_LIBFFTW3
 	throw RuntimeError("MultipoleTransform: library not built with fftw3f support.");
 #else
 	int nu(_ugrid.size()), nv(_vgrid.size());
