@@ -140,14 +140,14 @@ _pimpl(new Implementation())
 	_pimpl->fgplan = FFTW(plan_dft_1d)(2*Ntot,_pimpl->gdata,_pimpl->gdata,
 		FFTW_BACKWARD,flags);
 	for(int m = 0; m < 2*Ntot; ++m) {
-		double xarg;
+		long double xarg;
 		int n = m;
 		if(n >= Ntot) n -= 2*Ntot;
 		if(std::abs(n) > _Nf) {
 			_pimpl->fdata[m][0] = _pimpl->fdata[m][1] = 0.;
 		}
 		else {
-			double bessel,s = n*ds;
+			long double bessel,s = n*ds;
 			xarg = uv0*std::exp(s);
 			if(_type == SphericalBessel) {
 				bessel = boost::math::sph_bessel(ell,xarg);
