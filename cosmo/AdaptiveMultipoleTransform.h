@@ -51,6 +51,8 @@ namespace cosmo {
 		// always return true and transforms will be somewhat faster).
 		bool transform(likely::GenericFunctionPtr f, std::vector<double> &result,
 			bool bypassTerminationTest = false) const;
+		// Returns the value of veps from our last initialization.
+		double getVEps() const;
 	private:
 		MultipoleTransform::Type _type;
 		int _ell;
@@ -64,6 +66,9 @@ namespace cosmo {
 		bool _isTerminated(double margin = 1) const;
 		void _saveResult(std::vector<double> &result) const;
 	}; // AdaptiveMultipoleTransform
+
+	inline double AdaptiveMultipoleTransform::getVEps() const { return _veps; }
+
 } // cosmo
 
 #endif // COSMO_ADAPTIVE_MULTIPOLE_TRANSFORM
