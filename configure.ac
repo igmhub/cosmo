@@ -32,6 +32,10 @@ AS_IF([test "x$with_fftw3" != "xno"], [
 	AC_CHECK_LIB([fftw3f],[fftwf_malloc],,
 		AC_MSG_ERROR([Cannot find the FFTW3 single-precision library.]))
 ])
+AS_IF([test "x$with_fftw3" != "xno"], [
+	AC_CHECK_LIB([fftw3],[fftw_malloc],,
+		AC_MSG_ERROR([Cannot find the FFTW3 double-precision library.]))
+])
 
 # We need a recent version of boost
 BOOST_REQUIRE([1.49])
