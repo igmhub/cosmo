@@ -200,7 +200,7 @@ local::MultipoleTransform::~MultipoleTransform() {
 void local::MultipoleTransform::transform(std::vector<double> const &funcTable,
 std::vector<double> &result) const {
 #ifndef HAVE_LIBFFTW3
-	throw RuntimeError("MultipoleTransform: library not built with fftw3f support.");
+	throw RuntimeError("MultipoleTransform: library not built with fftw3 support.");
 #else
 	int nu(_ugrid.size()), nv(_vgrid.size());
 	// (re)initialize result vector to have correct size, if necessary
