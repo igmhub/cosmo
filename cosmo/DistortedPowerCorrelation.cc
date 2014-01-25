@@ -10,6 +10,8 @@
 #include "boost/foreach.hpp"
 #include "boost/bind.hpp"
 
+#include <cmath>
+
 namespace local = cosmo;
 
 local::DistortedPowerCorrelation::DistortedPowerCorrelation(likely::GenericFunctionPtr power,
@@ -47,9 +49,10 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
 	_interpolator.reserve(nell);
 	for(int ell = 0; ell <= ellMax; ell += dell) {
 		double coef = multipoleTransformNormalization(ell,3,+1);
-		// use the same relerr for each ell and share abserr equally
+		// Use the same relerr for each ell and share abserr equally. These values will
+		// be adjusted when initialize is called later.
 		AdaptiveMultipoleTransformPtr amt(new AdaptiveMultipoleTransform(
-			MultipoleTransform::SphericalBessel,ell,coef,_rgrid,relerr,abserr/nell,abspow));
+			MultipoleTransform::SphericalBessel,ell,coef,_rgrid,relerr/10.,abserr/(2*nell),abspow));
 		_transformer.push_back(amt);
 		_xiMoments.push_back(std::vector<double>(nr,0.));
 		_interpolator.push_back(likely::InterpolatorPtr());
@@ -104,7 +107,14 @@ double local::DistortedPowerCorrelation::getCorrelation(double r, double mu) con
 	return result;
 }
 
-void local::DistortedPowerCorrelation::initialize() {
+#include <iostream>
+#include <fstream>
+
+void local::DistortedPowerCorrelation::initialize(int nmu, int minSamplesPerDecade,
+double margin, double vepsMax, double vepsMin, bool optimize) {
+	if(nmu < 2) {
+		throw RuntimeError("DistortedPowerCorrelation::initialize: expected nmu >= 2.");
+	}
 	// Loop over multipoles
 	int dell = _symmetric ? 2 : 1;
 	for(int ell = 0; ell <= _ellMax; ell += dell) {
@@ -113,7 +123,64 @@ void local::DistortedPowerCorrelation::initialize() {
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
-		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx]);
+		// Do not optimize now
+		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx],minSamplesPerDecade,margin,
+			vepsMax,vepsMin,false);
+		// (re)create the interpolator for this moment
+		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
+	}
+	// Loop over our (r,mu) evaluation grid.
+	std::ofstream out("rmu.dat");
+	double dmu = 2./dell/(nmu-1.);
+	int nell = 1 + _ellMax/dell;
+	std::vector<double> contribution(nell), rmax(nell), mumax(nell), fmax(nell,0.);
+	BOOST_FOREACH(double r, _rgrid) {
+		for(int i = 0; i < nmu; ++i) {
+			double mu = 1. - i*dmu;
+			out << r << ' ' << mu;
+			// Loop over multipoles to calculate their relative contributions at (r,mu)
+			double xisum;
+			for(int ell = 0; ell <= _ellMax; ell += dell) {
+				int idx = _symmetric ? ell/2 : ell;
+				double term = (*_interpolator[idx])(r)*legendreP(ell,mu);
+				contribution[idx] = term;
+				xisum += term;
+			}
+			// Skip (r,mu) points where xi is essentially zero
+			if(std::fabs(xisum) < _abserr*std::pow(r,_abspow)) continue;
+			// Update the largest relative contribution found so far for each multipole
+			for(int idx = 0; idx < nell; ++idx) {
+				double f = std::fabs(contribution[idx]/xisum);
+				out << ' ' << f;
+				if(f > fmax[idx]) {
+					rmax[idx] = r;
+					mumax[idx] = mu;
+					fmax[idx] = f;
+				}
+			}
+			out << std::endl;
+		}
+	}
+	out.close();
+	// Reset our transformers using updated relerr specs
+	for(int ell = 0; ell <= _ellMax; ell += dell) {
+		int idx = _symmetric ? ell/2 : ell;
+		double relerr = _relerr/nell/fmax[idx];
+		double abserr = _abserr/nell;
+		double coef = multipoleTransformNormalization(ell,3,+1);
+		std::cout << "initializing ell = " << ell << " with relerr = " << relerr << std::endl;
+		AdaptiveMultipoleTransformPtr amt(new AdaptiveMultipoleTransform(
+			MultipoleTransform::SphericalBessel,ell,coef,_rgrid,relerr,abserr,_abspow));
+		_transformer[idx] = amt;
+		// Build a function object that evaluates this multipole for arbitrary k
+		likely::GenericFunctionPtr fOfKPtr(
+			new likely::GenericFunction(boost::bind(
+				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
+		// Initialize our new transformer (with optimization, if requested)
+		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx],minSamplesPerDecade,margin,
+			vepsMax,vepsMin,optimize);
+		// (re)create the interpolator for this moment
+		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
 	}
 	_initialized = true;
 }

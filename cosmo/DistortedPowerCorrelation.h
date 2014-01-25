@@ -44,8 +44,12 @@ namespace cosmo {
 		// to evaluate, only involving some interpolation, but requires that initialize()
 		// be called first.
 		double getCorrelation(double r, double mu) const;
-		// Initializes our multipole estimates and correlation transforms.
-		void initialize();
+		// Initializes our multipole estimates and correlation transforms and automatically
+		// sets the relerr and abserr goals for each multipole based on their relative
+		// contributions in [rmin,rmax], determined by sampling a nr-by-nmu grid. For other
+		// options, see AdaptiveMultipoleTransform::initialize().
+		void initialize(int nmu = 20, int minSamplesPerDecade= 40, double margin = 2,
+			double vepsMax = 0.01, double vepsMin = 1e-6, bool optimize = false);
 		// Transforms the k-space power multipoles to r space. Returns true if the termination
 		// criteria are met, unless bypassTerminationTest is true (in which case we
 		// always return true and transforms will be somewhat faster).
