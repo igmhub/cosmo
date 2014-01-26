@@ -124,7 +124,8 @@ int main(int argc, char **argv) {
         if(verbose) {
             std::cout << "Using veps = " << veps << std::endl;
             std::cout << "Will evaluate f(u) for u in [" << mt.getUMin() << ","
-                << mt.getUMax() << "] at " << mt.getNU() << " log-spaced points" << std::endl;
+                << mt.getUMax() << "] at " << mt.getNU() << " log-spaced points ("
+                << mt.getUSamplesPerDecade() << " samples/decade)" << std::endl;
         }
         bool ok;
         for(int i = 0; i < repeat; ++i) {

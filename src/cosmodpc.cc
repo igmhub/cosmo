@@ -132,7 +132,8 @@ int main(int argc, char **argv) {
                     << amt->getRelErr() << ", abserr = " << amt->getAbsErr() << " (abspow = "
                     << amt->getAbsPow() << "), veps = " << amt->getVEps() << ", kmin = "
                     << amt->getUMin() << ", kmax = " << amt->getUMax() << ", nk = "
-                    << amt->getNU() << std::endl;
+                    << amt->getNU() << " (" << amt->getUSamplesPerDecade() << " samples/decade)"
+                    << std::endl;
             }
         }
         bool ok;

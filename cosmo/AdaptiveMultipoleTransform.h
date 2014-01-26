@@ -66,6 +66,8 @@ namespace cosmo {
 		double getUMin() const;
 		double getUMax() const;
 		int getNU() const;
+		// Returns the number of u samples per decade n/log10(umax/umin).
+		double getUSamplesPerDecade() const;
 	private:
 		MultipoleTransform::Type _type;
 		int _ell;

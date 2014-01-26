@@ -190,3 +190,7 @@ int local::AdaptiveMultipoleTransform::getNU() const {
 	}
 	return _mtBetter->getUGrid().size();
 }
+
+double local::AdaptiveMultipoleTransform::getUSamplesPerDecade() const {
+	return getNU()/std::log10(getUMax()/getUMin());
+}
