@@ -123,8 +123,9 @@ int main(int argc, char **argv) {
         if(verbose) {
             for(int ell = 0; ell <= ellMax; ell += dell) {
                 cosmo::AdaptiveMultipoleTransformCPtr amt = dpc.getTransform(ell);
-                std::cout << "initialized ell = " << ell << " transform with veps = "
-                    << amt->getVEps() << std::endl;
+                std::cout << "initialized ell = " << ell << " transform with relerr = "
+                    << amt->getRelErr() << ", abserr = " << amt->getAbsErr() << " (abspow = "
+                    << amt->getAbsPow() << "), veps = " << amt->getVEps() << std::endl;
             }
         }
         bool ok;

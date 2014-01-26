@@ -51,6 +51,12 @@ namespace cosmo {
 		// always return true and transforms will be somewhat faster).
 		bool transform(likely::GenericFunctionPtr f, std::vector<double> &result,
 			bool bypassTerminationTest = false) const;
+		// Returns our relative error target.
+		double getRelErr() const;
+		// Returns our absolute error target.
+		double getAbsErr() const;
+		// Returns the exponent of the r-weighting used for our absolute error estimate.
+		double getAbsPow() const;
 		// Returns the value of veps from our last initialization.
 		double getVEps() const;
 	private:
@@ -67,6 +73,9 @@ namespace cosmo {
 		void _saveResult(std::vector<double> &result) const;
 	}; // AdaptiveMultipoleTransform
 
+	inline double AdaptiveMultipoleTransform::getRelErr() const { return _relerr; }
+	inline double AdaptiveMultipoleTransform::getAbsErr() const { return _abserr; }
+	inline double AdaptiveMultipoleTransform::getAbsPow() const { return _abspow; }
 	inline double AdaptiveMultipoleTransform::getVEps() const { return _veps; }
 
 } // cosmo
