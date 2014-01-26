@@ -57,8 +57,15 @@ namespace cosmo {
 		double getAbsErr() const;
 		// Returns the exponent of the r-weighting used for our absolute error estimate.
 		double getAbsPow() const;
-		// Returns the value of veps from our last initialization.
+		// Returns the value of veps from our last initialization, or 0 if we have never
+		// been initialized.
 		double getVEps() const;
+		// Returns the min/max and number of log-spaced values of u where the the input
+		// function will be evaluated, basedo on our last initialization (or throws a
+		// RuntimeError if we have never been initialized).
+		double getUMin() const;
+		double getUMax() const;
+		int getNU() const;
 	private:
 		MultipoleTransform::Type _type;
 		int _ell;

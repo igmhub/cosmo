@@ -16,7 +16,7 @@ local::AdaptiveMultipoleTransform::AdaptiveMultipoleTransform(MultipoleTransform
 int ell, double scale, std::vector<double>const &vpoints,
 double relerr, double abserr, double abspow)
 : _type(type), _ell(ell), _scale(scale), _vpoints(vpoints),
-_relerr(relerr), _abserr(abserr), _abspow(abspow)
+_relerr(relerr), _abserr(abserr), _abspow(abspow), _veps(0)
 {
 	// Input parameter validation
 	if(_type != MultipoleTransform::SphericalBessel && _type != MultipoleTransform::Hankel) {
@@ -154,4 +154,27 @@ likely::GenericFunctionPtr f, std::vector<double> &result, bool bypassTerminatio
 	}
 	_saveResult(result);
 	return accurate;
+}
+
+double local::AdaptiveMultipoleTransform::getUMin() const {
+	if(!_mtBetter) {
+		throw RuntimeError("AdaptiveMultipoleTransform::getUMin: must initialize first.");
+	}
+	// ugrid is decreasing, so last element is the min value
+	return _mtBetter->getUGrid().back();
+}
+
+double local::AdaptiveMultipoleTransform::getUMax() const {
+	if(!_mtBetter) {
+		throw RuntimeError("AdaptiveMultipoleTransform::getUMax: must initialize first.");
+	}
+	// ugrid is decreasing, so first element is the min value
+	return _mtBetter->getUGrid().front();
+}
+
+int local::AdaptiveMultipoleTransform::getNU() const {
+	if(!_mtBetter) {
+		throw RuntimeError("AdaptiveMultipoleTransform::getNU: must initialize first.");
+	}
+	return _mtBetter->getUGrid().size();
 }

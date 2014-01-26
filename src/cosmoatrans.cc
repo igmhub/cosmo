@@ -123,6 +123,8 @@ int main(int argc, char **argv) {
             vepsMax,vepsMin,optimize);
         if(verbose) {
             std::cout << "Using veps = " << veps << std::endl;
+            std::cout << "Will evaluate f(u) for u in [" << mt.getUMin() << ","
+                << mt.getUMax() << "] at " << mt.getNU() << " log-spaced points" << std::endl;
         }
         bool ok;
         for(int i = 0; i < repeat; ++i) {

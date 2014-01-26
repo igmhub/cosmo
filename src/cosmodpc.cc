@@ -130,7 +130,9 @@ int main(int argc, char **argv) {
                 cosmo::AdaptiveMultipoleTransformCPtr amt = dpc.getTransform(ell);
                 std::cout << "initialized ell = " << ell << " transform with relerr = "
                     << amt->getRelErr() << ", abserr = " << amt->getAbsErr() << " (abspow = "
-                    << amt->getAbsPow() << "), veps = " << amt->getVEps() << std::endl;
+                    << amt->getAbsPow() << "), veps = " << amt->getVEps() << ", kmin = "
+                    << amt->getUMin() << ", kmax = " << amt->getUMax() << ", nk = "
+                    << amt->getNU() << std::endl;
             }
         }
         bool ok;

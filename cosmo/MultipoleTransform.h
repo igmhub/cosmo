@@ -44,8 +44,9 @@ namespace cosmo {
 		// Returns the number of logarithmically spaced points where the symmetrized S'
 		// is evaluated for convolution.
 		int getNumPoints() const;
-		// Returns the grid of u values where a function to be transformed will be
-		// evaluated when calling the transform(...) method.
+		// Returns the grid of u values where a function to be transformed should be
+		// evaluated when preparing the funcTable for calling the transform(...) method.
+		// Note that the values in u grid are always strictly decreasing (!) and positive.
 		std::vector<double> const &getUGrid() const;
 		// Returns the grid of v values where our transformed result will be estimated
 		// after calling the transform(...) method. The algorithm internally uses a
