@@ -73,9 +73,9 @@ MultipoleTransformCPtr transform,std::vector<double> &result) const {
 
 bool local::AdaptiveMultipoleTransform::_isTerminated(double margin) const {
 	for(int i = 0; i < _vpoints.size(); ++i) {
-		double v(_vpoints[i]),fe(_resultsGood[i]),f2e(_resultsBetter[i]);
+		double v(_vpoints[i]),f2e(_resultsGood[i]),fe(_resultsBetter[i]);
 		double df = std::fabs(fe - f2e);
-		if(df > _abserr*std::pow(v,_abspow)/margin && df > _relerr*std::fabs(f2e)/margin) {
+		if(df > _abserr*std::pow(v,_abspow)/margin && df > _relerr*std::fabs(fe)/margin) {
 			return false;
 		}
 	}

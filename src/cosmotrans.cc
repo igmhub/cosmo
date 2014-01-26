@@ -89,7 +89,8 @@ int main(int argc, char **argv) {
             std::cout << "Truncation fraction is " << mt.getTruncationFraction() << std::endl;
             std::cout << "Transform evaluated at " << mt.getNumPoints() << " points." << std::endl;
             std::cout <<  "Will evaluate at " << ugrid.size() << " points covering "
-                << ugrid.front() << " to " << ugrid.back() << std::endl;
+                << ugrid.back() << " to " << ugrid.front() << " ("
+                << mt.getSamplesPerDecade() << " samples/decade)" << std::endl;
             std::cout <<  "Results estimated at " << vgrid.size() << " points covering "
                 << vgrid.front() << " to " << vgrid.back() << std::endl;
         }

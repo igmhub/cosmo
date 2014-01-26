@@ -42,8 +42,12 @@ namespace cosmo {
 		// Returns the minimum number of samples per cycle for this transformer.
 		int getMinSamplesPerCycle() const;
 		// Returns the number of logarithmically spaced points where the symmetrized S'
-		// is evaluated for convolution.
+		// is evaluated for convolution. Note that this is less than the size of our
+		// u grid because of the zero padding that is added to eliminate aliasing artifacts.
 		int getNumPoints() const;
+		// Returns the number of logarithmically-spaced samples per decade used to
+		// evaluate the symmetrized S' for convolution.
+		double getSamplesPerDecade() const;
 		// Returns the grid of u values where a function to be transformed should be
 		// evaluated when preparing the funcTable for calling the transform(...) method.
 		// Note that the values in u grid are always strictly decreasing (!) and positive.
@@ -79,7 +83,7 @@ namespace cosmo {
 		return _minSamplesPerCycle;
 	}
 	inline int MultipoleTransform::getNumPoints() const {
-		return _Nf;
+		return 2*_Nf;
 	}
 	inline std::vector<double> const &MultipoleTransform::getUGrid() const {
 		return _ugrid;

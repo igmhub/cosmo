@@ -60,8 +60,8 @@ _pimpl(new Implementation())
 	if(minSamplesPerCycle <= 0) {
 		throw RuntimeError("MultipoleTransform: expected minSamplesPerCycle > 0.");
 	}
-	if(minSamplesPerDecade <= 0) {
-		throw RuntimeError("MultipoleTransform: expected minSamplesPerDecade > 0.");
+	if(minSamplesPerDecade < 0) {
+		throw RuntimeError("MultipoleTransform: expected minSamplesPerDecade >= 0.");
 	}
 	double pi(atan2(0,-1));
 	double alpha, uv0, s0;
@@ -112,8 +112,10 @@ _pimpl(new Implementation())
 	double dsmax = c*std::pow(_eps,s0);
 	// Calculate the ds value corresponding to the min required number of samples per
 	// decade, and use the smaller of these.
-	double dsmaxAlt = std::log(10)/minSamplesPerDecade;
-	if(dsmaxAlt < dsmax) dsmax = dsmaxAlt;
+	if(minSamplesPerDecade > 0) {
+		double dsmaxAlt = std::log(10)/minSamplesPerDecade;
+		if(dsmaxAlt < dsmax) dsmax = dsmaxAlt;
+	}
 	// Calculate Nf and ds of eqn (3.5)
 	_Nf = (int)std::ceil(sN/dsmax);
 	double ds = sN/_Nf;
@@ -227,6 +229,12 @@ std::vector<double> &result) const {
 		result[m] = _scale[m]*_pimpl->gdata[m + _cleanBegin][0];
 	}
 #endif
+}
+
+double local::MultipoleTransform::getSamplesPerDecade() const {
+	double umin = _ugrid.back(), umax = _ugrid.front();
+	int n = _ugrid.size();
+	return n/std::log10(umax/umin);
 }
 
 double local::multipoleTransformNormalization(int ell, int ndim, int dir,
