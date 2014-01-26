@@ -106,13 +106,25 @@ int minSamplesPerDecade, double margin, double vepsMax, double vepsMin, bool opt
 		if(vepsMax <= 0) {
 			throw RuntimeError("AdaptiveMultipoleTransform: expected vepsGuess > 0.");
 		}
+		// Find an initial veps starting from vepsMax.
 		_veps = vepsMax;
+		while(_veps > vepsMin) {
+			// Initialize without any min samples per decade, so we can see what it
+			// would be for this trial veps
+			int noMinSamplesPerDecade(0);
+			_mtBetter.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, _veps,
+				strategy, minSamplesPerCycle, noMinSamplesPerDecade, interpolationPadding));
+			// Is this veps small enough to meet our samples/decade requirement?
+			if(_mtBetter->getSamplesPerDecade() >= minSamplesPerDecade) break;
+			// Otherwise, try a smaller veps
+			_veps /= 2;
+		}
+		// Calculate the corresponding prediction
+		_evaluate(f,_mtBetter,_resultsBetter);
+		// Initialize a "good" transformer with veps that is 2x larger
 		_mtGood.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, 2*_veps,
 			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
 		_evaluate(f,_mtGood,_resultsGood);
-		_mtBetter.reset(new MultipoleTransform(_type, _ell, _vmin, _vmax, _veps,
-			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
-		_evaluate(f,_mtBetter,_resultsBetter);
 	}
 	while(_veps > vepsMin) {
 		// Check our termination criteria
