@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
             "number of points spanning [rmin,rmax] to use")
         ("ell-max", po::value<int>(&ellMax)->default_value(4),
             "maximum multipole to use for transforms")
-        ("symmetric", "distortion is symmetric in mu")
+        ("asymmetric", "distortion is asymmetric in mu (uses odd ell values)")
         ("beta", po::value<double>(&beta)->default_value(1.4),
             "redshift-space distortion parameter")
         ("bias", po::value<double>(&bias)->default_value(1.0),
@@ -98,8 +98,13 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose")), symmetric(vm.count("symmetric")),
+    bool verbose(vm.count("verbose")), symmetric(0==vm.count("asymmetric")),
         optimize(vm.count("optimize")), bypass(vm.count("bypass"));
+
+    if(!symmetric) {
+        std::cerr << "Odd multipoles not implemented yet." << std::endl;
+        return 1;
+    }
 
     if(input.length() == 0) {
         std::cerr << "Missing input filename." << std::endl;
