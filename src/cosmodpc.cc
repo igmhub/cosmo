@@ -32,8 +32,8 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology distorted power correlation function");
     std::string input,output;
-    int ellMax,nr,repeat,nk,nmu;
-    double rmin,rmax,relerr,abserr,abspow,margin,maxRelError,kmin,kmax;
+    int ellMax,nr,repeat,nk,nmu,minSamplesPerDecade;
+    double rmin,rmax,relerr,abserr,abspow,maxRelError,kmin,kmax,margin,vepsMin,vepsMax;
     double beta,bias;
     cli.add_options()
         ("help,h", "prints this info and exits.")
@@ -61,6 +61,14 @@ int main(int argc, char **argv) {
             "absolute error termination goal")
         ("abspow", po::value<double>(&abspow)->default_value(0.),
             "absolute error weighting power")
+        ("margin", po::value<double>(&margin)->default_value(2.),
+            "termination criteria margin to use for initialization")
+        ("veps-max", po::value<double>(&vepsMax)->default_value(0.01),
+            "maximum value of veps value to use")
+        ("veps-min", po::value<double>(&vepsMin)->default_value(1e-6),
+            "minimum value of veps value to use")
+        ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
+            "minimum number of samples per decade to use for transform convolution")
         ("max-rel-error", po::value<double>(&maxRelError)->default_value(1e-3),
             "maximum allowed relative error for power-law extrapolation of input P(k)")
         ("optimize", "optimizes transform FFTs")
@@ -111,7 +119,7 @@ int main(int argc, char **argv) {
     try {
     	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,rmin,rmax,nr,ellMax,
             symmetric,relerr,abserr,abspow);
-        dpc.initialize();
+        dpc.initialize(nmu,minSamplesPerDecade,margin,vepsMax,vepsMin,optimize);
         if(verbose) {
             for(int ell = 0; ell <= ellMax; ell += dell) {
                 cosmo::AdaptiveMultipoleTransformCPtr amt = dpc.getTransform(ell);
