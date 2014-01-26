@@ -11,6 +11,7 @@
 #include "boost/bind.hpp"
 
 #include <cmath>
+#include <algorithm>
 
 namespace local = cosmo;
 
@@ -57,6 +58,10 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
 		_xiMoments.push_back(std::vector<double>(nr,0.));
 		_interpolator.push_back(likely::InterpolatorPtr());
 	}
+	// initialize vectors used to find biggest relative contributions
+	std::vector<double>(nell).swap(_rbig);
+	std::vector<double>(nell).swap(_mubig);
+	std::vector<double>(nell).swap(_relbig);
 }
 
 local::DistortedPowerCorrelation::~DistortedPowerCorrelation() { }
@@ -107,9 +112,6 @@ double local::DistortedPowerCorrelation::getCorrelation(double r, double mu) con
 	return result;
 }
 
-#include <iostream>
-#include <fstream>
-
 void local::DistortedPowerCorrelation::initialize(int nmu, int minSamplesPerDecade,
 double margin, double vepsMax, double vepsMin, bool optimize) {
 	if(nmu < 2) {
@@ -130,14 +132,14 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
 	}
 	// Loop over our (r,mu) evaluation grid.
-	std::ofstream out("rmu.dat");
 	double dmu = 2./dell/(nmu-1.);
 	int nell = 1 + _ellMax/dell;
-	std::vector<double> contribution(nell), rmax(nell), mumax(nell), fmax(nell,0.);
+	std::vector<double> contribution(nell);
+	// Clear our relative errors
+	std::fill(_relbig.begin(),_relbig.end(),0.);
 	BOOST_FOREACH(double r, _rgrid) {
 		for(int i = 0; i < nmu; ++i) {
 			double mu = 1. - i*dmu;
-			out << r << ' ' << mu;
 			// Loop over multipoles to calculate their relative contributions at (r,mu)
 			double xisum;
 			for(int ell = 0; ell <= _ellMax; ell += dell) {
@@ -148,27 +150,23 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 			}
 			// Skip (r,mu) points where xi is essentially zero
 			if(std::fabs(xisum) < _abserr*std::pow(r,_abspow)) continue;
-			// Update the largest relative contribution found so far for each multipole
+			// Update the biggest relative contribution found so far for each multipole
 			for(int idx = 0; idx < nell; ++idx) {
-				double f = std::fabs(contribution[idx]/xisum);
-				out << ' ' << f;
-				if(f > fmax[idx]) {
-					rmax[idx] = r;
-					mumax[idx] = mu;
-					fmax[idx] = f;
+				double relfrac = std::fabs(contribution[idx]/xisum);
+				if(relfrac > _relbig[idx]) {
+					_rbig[idx] = r;
+					_mubig[idx] = mu;
+					_relbig[idx] = relfrac;
 				}
 			}
-			out << std::endl;
 		}
 	}
-	out.close();
 	// Reset our transformers using updated relerr specs
 	for(int ell = 0; ell <= _ellMax; ell += dell) {
 		int idx = _symmetric ? ell/2 : ell;
-		double relerr = _relerr/nell/fmax[idx];
+		double relerr = _relerr/nell/_relbig[idx];
 		double abserr = _abserr/nell;
 		double coef = multipoleTransformNormalization(ell,3,+1);
-		std::cout << "initializing ell = " << ell << " with relerr = " << relerr << std::endl;
 		AdaptiveMultipoleTransformPtr amt(new AdaptiveMultipoleTransform(
 			MultipoleTransform::SphericalBessel,ell,coef,_rgrid,relerr,abserr,_abspow));
 		_transformer[idx] = amt;
@@ -194,7 +192,6 @@ bool local::DistortedPowerCorrelation::transform(bool bypassTerminationTest) con
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
-		std::cout << "transforming ell = " << ell << std::endl;
 		_transformer[idx]->transform(fOfKPtr,_xiMoments[idx]);
 		// (re)create the interpolator for this moment
 		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
@@ -209,4 +206,19 @@ local::AdaptiveMultipoleTransformCPtr local::DistortedPowerCorrelation::getTrans
 	int dell = _symmetric ? 2 : 1;
 	int idx(ell/dell);
 	return _transformer[idx];
+}
+
+void local::DistortedPowerCorrelation::getBiggestContribution(int ell,
+double &rbig, double &mubig, double &relbig) const {
+	if(!_initialized) {
+		throw RuntimeError("DistortedPowerCorrelation::getBiggestContribution: not initialized.");
+	}
+	if(ell < 0 || ell > _ellMax || (_symmetric && (ell%2))) {
+		throw RuntimeError("DistortedPowerCorrelation::getBiggestContribution: invalid ell.");
+	}
+	int dell = _symmetric ? 2 : 1;
+	int idx(ell/dell);
+	rbig = _rbig[idx];
+	mubig = _mubig[idx];
+	relbig = _relbig[idx];
 }

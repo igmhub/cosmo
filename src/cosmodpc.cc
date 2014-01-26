@@ -126,10 +126,13 @@ int main(int argc, char **argv) {
             symmetric,relerr,abserr,abspow);
         dpc.initialize(nmu,minSamplesPerDecade,margin,vepsMax,vepsMin,optimize);
         if(verbose) {
+            double r,mu,rel;
             for(int ell = 0; ell <= ellMax; ell += dell) {
+                dpc.getBiggestContribution(ell,r,mu,rel);
                 cosmo::AdaptiveMultipoleTransformCPtr amt = dpc.getTransform(ell);
                 std::cout << "initialized ell = " << ell << " transform with relerr = "
-                    << amt->getRelErr() << ", abserr = " << amt->getAbsErr() << " (abspow = "
+                    << amt->getRelErr() << " (r=" << r << ",mu=" << mu << ",rel=" << rel
+                    << "), abserr = " << amt->getAbsErr() << " (abspow = "
                     << amt->getAbsPow() << "), veps = " << amt->getVEps() << ", kmin = "
                     << amt->getUMin() << ", kmax = " << amt->getUMax() << ", nk = "
                     << amt->getNU() << " (" << amt->getUSamplesPerDecade() << " samples/decade)"

@@ -56,13 +56,20 @@ namespace cosmo {
 		bool transform(bool bypassTerminationTest = false) const;
 		// Returns a shared const pointer to the specified transform.
 		AdaptiveMultipoleTransformCPtr getTransform(int ell) const;
+		// Fills the variables provided with the (r,mu) coordinates where the specified
+		// multipole has the biggest relative contrbution:
+		//
+		//   rel = |f_ell(r)*L_ell(mu)|/|xi(r,mu)|
+		//
+		// to the estimated correlation function, as well as the value of rel at (r,mu).
+		void getBiggestContribution(int ell, double &rbig, double &mubig, double &relbig) const;
 	private:
 		likely::GenericFunctionPtr _power;
 		RMuFunctionCPtr _distortion;
 		double _relerr,_abserr,_abspow;
 		int _ellMax;
 		bool _symmetric, _initialized;
-		std::vector<double> _rgrid;
+		std::vector<double> _rgrid, _rbig, _mubig, _relbig;
 		mutable std::vector<std::vector<double> > _xiMoments;
 		mutable std::vector<likely::InterpolatorPtr> _interpolator;
 		std::vector<AdaptiveMultipoleTransformPtr> _transformer;
