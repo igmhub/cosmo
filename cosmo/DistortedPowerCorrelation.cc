@@ -197,6 +197,7 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 }
 
 bool local::DistortedPowerCorrelation::transform(bool bypassTerminationTest) const {
+	bool accurate(true);
 	// Loop over multipoles
 	int dell = _symmetric ? 2 : 1;
 	for(int ell = 0; ell <= _ellMax; ell += dell) {
@@ -205,11 +206,11 @@ bool local::DistortedPowerCorrelation::transform(bool bypassTerminationTest) con
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
-		_transformer[idx]->transform(fOfKPtr,_xiMoments[idx],bypassTerminationTest);
+		accurate &= _transformer[idx]->transform(fOfKPtr,_xiMoments[idx],bypassTerminationTest);
 		// (re)create the interpolator for this moment
 		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
 	}
-	return true;
+	return accurate;
 }
 
 local::AdaptiveMultipoleTransformCPtr local::DistortedPowerCorrelation::getTransform(int ell) const {
