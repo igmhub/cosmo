@@ -16,15 +16,20 @@
 namespace po = boost::program_options;
 namespace lk = likely;
 
-class RedshiftSpaceDistortion {
+class AutoCorrelationDistortion {
+// A simple distortion model for autocorrelations, including linear redshift space effects
+// (bias,beta), non-linear large-scale broadening (snlPar,snlPerp) and a continuum fitting
+// broadband distortion model (k0,sigk).
 public:
-    RedshiftSpaceDistortion(double beta, double bias = 1) : _beta(beta), _bias(bias) { }
+    AutoCorrelationDistortion(double bias, double beta,
+        double snlPar, double snlPerp, double k0, double sigk) :
+        _bias(bias), _beta(beta), _snlPar(snlPar), _snlPerp(snlPerp), _k0(k0), _sigk(sigk) { }
     double operator()(double k, double mu) const {
         double tmp = _bias*(1 + _beta*mu*mu);
         return tmp*tmp;
     }
 private:
-    double _beta,_bias;
+    double _bias,_beta,_snlPar,_snlPerp,_k0,_sigk;
 };
 
 int main(int argc, char **argv) {
@@ -34,7 +39,7 @@ int main(int argc, char **argv) {
     std::string input,output;
     int ellMax,nr,repeat,nk,nmu,minSamplesPerDecade;
     double rmin,rmax,relerr,abserr,abspow,maxRelError,kmin,kmax,margin,vepsMin,vepsMax;
-    double beta,bias;
+    double bias,beta,snlPar,snlPerp,k0,sigk;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
@@ -51,10 +56,18 @@ int main(int argc, char **argv) {
         ("ell-max", po::value<int>(&ellMax)->default_value(4),
             "maximum multipole to use for transforms")
         ("asymmetric", "distortion is asymmetric in mu (uses odd ell values)")
-        ("beta", po::value<double>(&beta)->default_value(1.4),
-            "redshift-space distortion parameter")
         ("bias", po::value<double>(&bias)->default_value(1.0),
             "linear tracer bias")
+        ("beta", po::value<double>(&beta)->default_value(1.4),
+            "redshift-space distortion parameter")
+        ("snl-par", po::value<double>(&snlPar)->default_value(0.),
+            "parallel component of non-linear broadening in Mpc/h")
+        ("snl-perp", po::value<double>(&snlPerp)->default_value(0.),
+            "perpendicular component of non-linear broadening in Mpc/h")
+        ("k0", po::value<double>(&k0)->default_value(0.),
+            "cutoff scale for broadband distortion in h/Mpc (or zero for none)")
+        ("sigk", po::value<double>(&sigk)->default_value(0.),
+            "smoothing scale for broadband distortion in h/Mpc")
         ("relerr", po::value<double>(&relerr)->default_value(1e-2),
             "relative error termination goal")
         ("abserr", po::value<double>(&abserr)->default_value(1e-3),
@@ -116,8 +129,10 @@ int main(int argc, char **argv) {
     lk::GenericFunctionPtr PkPtr =
         lk::createFunctionPtr<const cosmo::TabulatedPower>(power);
 
-    boost::shared_ptr<RedshiftSpaceDistortion> rsd(new RedshiftSpaceDistortion(beta,bias));
-    cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(&RedshiftSpaceDistortion::operator(),rsd,_1,_2)));
+    boost::shared_ptr<AutoCorrelationDistortion> rsd(
+        new AutoCorrelationDistortion(bias,beta,snlPar,snlPerp,k0,sigk));
+    cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(
+        &AutoCorrelationDistortion::operator(),rsd,_1,_2)));
 
     int dell(symmetric ? 2:1);
 
