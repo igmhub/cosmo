@@ -51,9 +51,9 @@ int main(int argc, char **argv) {
             "maximum value of transformed coordinate")
         ("npoints", po::value<int>(&npoints)->default_value(50),
             "number of points spanning [min,max] to use")
-        ("relerr", po::value<double>(&relerr)->default_value(1e-2),
+        ("relerr", po::value<double>(&relerr)->default_value(1e-3),
             "relative error termination goal")
-        ("abserr", po::value<double>(&abserr)->default_value(1e-3),
+        ("abserr", po::value<double>(&abserr)->default_value(1e-5),
             "absolute error termination goal")
         ("abspow", po::value<double>(&abspow)->default_value(0.),
             "absolute error weighting power")

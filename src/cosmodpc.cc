@@ -78,9 +78,9 @@ int main(int argc, char **argv) {
             "cutoff scale for broadband distortion in h/Mpc (ignored when sigk = 0)")
         ("sigk", po::value<double>(&sigk)->default_value(0.),
             "smoothing scale for broadband distortion in h/Mpc (or zero for no distortion)")
-        ("relerr", po::value<double>(&relerr)->default_value(1e-2),
+        ("relerr", po::value<double>(&relerr)->default_value(1e-3),
             "relative error termination goal")
-        ("abserr", po::value<double>(&abserr)->default_value(1e-3),
+        ("abserr", po::value<double>(&abserr)->default_value(1e-5),
             "absolute error termination goal")
         ("abspow", po::value<double>(&abspow)->default_value(0.),
             "absolute error weighting power")
