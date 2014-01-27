@@ -138,8 +138,9 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
 		// Do not optimize now
+		bool noOptimize(false);
 		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx],minSamplesPerDecade,margin,
-			vepsMax,vepsMin,false);
+			vepsMax,vepsMin,noOptimize);
 		// (re)create the interpolator for this moment
 		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
 	}
@@ -204,7 +205,7 @@ bool local::DistortedPowerCorrelation::transform(bool bypassTerminationTest) con
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
-		_transformer[idx]->transform(fOfKPtr,_xiMoments[idx]);
+		_transformer[idx]->transform(fOfKPtr,_xiMoments[idx],bypassTerminationTest);
 		// (re)create the interpolator for this moment
 		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
 	}
