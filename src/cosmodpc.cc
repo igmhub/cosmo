@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
 namespace po = boost::program_options;
 namespace lk = likely;
@@ -23,13 +24,22 @@ class AutoCorrelationDistortion {
 public:
     AutoCorrelationDistortion(double bias, double beta,
         double snlPar, double snlPerp, double k0, double sigk) :
-        _bias(bias), _beta(beta), _snlPar(snlPar), _snlPerp(snlPerp), _k0(k0), _sigk(sigk) { }
+        _bias(bias), _beta(beta), _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp),
+        _k0(k0), _sigk(sigk)
+    {
+        _distScale = sigk > 0 ? 1/(1 + std::tanh(k0/sigk)) : 0;
+    }
     double operator()(double k, double mu) const {
-        double tmp = _bias*(1 + _beta*mu*mu);
-        return tmp*tmp;
+        double mu2(mu*mu);
+        double linear = _bias*(1 + _beta*mu2);
+        double snl2 = _snlPar2*mu2 + (1 - mu2)*_snlPerp2;
+        double nonlinear = std::exp(-0.5*k*k*snl2);
+        double kpar = std::fabs(k*mu);
+        double distortion = 1 - _distScale*(1 - std::tanh((kpar-_k0)/_sigk));
+        return distortion*nonlinear*linear*linear;
     }
 private:
-    double _bias,_beta,_snlPar,_snlPerp,_k0,_sigk;
+    double _bias,_beta,_snlPar2,_snlPerp2,_k0,_sigk,_distScale;
 };
 
 int main(int argc, char **argv) {
@@ -64,10 +74,10 @@ int main(int argc, char **argv) {
             "parallel component of non-linear broadening in Mpc/h")
         ("snl-perp", po::value<double>(&snlPerp)->default_value(0.),
             "perpendicular component of non-linear broadening in Mpc/h")
-        ("k0", po::value<double>(&k0)->default_value(0.),
-            "cutoff scale for broadband distortion in h/Mpc (or zero for none)")
+        ("k0", po::value<double>(&k0)->default_value(0.02),
+            "cutoff scale for broadband distortion in h/Mpc (ignored when sigk = 0)")
         ("sigk", po::value<double>(&sigk)->default_value(0.),
-            "smoothing scale for broadband distortion in h/Mpc")
+            "smoothing scale for broadband distortion in h/Mpc (or zero for no distortion)")
         ("relerr", po::value<double>(&relerr)->default_value(1e-2),
             "relative error termination goal")
         ("abserr", po::value<double>(&abserr)->default_value(1e-3),
