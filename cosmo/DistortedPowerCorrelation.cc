@@ -117,6 +117,18 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 	if(nmu < 2) {
 		throw RuntimeError("DistortedPowerCorrelation::initialize: expected nmu >= 2.");
 	}
+	if(minSamplesPerDecade < 0) {
+		throw RuntimeError("DistortedPowerCorrelation::initialize: expected minSamplesPerDecade >= 0.");
+	}
+	if(margin < 1) {
+		throw RuntimeError("DistortedPowerCorrelation::initialize: expected margin >= 1.");
+	}
+	if(vepsMax <= vepsMin) {
+		throw RuntimeError("DistortedPowerCorrelation::initialize: expected vepsMax > vepsMin.");
+	}
+	if(vepsMin <= 0) {
+		throw RuntimeError("DistortedPowerCorrelation::initialize: expected vepsMin > 0.");
+	}
 	// Loop over multipoles
 	int dell = _symmetric ? 2 : 1;
 	for(int ell = 0; ell <= _ellMax; ell += dell) {
