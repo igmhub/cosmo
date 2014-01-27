@@ -7,10 +7,10 @@
 // ./cosmoatrans -i ../../baofit/models/PlanckWPBestFitLCDM_matterpower.dat OPTIONS
 //
 //   TIME  OPTIONS
-//  15.26s --repeat 100000
-//  11.16s --repeat 100000 --optimize
-//   9.82s --repeat 100000 --bypass
-//   6.69s --repeat 100000 --optimize --bypass
+//  28.38s --repeat 100000
+//  24.77s --repeat 100000 --optimize
+//  19.66s --repeat 100000 --bypass
+//  18.13s --repeat 100000 --optimize --bypass
 
 #include "cosmo/cosmo.h"
 #include "likely/likely.h"
