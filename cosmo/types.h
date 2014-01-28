@@ -26,6 +26,10 @@ namespace cosmo {
     typedef boost::shared_ptr<AdaptiveMultipoleTransform> AdaptiveMultipoleTransformPtr;
     typedef boost::shared_ptr<const AdaptiveMultipoleTransform> AdaptiveMultipoleTransformCPtr;
 
+    class DistortedPowerCorrelation;
+    typedef boost::shared_ptr<DistortedPowerCorrelation> DistortedPowerCorrelationPtr;
+    typedef boost::shared_ptr<const DistortedPowerCorrelation> DistortedPowerCorrelationCPtr;
+
     // Represents a function that returns a dimensionless transfer function value T(k)
     // given an input wavenumber k in 1/(Mpc/h).
     typedef boost::function<double (double)> TransferFunction;
