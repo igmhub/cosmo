@@ -50,6 +50,8 @@ namespace cosmo {
 		// options, see AdaptiveMultipoleTransform::initialize().
 		void initialize(int nmu = 20, int minSamplesPerDecade= 40, double margin = 2,
 			double vepsMax = 0.01, double vepsMin = 1e-6, bool optimize = false);
+		// Tests if we have ever been initialized.
+		bool isInitialized() const;
 		// Transforms the k-space power multipoles to r space. Returns true if the termination
 		// criteria are met, unless bypassTerminationTest is true (in which case we
 		// always return true and transforms will be somewhat faster).
@@ -74,6 +76,9 @@ namespace cosmo {
 		mutable std::vector<likely::InterpolatorPtr> _interpolator;
 		std::vector<AdaptiveMultipoleTransformPtr> _transformer;
 	}; // DistortedPowerCorrelation
+
+	inline bool DistortedPowerCorrelation::isInitialized() const { return _initialized; }
+
 } // cosmo
 
 #endif // COSMO_DISTORTED_POWER_CORRELATION

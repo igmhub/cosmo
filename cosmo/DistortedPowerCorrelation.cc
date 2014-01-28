@@ -84,7 +84,7 @@ double local::DistortedPowerCorrelation::getPowerMultipole(double k, int ell) co
 }
 
 double local::DistortedPowerCorrelation::getCorrelationMultipole(double r, int ell) const {
-	if(!_initialized) {
+	if(!isInitialized()) {
 		throw RuntimeError("DistortedPowerCorrelation::getCorrelationMultipole: not initialized.");
 	}
 	if(ell < 0 || ell > _ellMax || (_symmetric && (ell%2))) {
@@ -98,7 +98,7 @@ double local::DistortedPowerCorrelation::getCorrelationMultipole(double r, int e
 }
 
 double local::DistortedPowerCorrelation::getCorrelation(double r, double mu) const {
-	if(!_initialized) {
+	if(!isInitialized()) {
 		throw RuntimeError("DistortedPowerCorrelation::getCorrelation: not initialized.");
 	}
 	if(mu < 0 || mu > 1) {
@@ -224,7 +224,7 @@ local::AdaptiveMultipoleTransformCPtr local::DistortedPowerCorrelation::getTrans
 
 void local::DistortedPowerCorrelation::getBiggestContribution(int ell,
 double &rbig, double &mubig, double &relbig) const {
-	if(!_initialized) {
+	if(!isInitialized()) {
 		throw RuntimeError("DistortedPowerCorrelation::getBiggestContribution: not initialized.");
 	}
 	if(ell < 0 || ell > _ellMax || (_symmetric && (ell%2))) {
