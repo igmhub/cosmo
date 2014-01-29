@@ -241,6 +241,9 @@ double &rbig, double &mubig, double &relbig) const {
 void local::DistortedPowerCorrelation::printToStream(std::ostream &out) const {
     double r,mu,rel;
     int dell = _symmetric ? 2 : 1;
+    out << "xi(r,mu) interpolated at " << _rgrid.size() << " points covering r = ["
+    	<< _rgrid.front() << ',' << _rgrid.back() << "] Mpc/h with even ell <= "
+		<< _ellMax << std::endl;
     for(int ell = 0; ell <= _ellMax; ell += dell) {
         getBiggestContribution(ell,r,mu,rel);
         cosmo::AdaptiveMultipoleTransformCPtr amt = getTransform(ell);
