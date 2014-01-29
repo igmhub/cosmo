@@ -4,8 +4,7 @@
 #define COSMO_TABULATED_POWER
 
 #include "cosmo/types.h"
-
-#include "likely/Interpolator.h"
+#include "likely/types.h"
 
 #include "boost/smart_ptr.hpp"
 
@@ -35,8 +34,15 @@ namespace cosmo {
 		// Returns the interpolation limits
 		double getKMin() const;
 		double getKMax() const;
+		// Creates a new tabulated power object for the difference between this power
+		// and another power. In case the other power is tabulated on a different k grid,
+		// our grid will be used for the result. Uses the same options to create the new
+		// object that we were created with. The returned object has no dependencies on
+		// this object or the other object.
+		TabulatedPowerCPtr createDelta(TabulatedPowerCPtr other) const;
+
 	private:
-		double _kmin, _kmax;
+		double _kmin, _kmax, _maxRelError;
 		class PowerLawExtrapolator;
 		boost::scoped_ptr<PowerLawExtrapolator> _extrapolateBelow, _extrapolateAbove;
 		likely::InterpolatorPtr _interpolator;
@@ -50,6 +56,7 @@ namespace cosmo {
 	TabulatedPowerCPtr createTabulatedPower(std::string const &filename,
 			bool extrapolateBelow = false, bool extrapolateAbove = false,
 			double maxRelError = 1e-3, bool verbose = false);
+
 } // cosmo
 
 #endif // COSMO_TABULATED_POWER

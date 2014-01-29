@@ -3,6 +3,8 @@
 #include "cosmo/TabulatedPower.h"
 #include "cosmo/RuntimeError.h"
 
+#include "likely/Interpolator.h"
+
 #include <cmath>
 #include <iostream>
 #include <fstream>
@@ -22,7 +24,8 @@ namespace cosmo {
 
 local::TabulatedPower::TabulatedPower(
 std::vector<double> const &k, std::vector<double> const &Pk,
-bool extrapolateBelow, bool extrapolateAbove, double maxRelError, bool verbose)
+bool extrapolateBelow, bool extrapolateAbove, double maxRelError, bool verbose) :
+_maxRelError(maxRelError)
 {
 	// Check that input vectors have the same size
 	if(k.size() != Pk.size()) {
@@ -109,6 +112,23 @@ double local::TabulatedPower::operator()(double k) const {
 		double logk = std::log(k);
 		return (*_interpolator)(logk);
 	}
+}
+
+local::TabulatedPowerCPtr local::TabulatedPower::createDelta(TabulatedPowerCPtr other) const {
+	likely::Interpolator::CoordinateValues logkGrid = _interpolator->getXGrid();
+	likely::Interpolator::CoordinateValues deltaGrid = _interpolator->getYGrid();
+	likely::Interpolator::CoordinateValues kGrid;
+	int n(logkGrid.size());
+	kGrid.reserve(n);
+	for(int i = 0; i < n; ++i) {
+		double k = std::exp(logkGrid[i]);
+		kGrid.push_back(k);
+		deltaGrid[i] -= (*other)(k);
+	}
+	bool extrapolateBelow(!!_extrapolateBelow), extrapolateAbove(!!_extrapolateAbove);
+	TabulatedPowerCPtr delta(new TabulatedPower(kGrid,deltaGrid,
+		extrapolateBelow,extrapolateAbove,_maxRelError));
+	return delta;
 }
 
 local::TabulatedPowerCPtr local::createTabulatedPower(std::string const &filename,
