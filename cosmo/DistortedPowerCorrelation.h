@@ -10,6 +10,7 @@
 #include "boost/smart_ptr.hpp"
 
 #include <vector>
+#include <iosfwd>
 
 namespace cosmo {
 	class AdaptiveMultipoleTransform;
@@ -65,6 +66,8 @@ namespace cosmo {
 		//
 		// to the estimated correlation function, as well as the value of rel at (r,mu).
 		void getBiggestContribution(int ell, double &rbig, double &mubig, double &relbig) const;
+		// Prints info about this object to the specified output stream.
+		void printToStream(std::ostream &out) const;
 	private:
 		likely::GenericFunctionPtr _power;
 		RMuFunctionCPtr _distortion;

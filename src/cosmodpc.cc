@@ -159,21 +159,10 @@ int main(int argc, char **argv) {
     try {
     	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,rmin,rmax,nr,ellMax,
             symmetric,relerr,abserr,abspow);
+        // initialize
         dpc.initialize(nmu,minSamplesPerDecade,margin,vepsMax,vepsMin,optimize);
-        if(verbose) {
-            double r,mu,rel;
-            for(int ell = 0; ell <= ellMax; ell += dell) {
-                dpc.getBiggestContribution(ell,r,mu,rel);
-                cosmo::AdaptiveMultipoleTransformCPtr amt = dpc.getTransform(ell);
-                std::cout << "initialized ell = " << ell << " transform with relerr = "
-                    << amt->getRelErr() << " (r=" << r << ",mu=" << mu << ",rel=" << rel
-                    << "), abserr = " << amt->getAbsErr() << " (abspow = "
-                    << amt->getAbsPow() << "), veps = " << amt->getVEps() << ", kmin = "
-                    << amt->getUMin() << ", kmax = " << amt->getUMax() << ", nk = "
-                    << amt->getNU() << " (" << amt->getUSamplesPerDecade() << " samples/decade)"
-                    << std::endl;
-            }
-        }
+        if(verbose) dpc.printToStream(std::cout);
+        // transform (with repeats, if requested)
         bool ok;
         for(int i = 0; i < repeat; ++i) {
             ok = dpc.transform(bypass);
@@ -181,6 +170,7 @@ int main(int argc, char **argv) {
         if(!ok) {
             std::cerr << "Transform fails termination test." << std::endl;
         }
+        // save transform results
         if(output.length() > 0) {
             int dell = symmetric ? 2 : 1;
             double dmu = symmetric ? 1./(nmu-1.) : 2./(nmu-1.);

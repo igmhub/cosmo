@@ -12,6 +12,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 namespace local = cosmo;
 
@@ -235,4 +236,20 @@ double &rbig, double &mubig, double &relbig) const {
 	rbig = _rbig[idx];
 	mubig = _mubig[idx];
 	relbig = _relbig[idx];
+}
+
+void local::DistortedPowerCorrelation::printToStream(std::ostream &out) const {
+    double r,mu,rel;
+    int dell = _symmetric ? 2 : 1;
+    for(int ell = 0; ell <= _ellMax; ell += dell) {
+        getBiggestContribution(ell,r,mu,rel);
+        cosmo::AdaptiveMultipoleTransformCPtr amt = getTransform(ell);
+        out << "initialized ell = " << ell << " adaptive transform:" << std::endl;
+        out << "  relerr = " << amt->getRelErr() << " @(r=" << r << " Mpc/h,mu=" << mu
+        	<< ",rel=" << rel << "), abserr = " << amt->getAbsErr() << " (abspow = "
+            << amt->getAbsPow() << ")," << std::endl;
+		out << "  veps = " << amt->getVEps() << ", kmin = " << amt->getUMin() << " h/Mpc, kmax = "
+			<< amt->getUMax() << " h/Mpc, nk = " << amt->getNU() << " ("
+			<< (int)std::floor(amt->getUSamplesPerDecade()) << " samples/decade)" << std::endl;
+    }	
 }
