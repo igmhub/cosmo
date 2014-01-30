@@ -14,10 +14,23 @@ namespace local = cosmo;
 namespace cosmo {
 	struct TabulatedPower::PowerLawExtrapolator {
 		// Performs a power-law extrapolation P(k) = c*k^p using parameters
-		// c,p determined from two points (k1,P1=P(k1)) and (k2,P2=P(k2)).
-		PowerLawExtrapolator(double k1,double P1,double k2,double P2) :
-		a(std::log(P2/P1)/std::log(k2/k1)), c(P1/std::pow(k1,a)) { }
-		double operator()(double k) const { return c*std::pow(k,a); }
+		// c,p determined from two points (k1,P1=P(k1)) and (k2,P2=P(k2)). If
+		// |P1-P2| < eps, then use constant extrapolation. Otherwise, if P1*P2 < 0
+		// then throw a RuntimeError.
+		PowerLawExtrapolator(double k1,double P1,double k2,double P2,double eps=1e-14) {
+			if(std::fabs(P1-P2) < eps) {
+				a = 0;
+				c = 0.5*(P1+P2);
+			}
+			else if(P1*P2 < 0) {
+				throw RuntimeError("PowerLawExtrapolator: P1*P2 < 0.");
+			}
+			else {
+				a = std::log(P2/P1)/std::log(k2/k1);
+				c = P1/std::pow(k1,a);
+			}
+		}
+		double operator()(double k) const { return (0 == a) ? c : c*std::pow(k,a); }
 		double a,c;
 	};
 } // cosmo::
@@ -55,31 +68,34 @@ _maxRelError(maxRelError)
 	// Build a spline interpolator in log(k) and P(k)
 	_interpolator.reset(new likely::Interpolator(logk,Pk,"cspline"));
 	// Estimate a power law for extrapolating below kmin, if requested
+	double eps(1e-14);
 	if(extrapolateBelow) {
-		_extrapolateBelow.reset(new PowerLawExtrapolator(k[0],Pk[0],k[2],Pk[2]));
+		_extrapolateBelow.reset(new PowerLawExtrapolator(k[0],Pk[0],k[2],Pk[2],eps));
 		// Check how well the extrapolation does at k[1]
 		double P1 = (*_extrapolateBelow)(k[1]);
+		double abserr = std::fabs(P1 - Pk[1]);
 		double relerr = std::fabs(P1/Pk[1]-1.);
 		if(verbose) {
-			std::cout << "TabulatedPower: relative error for extrapolation below is "
-				<< relerr << std::endl;
+			std::cout << "TabulatedPower: errors for extrapolation below are "
+				<< relerr << " (rel) " << abserr << " (abs)" << std::endl;
 		}
-		if(relerr > maxRelError) {
+		if(abserr > eps && relerr > maxRelError) {
 			throw RuntimeError("TabulatedPower: cannot reliably extrapolate below kmin.");
 		}
 	}
 	// Estimate a power law for extrapolating above kmax, if requested
 	if(extrapolateAbove) {
 		int n = k.size();
-		_extrapolateAbove.reset(new PowerLawExtrapolator(k[n-3],Pk[n-3],k[n-1],Pk[n-1]));
+		_extrapolateAbove.reset(new PowerLawExtrapolator(k[n-3],Pk[n-3],k[n-1],Pk[n-1],eps));
 		// Check how well the extrapolation does at k[n-2]
 		double Pn2 = (*_extrapolateAbove)(k[n-2]);
+		double abserr = std::fabs(Pn2 - Pk[n-2]);
 		double relerr = std::fabs(Pn2/Pk[n-2]-1.);
 		if(verbose) {
-			std::cout << "TabulatedPower: relative error for extrapolation above is "
-				<< relerr << std::endl;
+			std::cout << "TabulatedPower: errors for extrapolation above are "
+				<< relerr << " (rel) " << abserr << " (abs)" << std::endl;
 		}
-		if(relerr > maxRelError) {
+		if(abserr > eps && relerr > maxRelError) {
 			throw RuntimeError("TabulatedPower: cannot reliably extrapolate above kmax.");
 		}
 	}
@@ -114,7 +130,8 @@ double local::TabulatedPower::operator()(double k) const {
 	}
 }
 
-local::TabulatedPowerCPtr local::TabulatedPower::createDelta(TabulatedPowerCPtr other) const {
+local::TabulatedPowerCPtr local::TabulatedPower::createDelta(
+TabulatedPowerCPtr other, bool verbose) const {
 	likely::Interpolator::CoordinateValues logkGrid = _interpolator->getXGrid();
 	likely::Interpolator::CoordinateValues deltaGrid = _interpolator->getYGrid();
 	likely::Interpolator::CoordinateValues kGrid;
@@ -127,7 +144,7 @@ local::TabulatedPowerCPtr local::TabulatedPower::createDelta(TabulatedPowerCPtr 
 	}
 	bool extrapolateBelow(!!_extrapolateBelow), extrapolateAbove(!!_extrapolateAbove);
 	TabulatedPowerCPtr delta(new TabulatedPower(kGrid,deltaGrid,
-		extrapolateBelow,extrapolateAbove,_maxRelError));
+		extrapolateBelow,extrapolateAbove,_maxRelError,verbose));
 	return delta;
 }
 

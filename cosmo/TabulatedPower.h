@@ -39,7 +39,7 @@ namespace cosmo {
 		// our grid will be used for the result. Uses the same options to create the new
 		// object that we were created with. The returned object has no dependencies on
 		// this object or the other object.
-		TabulatedPowerCPtr createDelta(TabulatedPowerCPtr other) const;
+		TabulatedPowerCPtr createDelta(TabulatedPowerCPtr other, bool verbose = false) const;
 
 	private:
 		double _kmin, _kmax, _maxRelError;
