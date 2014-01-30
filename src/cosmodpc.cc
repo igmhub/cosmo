@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
     
     // Configure command-line option processing
     po::options_description cli("Cosmology distorted power correlation function");
-    std::string input,output;
+    std::string input,delta,output;
     int ellMax,nr,repeat,nk,nmu,minSamplesPerDecade;
     double rmin,rmax,relerr,abserr,abspow,maxRelError,kmin,kmax,margin,vepsMin,vepsMax;
     double bias,beta,snlPar,snlPerp,k0,sigk;
@@ -64,7 +64,9 @@ int main(int argc, char **argv) {
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
         ("input,i", po::value<std::string>(&input)->default_value(""),
-            "name of filename to read k,P(k) values from")
+            "filename to read k,P(k) values from")
+        ("delta", po::value<std::string>(&delta)->default_value(""),
+            "optional filename of k,P(k) values to subtract from input")
         ("output,o", po::value<std::string>(&output)->default_value(""),
             "base name for saving results")
         ("rmin", po::value<double>(&rmin)->default_value(10.),
@@ -144,19 +146,24 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    cosmo::TabulatedPowerCPtr power =
-        cosmo::createTabulatedPower(input,true,true,maxRelError,verbose);
-    lk::GenericFunctionPtr PkPtr =
-        lk::createFunctionPtr<const cosmo::TabulatedPower>(power);
-
-    boost::shared_ptr<AutoCorrelationDistortion> rsd(
-        new AutoCorrelationDistortion(bias,beta,snlPar,snlPerp,k0,sigk));
-    cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(
-        &AutoCorrelationDistortion::operator(),rsd,_1,_2)));
-
     int dell(symmetric ? 2:1);
 
     try {
+        cosmo::TabulatedPowerCPtr power =
+            cosmo::createTabulatedPower(input,true,true,maxRelError,verbose);
+        if(delta.length() > 0) {
+            cosmo::TabulatedPowerCPtr power2 =
+                cosmo::createTabulatedPower(delta,true,true,maxRelError,verbose);
+            power = power->createDelta(power2,verbose);
+        }
+        lk::GenericFunctionPtr PkPtr =
+            lk::createFunctionPtr<const cosmo::TabulatedPower>(power);
+
+        boost::shared_ptr<AutoCorrelationDistortion> rsd(
+            new AutoCorrelationDistortion(bias,beta,snlPar,snlPerp,k0,sigk));
+        cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(
+            &AutoCorrelationDistortion::operator(),rsd,_1,_2)));
+
     	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,rmin,rmax,nr,ellMax,
             symmetric,relerr,abserr,abspow);
         // initialize
