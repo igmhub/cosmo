@@ -16,7 +16,19 @@ namespace cosmo {
 	class AdaptiveMultipoleTransform;
 	class DistortedPowerCorrelation {
 	// Represents the 3D correlation function corresponding to an isotropic power
-	// spectrum that is distorted by a multiplicative function of (r,mu).
+	// spectrum P(k) that is distorted by a multiplicative function D(k,mu_k).
+	// This class is optimized for the case where P(k) and/or D(k,mu_k) are
+	// changing (e.g., as their internal parameters are changed) but that after
+	// each change, the correlation function xi(r,mu) needs to be evaluated
+	// many times. The normal usage is:
+	//
+	//  - initialize() with a representative P(k) and D(k,mu_k)
+	//    - transform() each time either P(k) or D(k,mu_k) changes internally
+	//      - call getCorrelation(r,mu) or getCorrelation(r,ell) many times
+	//
+	// The outer intialize step is used to automatically establish a set of
+	// numerical tolerances that should be sufficient for "small" variations
+	// of P(k) and/or D(k,mu_k).
 	public:
 		// Creates a new distorted power correlation function using the specified
 		// isotropic power P(k) and distortion function D(k,mu). The resulting
@@ -35,8 +47,14 @@ namespace cosmo {
 		double getPower(double k, double mu) const;
 		// Returns the specified multipole of P(k,mu) evaluated at k. This method calculates
 		// the relevant numerical 1D integral each time it is called, so is relatively slow,
-		// but does not require that initialize() be called first.
+		// but does not require that initialize() be called first. After initialize() or
+		// transform() has been called, the getSavedPowerMultipole() function is faster.
 		double getPowerMultipole(double k, int ell) const;
+		// Returns the specified multipole of P(k,mu) evaluated at k. This method interpolates
+		// in k-space multipoles tabulated during the last call to initialize() or transform(),
+		// so does not reflect more recent changes to P(k,mu) but is generally faster than
+		// calling getPowerMultipole(k,ell).
+		double getSavedPowerMultipole(double k, int ell) const;
 		// Returns the specified multipole of xi(r,mu) evaluated at r. This is relatively fast
 		// to evaluate, only involving some interpolation, but requires that initialize()
 		// be called first.

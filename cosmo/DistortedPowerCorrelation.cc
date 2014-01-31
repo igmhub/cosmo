@@ -84,6 +84,13 @@ double local::DistortedPowerCorrelation::getPowerMultipole(double k, int ell) co
 	return getMultipole(fOfMuPtr, ell);
 }
 
+double local::DistortedPowerCorrelation::getSavedPowerMultipole(double k, int ell) const {
+	if(ell < 0 || ell > _ellMax || (_symmetric && (ell%2))) {
+		throw RuntimeError("DistortedPowerCorrelation::getPowerMultipole: invalid ell.");
+	}
+	return 0;
+}
+
 double local::DistortedPowerCorrelation::getCorrelationMultipole(double r, int ell) const {
 	if(!isInitialized()) {
 		throw RuntimeError("DistortedPowerCorrelation::getCorrelationMultipole: not initialized.");
