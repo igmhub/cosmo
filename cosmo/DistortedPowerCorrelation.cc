@@ -68,8 +68,8 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
 local::DistortedPowerCorrelation::~DistortedPowerCorrelation() { }
 
 double local::DistortedPowerCorrelation::getPower(double k, double mu) const {
-	if(mu < 0 || mu > 1) {
-		throw RuntimeError("DistortedPowerCorrelation::getPower: expected 0 <= mu <= 1.");
+	if(mu < -1 || mu > 1) {
+		throw RuntimeError("DistortedPowerCorrelation::getPower: expected -1 <= mu <= 1.");
 	}
 	return (*_power)(k)*(*_distortion)(k,mu);
 }
@@ -102,8 +102,8 @@ double local::DistortedPowerCorrelation::getCorrelation(double r, double mu) con
 	if(!isInitialized()) {
 		throw RuntimeError("DistortedPowerCorrelation::getCorrelation: not initialized.");
 	}
-	if(mu < 0 || mu > 1) {
-		throw RuntimeError("DistortedPowerCorrelation::getPower: expected 0 <= mu <= 1.");
+	if(mu < -1 || mu > 1) {
+		throw RuntimeError("DistortedPowerCorrelation::getPower: expected -1 <= mu <= 1.");
 	}
 	double result(0);
 	int dell = _symmetric ? 2 : 1;
