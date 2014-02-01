@@ -17,29 +17,33 @@ namespace cosmo {
 	class DistortedPowerCorrelation {
 	// Represents the 3D correlation function corresponding to an isotropic power
 	// spectrum P(k) that is distorted by a multiplicative function D(k,mu_k).
-	// This class is optimized for the case where P(k) and/or D(k,mu_k) are
-	// changing (e.g., as their internal parameters are changed) but that after
+	// This class is optimized for the case where D(k,mu_k) is allowed to
+	// change (e.g., as its internal parameters are changed) but that after
 	// each change, the correlation function xi(r,mu) needs to be evaluated
 	// many times. The normal usage is:
 	//
 	//  - initialize() with a representative P(k) and D(k,mu_k)
-	//    - transform() each time either P(k) or D(k,mu_k) changes internally
+	//    - transform() each time D(k,mu_k) changes internally
 	//      - call getCorrelation(r,mu) or getCorrelation(r,ell) many times
 	//
 	// The outer intialize step is used to automatically establish a set of
 	// numerical tolerances that should be sufficient for "small" variations
-	// of P(k) and/or D(k,mu_k).
+	// of D(k,mu_k). Note that initialize() includes the work of transform(),
+	// so the transform() step can be skipped for the initial D(k,mu_k).
 	public:
 		// Creates a new distorted power correlation function using the specified
-		// isotropic power P(k) and distortion function D(k,mu). The resulting
-		// correlation function will be valid over [rmin,rmax] and estimated
+		// isotropic power P(k) and distortion function D(k,mu). The k-space multipoles
+		// of D(k,mu)*P(k) will be tabulated using nk logarithmically spaced points
+		// covering [kmin,kmax], with power-law extrapolation beyond this range.
+		// The resulting correlation function will be valid over [rmin,rmax] and estimated
 		// using multipoles up to ellMax that are interpolated using nr equally-spaced
 		// points in r. If symmetric is true, then only even multipoles are used.
 		// The desired accuracy is specified by relerr, abserr, and abspow, such that
 		// the difference between the true and estimated xi(r,mu) satisfies:
 		// |true-est| < max(abserr*r^abspow,true*true)
 		DistortedPowerCorrelation(likely::GenericFunctionPtr power, RMuFunctionCPtr distortion,
-			double rmin, double rmax, int nr, int ellMax, bool symmetric = true,
+			double kmin, double kmax, int nk, double rmin, double rmax, int nr,
+			int ellMax, bool symmetric = true,
 			double relerr = 1e-2, double abserr = 1e-3, double abspow = 0);
 		virtual ~DistortedPowerCorrelation();
 		// Returns the value of P(k,mu) = P(k)*D(k,mu). This is fast to evaluate and
@@ -74,7 +78,8 @@ namespace cosmo {
 		// Transforms the k-space power multipoles to r space. Returns true if the termination
 		// criteria are met, unless bypassTerminationTest is true (in which case we
 		// always return true and transforms will be somewhat faster).
-		bool transform(bool bypassTerminationTest = false) const;
+		bool transform(bool interpolatePowerMultipoles = true,
+			bool bypassTerminationTest = false) const;
 		// Returns a shared const pointer to the specified transform.
 		AdaptiveMultipoleTransformCPtr getTransform(int ell) const;
 		// Fills the variables provided with the (r,mu) coordinates where the specified
@@ -92,7 +97,9 @@ namespace cosmo {
 		double _relerr,_abserr,_abspow;
 		int _ellMax;
 		bool _symmetric, _initialized;
-		std::vector<double> _rgrid, _rbig, _mubig, _relbig;
+		std::vector<double> _kgrid, _rgrid, _rbig, _mubig, _relbig;
+		void _initPowerMultipoles() const;
+		mutable std::vector<cosmo::TabulatedPowerCPtr> _savedPowerMultipole;
 		mutable std::vector<std::vector<double> > _xiMoments;
 		mutable std::vector<likely::InterpolatorPtr> _interpolator;
 		std::vector<AdaptiveMultipoleTransformPtr> _transformer;

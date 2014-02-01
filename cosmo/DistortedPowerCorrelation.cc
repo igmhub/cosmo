@@ -1,6 +1,7 @@
 // Created 20-Jan-2014 by David Kirkby (University of California, Irvine) <dkirkby@uci.edu>
 
 #include "cosmo/DistortedPowerCorrelation.h"
+#include "cosmo/TabulatedPower.h"
 #include "cosmo/AdaptiveMultipoleTransform.h"
 #include "cosmo/TransferFunctionPowerSpectrum.h"
 #include "cosmo/RuntimeError.h"
@@ -17,11 +18,20 @@
 namespace local = cosmo;
 
 local::DistortedPowerCorrelation::DistortedPowerCorrelation(likely::GenericFunctionPtr power,
-RMuFunctionCPtr distortion, double rmin, double rmax, int nr,
+RMuFunctionCPtr distortion, double kmin, double kmax, int nk, double rmin, double rmax, int nr,
 int ellMax, bool symmetric, double relerr, double abserr, double abspow)
 : _power(power), _distortion(distortion), _ellMax(ellMax), _symmetric(symmetric),
 _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
-{
+{	
+	if(kmax <= kmin) {
+		throw RuntimeError("DistortedPowerCorrelation: expected kmin < kmax.");
+	}
+	if(kmin <= 0) {
+		throw RuntimeError("DistortedPowerCorrelation: expected kmin > 0.");
+	}
+	if(nk < 2) {
+		throw RuntimeError("DistortedPowerCorrelation: expected nk >= 2.");
+	}
 	if(rmax <= rmin) {
 		throw RuntimeError("DistortedPowerCorrelation: expected rmin < rmax.");
 	}
@@ -37,7 +47,13 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
 	if(symmetric && (ellMax%2 == 1)) {
 		throw RuntimeError("DistortedPowerCorrelation: expected even ellMax when symmetric.");
 	}
-	// initialize the r grid we will use for interpolation
+	// Initialize the k grid we will use for interpolation
+	_kgrid.reserve(nk);
+	double dk = std::pow(kmax/kmin,1./(nk-1.));
+	for(int i = 0; i < nk; ++i) {
+		_kgrid.push_back(kmin*std::pow(dk,i));
+	}
+	// Initialize the r grid we will use for interpolation
 	_rgrid.reserve(nr);
 	double dr = (rmax - rmin)/(nr-1.);
 	for(int i = 0; i < nr; ++i) {
@@ -49,6 +65,7 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
 	_transformer.reserve(nell);
 	_xiMoments.reserve(nell);
 	_interpolator.reserve(nell);
+	_savedPowerMultipole.reserve(nell);
 	for(int ell = 0; ell <= ellMax; ell += dell) {
 		double coef = multipoleTransformNormalization(ell,3,+1);
 		// Use the same relerr for each ell and share abserr equally. These values will
@@ -58,6 +75,7 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
 		_transformer.push_back(amt);
 		_xiMoments.push_back(std::vector<double>(nr,0.));
 		_interpolator.push_back(likely::InterpolatorPtr());
+		_savedPowerMultipole.push_back(cosmo::TabulatedPowerCPtr());
 	}
 	// initialize vectors used to find biggest relative contributions
 	std::vector<double>(nell).swap(_rbig);
@@ -84,11 +102,33 @@ double local::DistortedPowerCorrelation::getPowerMultipole(double k, int ell) co
 	return (*_power)(k)*getMultipole(fOfMuPtr, ell);
 }
 
+void local::DistortedPowerCorrelation::_initPowerMultipoles() const {
+	// initialize a vector of multipoles
+	int nk(_kgrid.size());
+	std::vector<double> pgrid(nk);
+	// loop over multipoles
+	int dell = _symmetric ? 2 : 1;
+	for(int ell = 0; ell <= _ellMax; ell += dell) {
+		// loop over k values
+		for(int i = 0; i < nk; ++i) {
+			pgrid[i] = getPowerMultipole(_kgrid[i],ell);
+		}
+		// create and save a new tabulated power using this grid
+		cosmo::TabulatedPowerCPtr tpptr(new cosmo::TabulatedPower(_kgrid,pgrid,true,true));
+		int idx = _symmetric ? ell/2 : ell;
+		_savedPowerMultipole[idx] = tpptr;
+	}
+}
+
 double local::DistortedPowerCorrelation::getSavedPowerMultipole(double k, int ell) const {
 	if(ell < 0 || ell > _ellMax || (_symmetric && (ell%2))) {
-		throw RuntimeError("DistortedPowerCorrelation::getPowerMultipole: invalid ell.");
+		throw RuntimeError("DistortedPowerCorrelation::getSavedPowerMultipole: invalid ell.");
 	}
-	return 0;
+	int idx = _symmetric ? ell/2 : ell;
+	if(!_savedPowerMultipole[idx]) {
+		throw RuntimeError("DistortedPowerCorrelation::getSavedPowerMultipole: not initialized.");
+	}
+	return (*_savedPowerMultipole[idx])(k);
 }
 
 double local::DistortedPowerCorrelation::getCorrelationMultipole(double r, int ell) const {
@@ -137,6 +177,8 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 	if(vepsMin <= 0) {
 		throw RuntimeError("DistortedPowerCorrelation::initialize: expected vepsMin > 0.");
 	}
+	// Initialize our tabulated power multipoles
+	_initPowerMultipoles();
 	// Loop over multipoles
 	int dell = _symmetric ? 2 : 1;
 	for(int ell = 0; ell <= _ellMax; ell += dell) {
@@ -144,7 +186,7 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 		// Build a function object that evaluates this multipole for arbitrary k
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
-				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
+				&DistortedPowerCorrelation::getSavedPowerMultipole,this,_1,ell)));
 		// Do not optimize now
 		bool noOptimize(false);
 		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx],minSamplesPerDecade,margin,
@@ -194,7 +236,7 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 		// Build a function object that evaluates this multipole for arbitrary k
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
-				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
+				&DistortedPowerCorrelation::getSavedPowerMultipole,this,_1,ell)));
 		// Initialize our new transformer (with optimization, if requested)
 		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx],minSamplesPerDecade,margin,
 			vepsMax,vepsMin,optimize);
@@ -204,8 +246,11 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 	_initialized = true;
 }
 
-bool local::DistortedPowerCorrelation::transform(bool bypassTerminationTest) const {
+bool local::DistortedPowerCorrelation::transform(
+bool interpolatePowerMultipoles, bool bypassTerminationTest) const {
 	bool accurate(true);
+	// Initialize our tabulated power multipoles if requested
+	if(interpolatePowerMultipoles) _initPowerMultipoles();
 	// Loop over multipoles
 	int dell = _symmetric ? 2 : 1;
 	for(int ell = 0; ell <= _ellMax; ell += dell) {
@@ -213,7 +258,10 @@ bool local::DistortedPowerCorrelation::transform(bool bypassTerminationTest) con
 		// Build a function object that evaluates this multipole for arbitrary k
 		likely::GenericFunctionPtr fOfKPtr(
 			new likely::GenericFunction(boost::bind(
-				&DistortedPowerCorrelation::getPowerMultipole,this,_1,ell)));
+				(interpolatePowerMultipoles ?
+					&DistortedPowerCorrelation::getSavedPowerMultipole :
+					&DistortedPowerCorrelation::getPowerMultipole
+				),this,_1,ell)));
 		accurate &= _transformer[idx]->transform(fOfKPtr,_xiMoments[idx],bypassTerminationTest);
 		// (re)create the interpolator for this moment
 		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));

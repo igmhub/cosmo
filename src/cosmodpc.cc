@@ -106,6 +106,8 @@ int main(int argc, char **argv) {
             "minimum number of samples per decade to use for transform convolution")
         ("max-rel-error", po::value<double>(&maxRelError)->default_value(1e-3),
             "maximum allowed relative error for power-law extrapolation of input P(k)")
+        ("direct-power-multipoles",
+            "use direct calculation of P(k) multipoles instead of interpolation")
         ("optimize", "optimizes transform FFTs")
         ("bypass", "bypasses the termination test for transforms")
         ("repeat", po::value<int>(&repeat)->default_value(1),
@@ -134,7 +136,8 @@ int main(int argc, char **argv) {
         return 1;
     }
     bool verbose(vm.count("verbose")), symmetric(0==vm.count("asymmetric")),
-        optimize(vm.count("optimize")), bypass(vm.count("bypass"));
+        optimize(vm.count("optimize")), bypass(vm.count("bypass")),
+        directPowerMultipoles(vm.count("direct-power-multipoles"));
 
     if(!symmetric) {
         std::cerr << "Odd multipoles not implemented yet." << std::endl;
@@ -164,7 +167,12 @@ int main(int argc, char **argv) {
         cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(
             &AutoCorrelationDistortion::operator(),rsd,_1,_2)));
 
-    	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,rmin,rmax,nr,ellMax,
+        // Use the limits of the input tabulated power for tabulating the
+        // power multipoles (the kmin,kmax cmd-line args are for output only)
+        double klo = power->getKMin(), khi = power->getKMax();
+        int nk = std::ceil(std::log10(khi/klo)*minSamplesPerDecade);
+    	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,
+            kmin,kmax,nk,rmin,rmax,nr,ellMax,
             symmetric,relerr,abserr,abspow);
         // initialize
         dpc.initialize(nmu,minSamplesPerDecade,margin,vepsMax,vepsMin,optimize);
@@ -172,7 +180,7 @@ int main(int argc, char **argv) {
         // transform (with repeats, if requested)
         bool ok;
         for(int i = 0; i < repeat; ++i) {
-            ok = dpc.transform(bypass);
+            ok = dpc.transform(!directPowerMultipoles,bypass);
         }
         if(!ok) {
             std::cerr << "Transform fails termination test." << std::endl;
@@ -193,7 +201,9 @@ int main(int argc, char **argv) {
                     kout << ' ' << boost::lexical_cast<std::string>(dpc.getPower(k,mu));
                 }
                 for(int ell = 0; ell <= ellMax; ell += dell) {
-                    kout << ' ' << boost::lexical_cast<std::string>(dpc.getPowerMultipole(k,ell));
+                    double pk = (directPowerMultipoles) ?
+                        dpc.getPowerMultipole(k,ell) : dpc.getSavedPowerMultipole(k,ell);
+                    kout << ' ' << boost::lexical_cast<std::string>(pk);
                 }
                 kout << std::endl;
             }
