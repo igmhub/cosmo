@@ -62,8 +62,10 @@ _maxRelError(maxRelError)
 	_kmin = k.front();
 	_kmax = k.back();
 	if(verbose) {
+		double samplesPerDecade = k.size()/std::log10(_kmax/_kmin);
 		std::cout << "TabulatedPower: using " << k.size() << " points covering "
-			<< _kmin << " <= k <= " << _kmax << std::endl;
+			<< _kmin << " <= k <= " << _kmax << " (" << samplesPerDecade
+			<< " samples/decade)" << std::endl;
 	}
 	// Build a spline interpolator in log(k) and P(k)
 	_interpolator.reset(new likely::Interpolator(logk,Pk,"cspline"));
