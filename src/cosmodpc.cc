@@ -7,10 +7,11 @@
 // ./cosmodpc -i ../../baofit/models/PlanckWPBestFitLCDM_matterpower.dat OPTIONS
 //
 //   TIME  OPTIONS
-//  90.26s --repeat 1000
-//  94.50s --repeat 1000 --optimize
-//  64.13s --repeat 1000 --bypass
-//  64.52s --repeat 1000 --bypass --optimize
+//  86.94s --repeat 1000 --direct-power-multipoles
+//  84.10s --repeat 10000  ** 10x more! **
+//  87.78s --repeat 10000 --optimize
+//  72.98s --repeat 10000 --bypass
+//  79.39s --repeat 1000 --bypass --optimize
 
 #include "cosmo/cosmo.h"
 #include "likely/likely.h"
