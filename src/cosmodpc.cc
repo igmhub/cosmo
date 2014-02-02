@@ -175,7 +175,7 @@ int main(int argc, char **argv) {
             kmin,kmax,nk,rmin,rmax,nr,ellMax,
             symmetric,relerr,abserr,abspow);
         // initialize
-        dpc.initialize(nmu,minSamplesPerDecade,margin,vepsMax,vepsMin,optimize);
+        dpc.initialize(nmu,margin,vepsMax,vepsMin,optimize);
         if(verbose) dpc.printToStream(std::cout);
         // transform (with repeats, if requested)
         bool ok;

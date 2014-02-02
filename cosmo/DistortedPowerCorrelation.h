@@ -70,8 +70,10 @@ namespace cosmo {
 		// Initializes our multipole estimates and correlation transforms and automatically
 		// sets the relerr and abserr goals for each multipole based on their relative
 		// contributions in [rmin,rmax], determined by sampling a nr-by-nmu grid. For other
-		// options, see AdaptiveMultipoleTransform::initialize().
-		void initialize(int nmu = 20, int minSamplesPerDecade= 40, double margin = 2,
+		// options, see AdaptiveMultipoleTransform::initialize(). The value of
+		// minSamplesPerDecade is chosen to match the nk samples covering [kmin,kmax]
+		// specified in our constructor.
+		void initialize(int nmu = 20, double margin = 2,
 			double vepsMax = 0.01, double vepsMin = 1e-6, bool optimize = false);
 		// Tests if we have ever been initialized.
 		bool isInitialized() const;
@@ -95,7 +97,7 @@ namespace cosmo {
 		likely::GenericFunctionPtr _power;
 		RMuFunctionCPtr _distortion;
 		double _relerr,_abserr,_abspow;
-		int _ellMax;
+		int _ellMax, _minSamplesPerDecade;
 		bool _symmetric, _initialized;
 		std::vector<double> _kgrid, _rgrid, _rbig, _mubig, _relbig;
 		void _initPowerMultipoles() const;

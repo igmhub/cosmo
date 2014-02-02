@@ -53,6 +53,8 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
 	for(int i = 0; i < nk; ++i) {
 		_kgrid.push_back(kmin*std::pow(dk,i));
 	}
+	// Calculate the min samples/decade corresponding to nk samples from kmin to kmax
+	_minSamplesPerDecade = (int)std::ceil(nk/std::log10(kmax/kmin));
 	// Initialize the r grid we will use for interpolation
 	_rgrid.reserve(nr);
 	double dr = (rmax - rmin)/(nr-1.);
@@ -160,13 +162,10 @@ double local::DistortedPowerCorrelation::getCorrelation(double r, double mu) con
 	return result;
 }
 
-void local::DistortedPowerCorrelation::initialize(int nmu, int minSamplesPerDecade,
+void local::DistortedPowerCorrelation::initialize(int nmu,
 double margin, double vepsMax, double vepsMin, bool optimize) {
 	if(nmu < 2) {
 		throw RuntimeError("DistortedPowerCorrelation::initialize: expected nmu >= 2.");
-	}
-	if(minSamplesPerDecade < 0) {
-		throw RuntimeError("DistortedPowerCorrelation::initialize: expected minSamplesPerDecade >= 0.");
 	}
 	if(margin < 1) {
 		throw RuntimeError("DistortedPowerCorrelation::initialize: expected margin >= 1.");
@@ -189,7 +188,7 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 				&DistortedPowerCorrelation::getSavedPowerMultipole,this,_1,ell)));
 		// Do not optimize now
 		bool noOptimize(false);
-		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx],minSamplesPerDecade,margin,
+		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx],_minSamplesPerDecade,margin,
 			vepsMax,vepsMin,noOptimize);
 		// (re)create the interpolator for this moment
 		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
@@ -238,7 +237,7 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 			new likely::GenericFunction(boost::bind(
 				&DistortedPowerCorrelation::getSavedPowerMultipole,this,_1,ell)));
 		// Initialize our new transformer (with optimization, if requested)
-		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx],minSamplesPerDecade,margin,
+		_transformer[idx]->initialize(fOfKPtr,_xiMoments[idx],_minSamplesPerDecade,margin,
 			vepsMax,vepsMin,optimize);
 		// (re)create the interpolator for this moment
 		_interpolator[idx].reset(new likely::Interpolator(_rgrid,_xiMoments[idx],"cspline"));
