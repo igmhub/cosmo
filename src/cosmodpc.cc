@@ -33,11 +33,12 @@ class AutoCorrelationDistortion {
 // (bias,beta), non-linear large-scale broadening (snlPar,snlPerp) and a continuum fitting
 // broadband distortion model (k0,sigk).
 public:
-    AutoCorrelationDistortion(double bias, double beta,
+    AutoCorrelationDistortion(double bias, double biasbeta,
         double snlPar, double snlPerp, double k0, double sigk) :
-        _bias(bias), _beta(beta), _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp),
+        _bias(bias), _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp),
         _k0(k0), _sigk(sigk)
     {
+        _beta = biasbeta/bias;
         _distScale = sigk > 0 ? 1/(1 + std::tanh(k0/sigk)) : 0;
     }
     double operator()(double k, double mu) const {
@@ -60,7 +61,7 @@ int main(int argc, char **argv) {
     std::string input,delta,output;
     int ellMax,nr,repeat,nk,nmu,minSamplesPerDecade;
     double rmin,rmax,relerr,abserr,abspow,maxRelError,kmin,kmax,margin,vepsMin,vepsMax;
-    double bias,beta,snlPar,snlPerp,k0,sigk;
+    double bias,biasbeta,snlPar,snlPerp,k0,sigk;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
@@ -79,10 +80,10 @@ int main(int argc, char **argv) {
         ("ell-max", po::value<int>(&ellMax)->default_value(4),
             "maximum multipole to use for transforms")
         ("asymmetric", "distortion is asymmetric in mu (uses odd ell values)")
-        ("bias", po::value<double>(&bias)->default_value(1.0),
+        ("bias", po::value<double>(&bias)->default_value(-0.17),
             "linear tracer bias")
-        ("beta", po::value<double>(&beta)->default_value(1.4),
-            "redshift-space distortion parameter")
+        ("biasbeta", po::value<double>(&biasbeta)->default_value(-0.17),
+            "product of bias and linear redshift-space distortion parameter beta")
         ("snl-par", po::value<double>(&snlPar)->default_value(0.),
             "parallel component of non-linear broadening in Mpc/h")
         ("snl-perp", po::value<double>(&snlPerp)->default_value(0.),
@@ -164,7 +165,7 @@ int main(int argc, char **argv) {
             lk::createFunctionPtr<const cosmo::TabulatedPower>(power);
 
         boost::shared_ptr<AutoCorrelationDistortion> rsd(
-            new AutoCorrelationDistortion(bias,beta,snlPar,snlPerp,k0,sigk));
+            new AutoCorrelationDistortion(bias,biasbeta,snlPar,snlPerp,k0,sigk));
         cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(
             &AutoCorrelationDistortion::operator(),rsd,_1,_2)));
 
