@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
         double klo = power->getKMin(), khi = power->getKMax();
         int nk = std::ceil(std::log10(khi/klo)*minSamplesPerDecade);
     	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,
-            kmin,kmax,nk,rmin,rmax,nr,ellMax,
+            klo,khi,nk,rmin,rmax,nr,ellMax,
             symmetric,relerr,abserr,abspow);
         // initialize
         dpc.initialize(nmu,margin,vepsMax,vepsMin,optimize);
