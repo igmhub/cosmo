@@ -296,7 +296,7 @@ double &rbig, double &mubig, double &relbig) const {
 void local::DistortedPowerCorrelation::printToStream(std::ostream &out) const {
     double r,mu,rel;
     int dell = _symmetric ? 2 : 1;
-    out << "P(k,mu_k) interpolated at " << _kgrid.size() << " log-spaced points coverking k = ["
+    out << "P(k,mu_k) interpolated at " << _kgrid.size() << " log-spaced points covering k = ["
     	<< _kgrid.front() << ',' << _kgrid.back() << "] h/Mpc" << std::endl;
     out << "xi(r,mu) interpolated at " << _rgrid.size() << " linear-spaced points covering r = ["
     	<< _rgrid.front() << ',' << _rgrid.back() << "] Mpc/h" << std::endl;
