@@ -296,8 +296,11 @@ double &rbig, double &mubig, double &relbig) const {
 void local::DistortedPowerCorrelation::printToStream(std::ostream &out) const {
     double r,mu,rel;
     int dell = _symmetric ? 2 : 1;
-    out << "xi(r,mu) interpolated at " << _rgrid.size() << " points covering r = ["
-    	<< _rgrid.front() << ',' << _rgrid.back() << "] Mpc/h with even ell <= "
+    out << "P(k,mu_k) interpolated at " << _kgrid.size() << " log-spaced points coverking k = ["
+    	<< _kgrid.front() << ',' << _kgrid.back() << "] h/Mpc" << std::endl;
+    out << "xi(r,mu) interpolated at " << _rgrid.size() << " linear-spaced points covering r = ["
+    	<< _rgrid.front() << ',' << _rgrid.back() << "] Mpc/h" << std::endl;
+	out << "using " << (_symmetric ? "even" : "even+odd") << " multipoles up to ell = "
 		<< _ellMax << std::endl;
     for(int ell = 0; ell <= _ellMax; ell += dell) {
         getBiggestContribution(ell,r,mu,rel);
