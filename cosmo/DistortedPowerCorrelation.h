@@ -34,7 +34,7 @@ namespace cosmo {
 		// Creates a new distorted power correlation function using the specified
 		// isotropic power P(k) and distortion function D(k,mu). The k-space multipoles
 		// of D(k,mu)*P(k) will be tabulated using nk logarithmically spaced points
-		// covering [kmin,kmax], with power-law extrapolation beyond this range.
+		// covering [klo,khi], with power-law extrapolation beyond this range.
 		// The resulting correlation function will be valid over [rmin,rmax] and estimated
 		// using multipoles up to ellMax that are interpolated using nr equally-spaced
 		// points in r. If symmetric is true, then only even multipoles are used.
@@ -42,7 +42,7 @@ namespace cosmo {
 		// the difference between the true and estimated xi(r,mu) satisfies:
 		// |true-est| < max(abserr*r^abspow,true*true)
 		DistortedPowerCorrelation(likely::GenericFunctionPtr power, RMuFunctionCPtr distortion,
-			double kmin, double kmax, int nk, double rmin, double rmax, int nr,
+			double klo, double khi, int nk, double rmin, double rmax, int nr,
 			int ellMax, bool symmetric = true,
 			double relerr = 1e-2, double abserr = 1e-3, double abspow = 0);
 		virtual ~DistortedPowerCorrelation();
@@ -71,7 +71,7 @@ namespace cosmo {
 		// sets the relerr and abserr goals for each multipole based on their relative
 		// contributions in [rmin,rmax], determined by sampling a nr-by-nmu grid. For other
 		// options, see AdaptiveMultipoleTransform::initialize(). The value of
-		// minSamplesPerDecade is chosen to match the nk samples covering [kmin,kmax]
+		// minSamplesPerDecade is chosen to match the nk samples covering [klo,khi]
 		// specified in our constructor.
 		void initialize(int nmu = 20, double margin = 2,
 			double vepsMax = 0.01, double vepsMin = 1e-6, bool optimize = false);

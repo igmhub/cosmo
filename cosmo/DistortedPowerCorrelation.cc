@@ -18,16 +18,16 @@
 namespace local = cosmo;
 
 local::DistortedPowerCorrelation::DistortedPowerCorrelation(likely::GenericFunctionPtr power,
-RMuFunctionCPtr distortion, double kmin, double kmax, int nk, double rmin, double rmax, int nr,
+RMuFunctionCPtr distortion, double klo, double khi, int nk, double rmin, double rmax, int nr,
 int ellMax, bool symmetric, double relerr, double abserr, double abspow)
 : _power(power), _distortion(distortion), _ellMax(ellMax), _symmetric(symmetric),
 _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
 {	
-	if(kmax <= kmin) {
-		throw RuntimeError("DistortedPowerCorrelation: expected kmin < kmax.");
+	if(khi <= klo) {
+		throw RuntimeError("DistortedPowerCorrelation: expected klo < khi.");
 	}
-	if(kmin <= 0) {
-		throw RuntimeError("DistortedPowerCorrelation: expected kmin > 0.");
+	if(klo <= 0) {
+		throw RuntimeError("DistortedPowerCorrelation: expected klo > 0.");
 	}
 	if(nk < 2) {
 		throw RuntimeError("DistortedPowerCorrelation: expected nk >= 2.");
@@ -49,12 +49,12 @@ _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
 	}
 	// Initialize the k grid we will use for interpolation
 	_kgrid.reserve(nk);
-	double dk = std::pow(kmax/kmin,1./(nk-1.));
+	double dk = std::pow(khi/klo,1./(nk-1.));
 	for(int i = 0; i < nk; ++i) {
-		_kgrid.push_back(kmin*std::pow(dk,i));
+		_kgrid.push_back(klo*std::pow(dk,i));
 	}
-	// Calculate the min samples/decade corresponding to nk samples from kmin to kmax
-	_minSamplesPerDecade = (int)std::ceil(nk/std::log10(kmax/kmin));
+	// Calculate the min samples/decade corresponding to nk samples from klo to khi
+	_minSamplesPerDecade = (int)std::ceil(nk/std::log10(khi/klo));
 	// Initialize the r grid we will use for interpolation
 	_rgrid.reserve(nr);
 	double dr = (rmax - rmin)/(nr-1.);
