@@ -226,7 +226,8 @@ double margin, double vepsMax, double vepsMin, bool optimize) {
 	// Reset our transformers using updated relerr specs
 	for(int ell = 0; ell <= _ellMax; ell += dell) {
 		int idx = _symmetric ? ell/2 : ell;
-		double relerr = _relerr/nell/_relbig[idx];
+		// _relbig[idx] might be zero if all xi(r,mu) were ~0 on the grid
+		double relerr = _relbig[idx] > 0 ? _relerr/nell/_relbig[idx] : _relerr/nell;
 		double abserr = _abserr/nell;
 		double coef = multipoleTransformNormalization(ell,3,+1);
 		AdaptiveMultipoleTransformPtr amt(new AdaptiveMultipoleTransform(
