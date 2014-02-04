@@ -28,13 +28,14 @@
 namespace po = boost::program_options;
 namespace lk = likely;
 
-class AutoCorrelationDistortion {
+class LyaDistortion {
 // A simple distortion model for autocorrelations, including linear redshift space effects
 // (bias,beta), non-linear large-scale broadening (snlPar,snlPerp) and a continuum fitting
 // broadband distortion model (k0,sigk).
 public:
-    AutoCorrelationDistortion(double bias, double biasbeta,
-        double snlPar, double snlPerp, double k0, double sigk) :
+    LyaDistortion(double bias, double biasbeta,
+        double biasGamma, double biasSourceAbsorber, double biasAbsorberResponse,
+        double meanFreePath, double snlPar, double snlPerp, double k0, double sigk) :
         _bias(bias), _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp),
         _k0(k0), _sigk(sigk)
     {
@@ -61,7 +62,8 @@ int main(int argc, char **argv) {
     std::string input,delta,output;
     int ellMax,nr,repeat,nk,nmu,minSamplesPerDecade;
     double rmin,rmax,relerr,abserr,abspow,maxRelError,kmin,kmax,margin,vepsMin,vepsMax;
-    double bias,biasbeta,snlPar,snlPerp,k0,sigk;
+    double bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
+        snlPar,snlPerp,k0,sigk;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
@@ -84,6 +86,14 @@ int main(int argc, char **argv) {
             "linear tracer bias")
         ("biasbeta", po::value<double>(&biasbeta)->default_value(-0.17),
             "product of bias and linear redshift-space distortion parameter beta")
+        ("bias-gamma", po::value<double>(&biasGamma)->default_value(0.13),
+            "Lyman-alpha photoionization bias")
+        ("bias-source-absorber", po::value<double>(&biasSourceAbsorber)->default_value(1.0),
+            "Lyman-alpha source - absorber bias difference")
+        ("bias-absorber-response", po::value<double>(&biasAbsorberResponse)->default_value(-2./3.),
+            "Lyman-alpha absorber response bias")
+        ("mean-free-path", po::value<double>(&meanFreePath)->default_value(300.),
+            "effective mean free path of an ionizing photon in Mpc/h")
         ("snl-par", po::value<double>(&snlPar)->default_value(0.),
             "parallel component of non-linear broadening in Mpc/h")
         ("snl-perp", po::value<double>(&snlPerp)->default_value(0.),
@@ -164,10 +174,11 @@ int main(int argc, char **argv) {
         lk::GenericFunctionPtr PkPtr =
             lk::createFunctionPtr<const cosmo::TabulatedPower>(power);
 
-        boost::shared_ptr<AutoCorrelationDistortion> rsd(
-            new AutoCorrelationDistortion(bias,biasbeta,snlPar,snlPerp,k0,sigk));
+        boost::shared_ptr<LyaDistortion> rsd(new LyaDistortion(
+            bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
+            snlPar,snlPerp,k0,sigk));
         cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(
-            &AutoCorrelationDistortion::operator(),rsd,_1,_2)));
+            &LyaDistortion::operator(),rsd,_1,_2)));
 
         // Use the limits of the input tabulated power for tabulating the
         // power multipoles (the kmin,kmax cmd-line args are for output only)
