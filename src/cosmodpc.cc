@@ -2,16 +2,17 @@
 // A driver and test program for the DistortedPowerCorrelation class.
 // Calculates the 3D correlation function corresponding to a distorted power spectrum.
 
-// Sample timing results using:
+// Sample timing results on OS 10.8 laptop using:
 //
 // ./cosmodpc -i ../../baofit/models/PlanckWPBestFitLCDM_matterpower.dat OPTIONS
 //
 //   TIME  OPTIONS
-//  86.94s --repeat 1000 --direct-power-multipoles
-//  84.10s --repeat 10000  ** 10x more! **
-//  87.78s --repeat 10000 --optimize
-//  72.98s --repeat 10000 --bypass
-//  79.39s --repeat 1000 --bypass --optimize
+//  127.3s --repeat 10000 --direct-power-multipoles
+//  126.5s --repeat 10000 --direct-power-multipoles --optimize
+//   83.2s --repeat 10000 --direct-power-multipoles --bypass
+//   53.2s --repeat 10000
+//   53.4s --repeat 10000 --optimize
+//   53.2s --repeat 10000 --bypass
 
 #include "cosmo/cosmo.h"
 #include "likely/likely.h"
