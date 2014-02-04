@@ -36,23 +36,39 @@ public:
     LyaDistortion(double bias, double biasbeta,
         double biasGamma, double biasSourceAbsorber, double biasAbsorberResponse,
         double meanFreePath, double snlPar, double snlPerp, double k0, double sigk) :
-        _bias(bias), _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp),
+        _bias(bias), _biasbeta(biasbeta),
+        _biasGamma(biasGamma), _biasSourceAbsorber(biasSourceAbsorber),
+        _biasAbsorberResponse(biasAbsorberResponse), _meanFreePath(meanFreePath),
+        _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp),
         _k0(k0), _sigk(sigk)
     {
-        _beta = biasbeta/bias;
+        _radStrength = biasGamma*biasSourceAbsorber;
         _distScale = sigk > 0 ? 1/(1 + std::tanh(k0/sigk)) : 0;
     }
     double operator()(double k, double mu) const {
+        // Calculate the k-dependent effective bias
+        double bias(_bias);
+        if(_radStrength != 0) {
+            double s(_meanFreePath*k);
+            double Ws = std::atan(s)/s;
+            bias += _radStrength*Ws/(1+_biasAbsorberResponse*Ws);
+        }
+        // Calculate the k-dependent effective beta
+        double beta(_biasbeta/bias);
+        // Calculate the overall large-scale Lya tracer bias
         double mu2(mu*mu);
-        double linear = _bias*(1 + _beta*mu2);
+        double linear = bias*(1 + beta*mu2);
+        // Calculate non-linear broadening
         double snl2 = _snlPar2*mu2 + (1 - mu2)*_snlPerp2;
         double nonlinear = std::exp(-0.5*k*k*snl2);
+        // Calculate continuum fitting distortion
         double kpar = std::fabs(k*mu);
         double distortion = 1 - _distScale*(1 - std::tanh((kpar-_k0)/_sigk));
         return distortion*nonlinear*linear*linear;
     }
 private:
-    double _bias,_beta,_snlPar2,_snlPerp2,_k0,_sigk,_distScale;
+    double _bias,_biasbeta,_biasGamma,_biasSourceAbsorber,_biasAbsorberResponse,_meanFreePath,
+        _snlPar2,_snlPerp2,_k0,_sigk,_distScale,_radStrength;
 };
 
 int main(int argc, char **argv) {
@@ -86,7 +102,7 @@ int main(int argc, char **argv) {
             "linear tracer bias")
         ("biasbeta", po::value<double>(&biasbeta)->default_value(-0.17),
             "product of bias and linear redshift-space distortion parameter beta")
-        ("bias-gamma", po::value<double>(&biasGamma)->default_value(0.13),
+        ("bias-gamma", po::value<double>(&biasGamma)->default_value(0),
             "Lyman-alpha photoionization bias")
         ("bias-source-absorber", po::value<double>(&biasSourceAbsorber)->default_value(1.0),
             "Lyman-alpha source - absorber bias difference")
