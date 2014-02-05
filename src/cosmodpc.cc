@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology distorted power correlation function");
     std::string input,delta,output;
-    int ellMax,nr,repeat,nk,nmu,minSamplesPerDecade;
+    int ellMax,nr,repeat,nk,nmu,samplesPerDecade;
     double rmin,rmax,relerr,abserr,abspow,maxRelError,kmin,kmax,margin,vepsMin,vepsMax;
     double bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
         snlPar,snlPerp,k0,sigk;
@@ -131,8 +131,8 @@ int main(int argc, char **argv) {
             "maximum value of veps value to use")
         ("veps-min", po::value<double>(&vepsMin)->default_value(1e-6),
             "minimum value of veps value to use")
-        ("min-samples-per-decade", po::value<int>(&minSamplesPerDecade)->default_value(40),
-            "minimum number of samples per decade to use for transform convolution")
+        ("samples-per-decade", po::value<int>(&samplesPerDecade)->default_value(40),
+            "number of samples per decade to use for transform interpolation in k")
         ("max-rel-error", po::value<double>(&maxRelError)->default_value(1e-3),
             "maximum allowed relative error for power-law extrapolation of input P(k)")
         ("direct-power-multipoles",
@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
         // Use the limits of the input tabulated power for tabulating the
         // power multipoles (the kmin,kmax cmd-line args are for output only)
         double klo = power->getKMin(), khi = power->getKMax();
-        int nkint = std::ceil(std::log10(khi/klo)*minSamplesPerDecade);
+        int nkint = std::ceil(std::log10(khi/klo)*samplesPerDecade);
     	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,
             klo,khi,nkint,rmin,rmax,nr,ellMax,
             symmetric,relerr,abserr,abspow);
