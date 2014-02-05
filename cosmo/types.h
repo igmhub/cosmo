@@ -19,6 +19,17 @@ namespace cosmo {
     class AbsGaussianRandomFieldGenerator;
     typedef boost::shared_ptr<AbsGaussianRandomFieldGenerator> AbsGaussianRandomFieldGeneratorPtr;
 
+    class TabulatedPower;
+    typedef boost::shared_ptr<const TabulatedPower> TabulatedPowerCPtr;
+
+    class AdaptiveMultipoleTransform;
+    typedef boost::shared_ptr<AdaptiveMultipoleTransform> AdaptiveMultipoleTransformPtr;
+    typedef boost::shared_ptr<const AdaptiveMultipoleTransform> AdaptiveMultipoleTransformCPtr;
+
+    class DistortedPowerCorrelation;
+    typedef boost::shared_ptr<DistortedPowerCorrelation> DistortedPowerCorrelationPtr;
+    typedef boost::shared_ptr<const DistortedPowerCorrelation> DistortedPowerCorrelationCPtr;
+
     // Represents a function that returns a dimensionless transfer function value T(k)
     // given an input wavenumber k in 1/(Mpc/h).
     typedef boost::function<double (double)> TransferFunction;
@@ -33,6 +44,10 @@ namespace cosmo {
     // input pair separation in Mpc/h.
     typedef boost::function<double (double)> CorrelationFunction;
     typedef boost::shared_ptr<CorrelationFunction> CorrelationFunctionPtr;
+
+    // Represents a function of (r,mu)
+    typedef boost::function<double (double,double)> RMuFunction;
+    typedef boost::shared_ptr<const RMuFunction> RMuFunctionCPtr;
     
 } // cosmo
 

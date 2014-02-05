@@ -6,7 +6,8 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS)
 
 # targets to build and install
 lib_LTLIBRARIES = libcosmo.la
-bin_PROGRAMS = cosmocalc cosmo3d cosmogrf cosmostack cosmoxi cosmomock
+bin_PROGRAMS = cosmocalc cosmo3d cosmogrf cosmostack cosmoxi cosmomock \
+cosmotrans cosmoatrans cosmodpc
 
 # extra targets that should not be installed
 noinst_PROGRAMS = cosmotest
@@ -29,13 +30,17 @@ libcosmo_la_SOURCES = \
 	cosmo/LambdaCdmRadiationUniverse.cc \
 	cosmo/BaryonPerturbations.cc \
 	cosmo/BroadbandPower.cc \
+	cosmo/TabulatedPower.cc \
 	cosmo/TransferFunctionPowerSpectrum.cc \
 	cosmo/PowerSpectrumCorrelationFunction.cc \
 	cosmo/RsdCorrelationFunction.cc \
 	cosmo/OneDimensionalPowerSpectrum.cc \
 	cosmo/AbsGaussianRandomFieldGenerator.cc \
 	cosmo/FftGaussianRandomFieldGenerator.cc \
-	cosmo/TestFftGaussianRandomFieldGenerator.cc
+	cosmo/TestFftGaussianRandomFieldGenerator.cc \
+	cosmo/MultipoleTransform.cc \
+	cosmo/AdaptiveMultipoleTransform.cc \
+	cosmo/DistortedPowerCorrelation.cc
 
 # library headers to install (nobase prefix preserves any subdirectories)
 # Anything that includes config.h should *not* be listed here.
@@ -50,13 +55,17 @@ nobase_include_HEADERS = \
 	cosmo/LambdaCdmRadiationUniverse.h \
 	cosmo/BaryonPerturbations.h \
 	cosmo/BroadbandPower.h \
+	cosmo/TabulatedPower.h \
 	cosmo/TransferFunctionPowerSpectrum.h \
 	cosmo/PowerSpectrumCorrelationFunction.h \
 	cosmo/RsdCorrelationFunction.h \
 	cosmo/OneDimensionalPowerSpectrum.h \
 	cosmo/AbsGaussianRandomFieldGenerator.h \
 	cosmo/FftGaussianRandomFieldGenerator.h \
-	cosmo/TestFftGaussianRandomFieldGenerator.h
+	cosmo/TestFftGaussianRandomFieldGenerator.h \
+	cosmo/MultipoleTransform.h \
+	cosmo/AdaptiveMultipoleTransform.h \
+	cosmo/DistortedPowerCorrelation.h
 
 # instructions for building each program
 
@@ -87,3 +96,15 @@ cosmoxi_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPT
 cosmomock_SOURCES = src/cosmomock.cc
 cosmomock_DEPENDENCIES = $(lib_LIBRARIES)
 cosmomock_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+
+cosmotrans_SOURCES = src/cosmotrans.cc
+cosmotrans_DEPENDENCIES = $(lib_LIBRARIES)
+cosmotrans_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+
+cosmoatrans_SOURCES = src/cosmoatrans.cc
+cosmoatrans_DEPENDENCIES = $(lib_LIBRARIES)
+cosmoatrans_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+
+cosmodpc_SOURCES = src/cosmodpc.cc
+cosmodpc_DEPENDENCIES = $(lib_LIBRARIES)
+cosmodpc_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)

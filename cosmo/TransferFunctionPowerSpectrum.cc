@@ -102,7 +102,7 @@ double local::legendreP(int ell, double mu) {
 namespace cosmo {
     class MultipoleIntegrand {
     public:
-        MultipoleIntegrand(GenericFunctionPtr fOfMuPtr, int ell)
+        MultipoleIntegrand(likely::GenericFunctionPtr fOfMuPtr, int ell)
         : _fOfMuPtr(fOfMuPtr), _ell(ell) {
             if(ell < 0 || ell % 2 == 1) throw RuntimeError("MultipoleIntegrand: invalid ell.");
             if(ell > 12) throw RuntimeError("MultipoleIntegrand: ell > 12 not implemented yet.");
@@ -113,13 +113,13 @@ namespace cosmo {
             return _norm*legendreP(_ell,mu)*fval;
         }
     private:
-        GenericFunctionPtr _fOfMuPtr;
+        likely::GenericFunctionPtr _fOfMuPtr;
         int _ell;
         double _norm;
     };
 } // cosmo::
 
-double local::getMultipole(GenericFunctionPtr fOfMuPtr, int ell, double epsAbs, double epsRel) {
+double local::getMultipole(likely::GenericFunctionPtr fOfMuPtr, int ell, double epsAbs, double epsRel) {
     MultipoleIntegrand multipoleIntegrand(fOfMuPtr,ell);
     likely::Integrator::IntegrandPtr integrand(new likely::Integrator::Integrand(
         boost::ref(multipoleIntegrand)));
