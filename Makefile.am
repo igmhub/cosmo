@@ -111,6 +111,6 @@ cosmodpc_SOURCES = src/cosmodpc.cc
 cosmodpc_DEPENDENCIES = $(lib_LIBRARIES)
 cosmodpc_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 
-cosmodpc_SOURCES = src/cosmodpcfft.cc
-cosmodpc_DEPENDENCIES = $(lib_LIBRARIES)
-cosmodpc_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+cosmodpcfft_SOURCES = src/cosmodpcfft.cc
+cosmodpcfft_DEPENDENCIES = $(lib_LIBRARIES)
+cosmodpcfft_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
