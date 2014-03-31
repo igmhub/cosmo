@@ -36,14 +36,15 @@ namespace cosmo {
 		// Returns the correlation function xi(r,mu).
 		double getCorrelation(double r, double mu) const;
 		// Transforms the k-space power spectrum to r space.
-		void transform() const;
+		void transform();
 	private:
 		class Implementation;
 		boost::scoped_ptr<Implementation> _pimpl;
 		likely::GenericFunctionPtr _power;
 		RMuFunctionCPtr _distortion;
-		std::vector<double> _kxgrid, _kygrid, _kzgrid, _xi;
-		double _spacing;
+		std::vector<double> _kxgrid, _kygrid, _kzgrid;
+		boost::shared_array<double> _xi;
+		double _spacing, _norm;
 		int _nx, _ny, _nz;
 		likely::BiCubicInterpolator *_bicubicinterpolator;
 	}; // DistortedPowerCorrelationFft
