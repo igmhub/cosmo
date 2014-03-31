@@ -10,18 +10,17 @@
 #include <iostream>
 
 #include "config.h"
-#ifdef HAVE_LIBFFTW3F
+#ifdef HAVE_LIBFFTW3
 #include "fftw3.h"
-#define FFTW(X) fftw_ ## X // double precision transforms
-typedef float FftwReal;
+#define FFTW(X) fftw_ ## X // prefix identifier (double precision transform)
 #endif
 
 namespace local = cosmo;
 
 namespace cosmo {
     struct DistortedPowerCorrelationFft::Implementation {
-#ifdef HAVE_LIBFFTW3F
-        FFTW(real) *data;
+#ifdef HAVE_LIBFFTW3
+        FFTW(complex) *data;
         FFTW(plan) plan;
 #endif
     };
@@ -31,36 +30,42 @@ local::DistortedPowerCorrelationFft::DistortedPowerCorrelationFft(likely::Generi
 RMuFunctionCPtr distortion, double spacing, int nx, int ny, int nz)
 : _power(power), _distortion(distortion), _spacing(spacing), _nx(nx), _ny(ny), _nz(nz), _pimpl(new Implementation())
 {	
-#ifdef HAVE_LIBFFTW3F
-    _pimpl->data = 0;
+#ifdef HAVE_LIBFFTW3
+	// allocate data array
+	_pimpl->data = (FFTW(complex)*) FFTW(malloc)(sizeof(FFTW(complex)) * nx*ny*nz);
 #else
     throw RuntimeError("DistortedPowerCorrelationFft: package not built with FFTW3.");
 #endif
-	double pi(4*std::atan(1));
-    // initialize the k space grid we will use for evaluating the power spectrum
-    double dkx(2*pi/(nx*spacing)), dky(2*pi/(ny*spacing)), dkz(2*pi/(nz*spacing));
+	double twopi(8*std::atan(1));
+    // initialize the k space grid that will be used for evaluating the power spectrum
+    double dkx(twopi/(nx*spacing)), dky(twopi/(ny*spacing)), dkz(twopi/(nz*spacing));
+    double kmin = 0.000001;
 	_kxgrid.reserve(nx);
 	_kygrid.reserve(ny);
 	_kzgrid.reserve(nz);
 	for(int ix = 0; ix < nx; ++ix){
-        double kx = ix*dkx;
+        double kx = ix*dkx + kmin;
         _kxgrid.push_back(kx);
     }
     for(int iy = 0; iy < ny; ++iy){
-        double ky = iy*dky;
+        double ky = iy*dky + kmin;
         _kygrid.push_back(ky);
     }
     for(int iz = 0; iz < nz; ++iz){
-        double kz = iz*dkz;
+        double kz = iz*dkz + kmin;
         _kzgrid.push_back(kz);
     }
-    _xi.reserve(nx*ny);
+    // calculate normalisation
+    _norm = nx*ny*nz*spacing*spacing*spacing;
+    // initialize the array that will be used for bicubic interpolation
+    _xi.reset(new double[nx*ny]);
 }
 
 local::DistortedPowerCorrelationFft::~DistortedPowerCorrelationFft() {
-#ifdef HAVE_LIBFFTW3F
+#ifdef HAVE_LIBFFTW3
     if(0 != _pimpl->data) {
         FFTW(destroy_plan)(_pimpl->plan);
+        FFTW(free)(_pimpl->data);
     }
 #endif
 }
@@ -74,20 +79,19 @@ double local::DistortedPowerCorrelationFft::getPower(double k, double mu) const 
 
 double local::DistortedPowerCorrelationFft::getCorrelation(double r, double mu) const {
 	if(mu < -1 || mu > 1) {
-		throw RuntimeError("DistortedPowerCorrelationFft::getPower: expected -1 <= mu <= 1.");
+		throw RuntimeError("DistortedPowerCorrelationFft::getCorrelation: expected -1 <= mu <= 1.");
 	}
-	double rpar = r*mu; 
+	double rpar = r*mu;
 	double rperp = r*std::sqrt(1-mu*mu);
 	return (*_bicubicinterpolator)(rperp,rpar);
 }
 
-void local::DistortedPowerCorrelationFft::transform() const {
-#ifdef HAVE_LIBFFTW3F
-	// Cleanup any previous plan
+void local::DistortedPowerCorrelationFft::transform() {
+#ifdef HAVE_LIBFFTW3
+	// cleanup any previous plan
     if(_pimpl->data) FFTW(destroy_plan)(_pimpl->plan);
-    // Create a new plan
-    FftwReal *realData = (FftwReal*)(_pimpl->data);
-    _pimpl->plan = FFTW(plan_dft_r2r_3d)(_nx,_ny,_nz,_pimpl->data,realData,FFTW_ESTIMATE);
+    // create a new plan for an in-place transform
+    _pimpl->plan = FFTW(plan_dft_3d)(_nx,_ny,_nz,_pimpl->data,_pimpl->data,FFTW_BACKWARD,FFTW_ESTIMATE);
 	// evaluate the power spectrum at each grid point (kx,ky,kz)
 	for(int ix = 0; ix < _nx; ++ix){
 		for(int iy = 0; iy < _ny; ++iy){
@@ -96,17 +100,19 @@ void local::DistortedPowerCorrelationFft::transform() const {
             	double k = std::sqrt(ksq);
             	double mu = _kygrid[iy]/k;
             	std::size_t index(iz+_nz*(iy+_ny*ix));
-            	_pimpl->data[index] = getPower(k,mu);
+            	_pimpl->data[index][0] = getPower(k,mu);
+            	_pimpl->data[index][1] = 0;
             }
         }
     }
-    // perform FFT to r space
+    // execute FFT to r space
 	FFTW(execute)(_pimpl->plan);
 	// extract the correlation function at grid points (rx,ry,0)
 	for(int iy = 0; iy < _ny; ++iy) {
         for(int ix = 0; ix < _nx; ++ix) {
-        	int ind = _nz*(iy+_ny*ix);
-            _xi.push_back((double)realData[ind]);
+        	std::size_t ind(_nz*(iy+_ny*ix));
+        	std::size_t ind2(ix+_nx*iy);
+            _xi[ind2] = (_pimpl->data[ind][0]/_norm);
         }
     }
     // create the bicubic interpolator
