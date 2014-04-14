@@ -37,6 +37,9 @@ namespace cosmo {
 		double getCorrelation(double r, double mu) const;
 		// Transforms the k-space power spectrum to r space.
 		void transform();
+		// Returns the memory size in bytes required for this transform or zero if this
+        // information is not available.
+        virtual std::size_t getMemorySize() const;
 	private:
 		class Implementation;
 		boost::scoped_ptr<Implementation> _pimpl;
