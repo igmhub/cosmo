@@ -7,6 +7,7 @@
 #include "likely/function_impl.h"
 
 #include "boost/program_options.hpp"
+#include "boost/format.hpp"
 #include "boost/bind.hpp"
 #include "boost/lexical_cast.hpp"
 
@@ -79,12 +80,12 @@ int main(int argc, char **argv) {
             "optional filename of k,P(k) values to subtract from input")
         ("output,o", po::value<std::string>(&output)->default_value(""),
             "base name for saving results")
-        ("spacing", po::value<double>(&spacing)->default_value(1),
+        ("spacing", po::value<double>(&spacing)->default_value(4),
             "Grid spacing in Mpc/h.")
-        ("nx", po::value<int>(&nx)->default_value(64),
+        ("nx", po::value<int>(&nx)->default_value(400),
             "Grid size along x-axis.")
         ("ny", po::value<int>(&ny)->default_value(0),
-            "Grid size along y-axis (or zero for ny=nx).")
+            "Grid size along line-of-sight y-axis (or zero for ny=nx).")
         ("nz", po::value<int>(&nz)->default_value(0),
             "Grid size along z-axis (or zero for nz=ny).")
         ("bias", po::value<double>(&bias)->default_value(-0.17),
@@ -124,7 +125,7 @@ int main(int argc, char **argv) {
         ("nmu", po::value<int>(&nmu)->default_value(10),
             "number of equally spaced mu_k and mu_r values for saving results")
         ;
-    // do the command line parsing now
+    // Do the command line parsing now
     po::variables_map vm;
     try {
         po::store(po::parse_command_line(argc, argv, cli), vm);
@@ -145,6 +146,10 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+	// Fill in any missing grid dimensions.
+    if(0 == ny) ny = nx;
+    if(0 == nz) nz = ny;
+
     try {
         cosmo::TabulatedPowerCPtr power =
             cosmo::createTabulatedPower(input,true,true,maxRelError,verbose);
@@ -163,7 +168,11 @@ int main(int argc, char **argv) {
             &LyaDistortion::operator(),rsd,_1,_2)));
 
     	cosmo::DistortedPowerCorrelationFft dpc(PkPtr,distPtr,spacing,nx,ny,nz);
-    	// transform
+    	if(verbose) {
+        	std::cout << "Memory size = "
+            	<< boost::format("%.1f Mb") % (dpc.getMemorySize()/1048576.) << std::endl;
+    	}
+    	// Transform
     	dpc.transform();
         if(output.length() > 0) {
             double dmu = 1./(nmu-1.);
