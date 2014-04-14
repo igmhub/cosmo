@@ -10,16 +10,16 @@
 #include <iostream>
 
 #include "config.h"
-#ifdef HAVE_LIBFFTW3
+#ifdef HAVE_LIBFFTW3F
 #include "fftw3.h"
-#define FFTW(X) fftw_ ## X // prefix identifier (double precision transform)
+#define FFTW(X) fftwf_ ## X // prefix identifier (float transform)
 #endif
 
 namespace local = cosmo;
 
 namespace cosmo {
     struct DistortedPowerCorrelationFft::Implementation {
-#ifdef HAVE_LIBFFTW3
+#ifdef HAVE_LIBFFTW3F
         FFTW(complex) *data;
         FFTW(plan) plan;
 #endif
@@ -30,7 +30,7 @@ local::DistortedPowerCorrelationFft::DistortedPowerCorrelationFft(likely::Generi
 RMuFunctionCPtr distortion, double spacing, int nx, int ny, int nz)
 : _power(power), _distortion(distortion), _spacing(spacing), _nx(nx), _ny(ny), _nz(nz), _pimpl(new Implementation())
 {	
-#ifdef HAVE_LIBFFTW3
+#ifdef HAVE_LIBFFTW3F
 	// Allocate data array.
 	_pimpl->data = (FFTW(complex)*) FFTW(malloc)(sizeof(FFTW(complex)) * nx*ny*nz);
 #else
@@ -62,7 +62,7 @@ RMuFunctionCPtr distortion, double spacing, int nx, int ny, int nz)
 }
 
 local::DistortedPowerCorrelationFft::~DistortedPowerCorrelationFft() {
-#ifdef HAVE_LIBFFTW3
+#ifdef HAVE_LIBFFTW3F
     if(0 != _pimpl->data) {
         FFTW(destroy_plan)(_pimpl->plan);
         FFTW(free)(_pimpl->data);
@@ -74,6 +74,9 @@ double local::DistortedPowerCorrelationFft::getPower(double k, double mu) const 
 	if(mu < -1 || mu > 1) {
 		throw RuntimeError("DistortedPowerCorrelationFft::getPower: expected -1 <= mu <= 1.");
 	}
+	if(k < 0 ) {
+		throw RuntimeError("DistortedPowerCorrelationFft::getPower: expected k >= 0.");
+	}
 	return (*_power)(k)*(*_distortion)(k,mu);
 }
 
@@ -81,13 +84,16 @@ double local::DistortedPowerCorrelationFft::getCorrelation(double r, double mu) 
 	if(mu < -1 || mu > 1) {
 		throw RuntimeError("DistortedPowerCorrelationFft::getCorrelation: expected -1 <= mu <= 1.");
 	}
-	double rpar = r*mu;
+	double rpar = r*std::fabs(mu);
 	double rperp = r*std::sqrt(1-mu*mu);
+	if(r < 0 || rperp > _spacing*_nx/2 || rpar > _spacing*_ny/2) {
+		throw RuntimeError("DistortedPowerCorrelationFft::getCorrelation: r out of range.");
+	}
 	return (*_bicubicinterpolator)(rperp,rpar);
 }
 
 void local::DistortedPowerCorrelationFft::transform() {
-#ifdef HAVE_LIBFFTW3
+#ifdef HAVE_LIBFFTW3F
 	// Clean up any previous plan.
     if(_pimpl->data) FFTW(destroy_plan)(_pimpl->plan);
     // Create a new plan for an in-place transform.
@@ -108,26 +114,24 @@ void local::DistortedPowerCorrelationFft::transform() {
             		_pimpl->data[index][0] = getPower(k,mu);
             		_pimpl->data[index][1] = 0;
             	}
-            	//if(iz==0 && ix==0) std::cout << k << " " << _pimpl->data[index][0] << std::endl;
             }
         }
     }
     // Execute FFT to r space.
 	FFTW(execute)(_pimpl->plan);
 	// Extract the correlation function at grid points (rx,ry,0).
-	//double rvalue = -_spacing;
 	for(int iy = 0; iy < _ny/2+1; ++iy) {
         for(int ix = 0; ix < _nx/2+1; ++ix) {
         	std::size_t ind(_nz*(iy+_ny*ix));
         	std::size_t ind2(ix+(_nx/2+1)*iy);
-        	_xi[ind2] = _pimpl->data[ind][0]/_norm;
-        	//if(iy==0) {
-        	//	rvalue += _spacing;
-        	//	std::cout << rvalue << " " << _pimpl->data[ind][0]/_norm << std::endl;
-        	//}
+        	_xi[ind2] = (double)_pimpl->data[ind][0]/_norm;
         }
     }
     // Create the bicubic interpolator.
 	_bicubicinterpolator = new likely::BiCubicInterpolator(likely::BiCubicInterpolator::DataPlane(_xi),_spacing,_nx/2+1,_ny/2+1);
 #endif
+}
+
+std::size_t local::DistortedPowerCorrelationFft::getMemorySize() const {
+    return sizeof(*this) + (std::size_t)_nx*_ny*_nz*8;
 }
