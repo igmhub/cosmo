@@ -30,6 +30,13 @@ local::DistortedPowerCorrelationFft::DistortedPowerCorrelationFft(likely::Generi
 RMuFunctionCPtr distortion, double spacing, int nx, int ny, int nz)
 : _power(power), _distortion(distortion), _spacing(spacing), _nx(nx), _ny(ny), _nz(nz), _pimpl(new Implementation())
 {	
+	// Input parameter validation.
+	if(spacing <= 0 ) {
+		throw RuntimeError("DistortedPowerCorrelationFft: invalid grid spacing");
+	}
+	if(nx <= 0 || ny <= 0 || nz <= 0) {
+		throw RuntimeError("DistortedPowerCorrelationFft: invalid grid size");
+	}
 #ifdef HAVE_LIBFFTW3F
 	// Allocate data array.
 	_pimpl->data = (FFTW(complex)*) FFTW(malloc)(sizeof(FFTW(complex)) * nx*ny*nz);
