@@ -104,11 +104,14 @@ int minSamplesPerDecade, double margin, double vepsMax, double vepsMin, bool opt
 	// Create our first pair of transformers, if necessary
 	if(!_mtGood || !_mtBetter) {
 		if(vepsMax <= 0) {
-			throw RuntimeError("AdaptiveMultipoleTransform: expected vepsGuess > 0.");
+			throw RuntimeError("AdaptiveMultipoleTransform: expected vepsMax > 0.");
+		}
+		if(vepsMin >= vepsMax) {
+			throw RuntimeError("AdaptiveMultipoleTransform: expected vepsMin < vepsMax.");
 		}
 		// Find an initial veps starting from vepsMax.
 		_veps = vepsMax;
-		while(_veps > vepsMin) {
+		while(true) {
 			// Initialize without any min samples per decade, so we can see what it
 			// would be for this trial veps
 			int noMinSamplesPerDecade(0);
@@ -118,6 +121,9 @@ int minSamplesPerDecade, double margin, double vepsMax, double vepsMin, bool opt
 			if(_mtBetter->getSamplesPerDecade() >= minSamplesPerDecade) break;
 			// Otherwise, try a smaller veps
 			_veps /= 2;
+			if(_veps < vepsMin) {
+				throw RuntimeError("AdaptiveMultipoleTransform: reached vepsMin without convergence.");
+			}
 		}
 		// Calculate the corresponding prediction
 		_evaluate(f,_mtBetter,_resultsBetter);
@@ -126,7 +132,7 @@ int minSamplesPerDecade, double margin, double vepsMax, double vepsMin, bool opt
 			strategy, minSamplesPerCycle, minSamplesPerDecade, interpolationPadding));
 		_evaluate(f,_mtGood,_resultsGood);
 	}
-	while(_veps > vepsMin) {
+	while(true) {
 		// Check our termination criteria
 		if(_isTerminated(margin)) {
 			_saveResult(result);
