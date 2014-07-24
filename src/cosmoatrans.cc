@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
             "name of filename to read k,P_ell(k) values from")
         ("output,o", po::value<std::string>(&output)->default_value(""),
             "name of filename to save r,xi_ell(r) values to")
-        ("hankel", "performs a 2D Hankel transform (default is 3D spherical Bessel")
+        ("hankel", "performs a 2D Hankel transform (default is 3D spherical Bessel)")
         ("ell", po::value<int>(&ell)->default_value(0),
             "multipole number of transform to calculate")
         ("scale", po::value<double>(&scale)->default_value(0),
