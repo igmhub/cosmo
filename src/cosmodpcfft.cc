@@ -21,20 +21,21 @@ namespace lk = likely;
 class LyaDistortion {
 // A simple distortion model for autocorrelations, including linear redshift space effects
 // (bias,beta), non-linear large-scale broadening (snlPar,snlPerp), radiation effects
-// (biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath) and a continuum fitting
-// broadband distortion model (k0,sigk).
+// (biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath), continuum fitting
+// broadband distortion (kc,pc) and non-linear corrections (knl,pnl,kp,pp,kv0,pv,kvi,pvi).
 public:
     LyaDistortion(double bias, double biasbeta,
         double biasGamma, double biasSourceAbsorber, double biasAbsorberResponse,
-        double meanFreePath, double snlPar, double snlPerp, double k0, double sigk) :
+        double meanFreePath, double snlPar, double snlPerp, double kc, double pc,
+        double knl, double pnl, double kp, double pp, double kv0, double pv,
+        double kvi, double pvi) :
         _bias(bias), _biasbeta(biasbeta),
         _biasGamma(biasGamma), _biasSourceAbsorber(biasSourceAbsorber),
         _biasAbsorberResponse(biasAbsorberResponse), _meanFreePath(meanFreePath),
-        _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp),
-        _k0(k0), _sigk(sigk)
+        _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp), _kc(kc), _pc(pc),
+        _knl(knl), _pnl(pnl), _kp(kp), _pp(pp), _kv0(kv0), _pv(pv), _kvi(kvi), _pvi(pvi)
     {
         _radStrength = biasGamma*biasSourceAbsorber;
-        _distScale = sigk > 0 ? 1/(1 + std::tanh(k0/sigk)) : 0;
     }
     double operator()(double k, double mu) const {
         // Calculate the k-dependent effective bias
@@ -54,12 +55,24 @@ public:
         double nonlinear = std::exp(-0.5*k*k*snl2);
         // Calculate continuum fitting distortion
         double kpar = std::fabs(k*mu);
-        double distortion = 1 - _distScale*(1 - std::tanh((kpar-_k0)/_sigk));
-        return distortion*nonlinear*linear*linear;
+        double contdistortion = 1;
+        if(_kc != 0) {
+        	contdistortion = std::tanh(std::pow(kpar/_kc,_pc));
+        }
+        // Calculate non-linear correction
+        double nlcorrection = 1;
+        if(_knl != 0) {
+        	double growth = std::pow(k/_knl,_pnl);
+        	double pressure = std::pow(k/_kp,_pp);
+        	double kv = _kv0*std::pow(1+k/_kvi,_pvi);
+        	double pecvelocity = std::pow(kpar/kv,_pv);
+        	nlcorrection = std::exp(growth-pressure-pecvelocity);
+        }
+        return contdistortion*nonlinear*nlcorrection*linear*linear;
     }
 private:
     double _bias,_biasbeta,_biasGamma,_biasSourceAbsorber,_biasAbsorberResponse,_meanFreePath,
-        _snlPar2,_snlPerp2,_k0,_sigk,_distScale,_radStrength;
+        _snlPar2,_snlPerp2,_kc,_pc,_knl,_pnl,_kp,_pp,_kv0,_pv,_kvi,_pvi,_radStrength;
 };
 
 int main(int argc, char **argv) {
@@ -70,7 +83,7 @@ int main(int argc, char **argv) {
     int nx,ny,nz,nr,nk,nmu;
     double spacing,rmin,rmax,maxRelError,kmin,kmax;
     double bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
-        snlPar,snlPerp,k0,sigk;
+        snlPar,snlPerp,kc,pc,knl,pnl,kp,pp,kv0,pv,kvi,pvi;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
@@ -104,10 +117,26 @@ int main(int argc, char **argv) {
             "parallel component of non-linear broadening in Mpc/h")
         ("snl-perp", po::value<double>(&snlPerp)->default_value(0.),
             "perpendicular component of non-linear broadening in Mpc/h")
-        ("k0", po::value<double>(&k0)->default_value(0.02),
-            "cutoff scale for broadband distortion in h/Mpc (ignored when sigk = 0)")
-        ("sigk", po::value<double>(&sigk)->default_value(0.),
-            "smoothing scale for broadband distortion in h/Mpc (or zero for no distortion)")
+        ("kc", po::value<double>(&kc)->default_value(0.),
+            "scale for broadband distortion in h/Mpc (or zero for no distortion)")
+        ("pc", po::value<double>(&pc)->default_value(1.),
+            "exponent for broadband distortion (ignored when kc = 0)")
+        ("knl", po::value<double>(&knl)->default_value(0.),
+            "scale for non-linear growth correction in h/Mpc (or zero for no non-linear corrections)")
+        ("pnl", po::value<double>(&pnl)->default_value(0.569),
+            "exponent for non-linear growth correction (ignored when knl = 0)")
+        ("kp", po::value<double>(&kp)->default_value(15.3),
+            "scale for non-linear pressure correction (ignored when knl = 0)")
+        ("pp", po::value<double>(&pp)->default_value(2.01),
+            "exponent for non-linear pressure correction (ignored when knl = 0)")
+        ("kv0", po::value<double>(&kv0)->default_value(1.22),
+            "scale for line-of-sight non-linear peculiar velocity correction (ignored when knl = 0)")
+        ("pv", po::value<double>(&pv)->default_value(1.5),
+            "exponent for line-of-sight non-linear peculiar velocity correction (ignored when knl = 0)")
+        ("kvi", po::value<double>(&kvi)->default_value(0.923),
+            "scale for isotropic non-linear peculiar velocity correction (ignored when knl = 0)")
+        ("pvi", po::value<double>(&pvi)->default_value(0.451),
+            "exponent for isotropic non-linear peculiar velocity correction (ignored when knl = 0)")
         ("max-rel-error", po::value<double>(&maxRelError)->default_value(1e-3),
             "maximum allowed relative error for power-law extrapolation of input P(k)")
         ("kmin", po::value<double>(&kmin)->default_value(0.0001),
@@ -163,7 +192,7 @@ int main(int argc, char **argv) {
 
         boost::shared_ptr<LyaDistortion> rsd(new LyaDistortion(
             bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
-            snlPar,snlPerp,k0,sigk));
+            snlPar,snlPerp,kc,pc,knl,pnl,kp,pp,kv0,pv,kvi,pvi));
         cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(
             &LyaDistortion::operator(),rsd,_1,_2)));
 
