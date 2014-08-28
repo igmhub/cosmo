@@ -39,7 +39,8 @@ build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = cosmocalc$(EXEEXT) cosmo3d$(EXEEXT) cosmogrf$(EXEEXT) \
 	cosmostack$(EXEEXT) cosmoxi$(EXEEXT) cosmomock$(EXEEXT) \
-	cosmotrans$(EXEEXT) cosmoatrans$(EXEEXT) cosmodpc$(EXEEXT)
+	cosmotrans$(EXEEXT) cosmoatrans$(EXEEXT) cosmodpc$(EXEEXT) \
+	cosmodpcfft$(EXEEXT)
 noinst_PROGRAMS = cosmotest$(EXEEXT)
 subdir = .
 DIST_COMMON = $(am__configure_deps) $(nobase_include_HEADERS) \
@@ -93,7 +94,8 @@ am_libcosmo_la_OBJECTS = AbsHomogeneousUniverse.lo \
 	AbsGaussianRandomFieldGenerator.lo \
 	FftGaussianRandomFieldGenerator.lo \
 	TestFftGaussianRandomFieldGenerator.lo MultipoleTransform.lo \
-	AdaptiveMultipoleTransform.lo DistortedPowerCorrelation.lo
+	AdaptiveMultipoleTransform.lo DistortedPowerCorrelation.lo \
+	DistortedPowerCorrelationFft.lo
 libcosmo_la_OBJECTS = $(am_libcosmo_la_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS)
 am_cosmo3d_OBJECTS = cosmo3d.$(OBJEXT)
@@ -105,6 +107,8 @@ am_cosmocalc_OBJECTS = cosmocalc.$(OBJEXT)
 cosmocalc_OBJECTS = $(am_cosmocalc_OBJECTS)
 am_cosmodpc_OBJECTS = cosmodpc.$(OBJEXT)
 cosmodpc_OBJECTS = $(am_cosmodpc_OBJECTS)
+am_cosmodpcfft_OBJECTS = cosmodpcfft.$(OBJEXT)
+cosmodpcfft_OBJECTS = $(am_cosmodpcfft_OBJECTS)
 am_cosmogrf_OBJECTS = cosmogrf.$(OBJEXT)
 cosmogrf_OBJECTS = $(am_cosmogrf_OBJECTS)
 am_cosmomock_OBJECTS = cosmomock.$(OBJEXT)
@@ -132,14 +136,14 @@ CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libcosmo_la_SOURCES) $(cosmo3d_SOURCES) \
 	$(cosmoatrans_SOURCES) $(cosmocalc_SOURCES) \
-	$(cosmodpc_SOURCES) $(cosmogrf_SOURCES) $(cosmomock_SOURCES) \
-	$(cosmostack_SOURCES) $(cosmotest_SOURCES) \
-	$(cosmotrans_SOURCES) $(cosmoxi_SOURCES)
+	$(cosmodpc_SOURCES) $(cosmodpcfft_SOURCES) $(cosmogrf_SOURCES) \
+	$(cosmomock_SOURCES) $(cosmostack_SOURCES) \
+	$(cosmotest_SOURCES) $(cosmotrans_SOURCES) $(cosmoxi_SOURCES)
 DIST_SOURCES = $(libcosmo_la_SOURCES) $(cosmo3d_SOURCES) \
 	$(cosmoatrans_SOURCES) $(cosmocalc_SOURCES) \
-	$(cosmodpc_SOURCES) $(cosmogrf_SOURCES) $(cosmomock_SOURCES) \
-	$(cosmostack_SOURCES) $(cosmotest_SOURCES) \
-	$(cosmotrans_SOURCES) $(cosmoxi_SOURCES)
+	$(cosmodpc_SOURCES) $(cosmodpcfft_SOURCES) $(cosmogrf_SOURCES) \
+	$(cosmomock_SOURCES) $(cosmostack_SOURCES) \
+	$(cosmotest_SOURCES) $(cosmotrans_SOURCES) $(cosmoxi_SOURCES)
 DATA = $(pkgconfig_DATA)
 HEADERS = $(nobase_include_HEADERS)
 ETAGS = etags
@@ -319,7 +323,8 @@ libcosmo_la_SOURCES = \
 	cosmo/TestFftGaussianRandomFieldGenerator.cc \
 	cosmo/MultipoleTransform.cc \
 	cosmo/AdaptiveMultipoleTransform.cc \
-	cosmo/DistortedPowerCorrelation.cc
+	cosmo/DistortedPowerCorrelation.cc \
+	cosmo/DistortedPowerCorrelationFft.cc
 
 
 # library headers to install (nobase prefix preserves any subdirectories)
@@ -345,7 +350,8 @@ nobase_include_HEADERS = \
 	cosmo/TestFftGaussianRandomFieldGenerator.h \
 	cosmo/MultipoleTransform.h \
 	cosmo/AdaptiveMultipoleTransform.h \
-	cosmo/DistortedPowerCorrelation.h
+	cosmo/DistortedPowerCorrelation.h \
+	cosmo/DistortedPowerCorrelationFft.h
 
 
 # instructions for building each program
@@ -379,6 +385,9 @@ cosmoatrans_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM
 cosmodpc_SOURCES = src/cosmodpc.cc
 cosmodpc_DEPENDENCIES = $(lib_LIBRARIES)
 cosmodpc_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+cosmodpcfft_SOURCES = src/cosmodpcfft.cc
+cosmodpcfft_DEPENDENCIES = $(lib_LIBRARIES)
+cosmodpcfft_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -534,6 +543,9 @@ cosmocalc$(EXEEXT): $(cosmocalc_OBJECTS) $(cosmocalc_DEPENDENCIES)
 cosmodpc$(EXEEXT): $(cosmodpc_OBJECTS) $(cosmodpc_DEPENDENCIES) 
 	@rm -f cosmodpc$(EXEEXT)
 	$(CXXLINK) $(cosmodpc_OBJECTS) $(cosmodpc_LDADD) $(LIBS)
+cosmodpcfft$(EXEEXT): $(cosmodpcfft_OBJECTS) $(cosmodpcfft_DEPENDENCIES) 
+	@rm -f cosmodpcfft$(EXEEXT)
+	$(CXXLINK) $(cosmodpcfft_OBJECTS) $(cosmodpcfft_LDADD) $(LIBS)
 cosmogrf$(EXEEXT): $(cosmogrf_OBJECTS) $(cosmogrf_DEPENDENCIES) 
 	@rm -f cosmogrf$(EXEEXT)
 	$(CXXLINK) $(cosmogrf_OBJECTS) $(cosmogrf_LDADD) $(LIBS)
@@ -565,6 +577,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BaryonPerturbations.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BroadbandPower.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DistortedPowerCorrelation.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DistortedPowerCorrelationFft.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FftGaussianRandomFieldGenerator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HomogeneousUniverseCalculator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/LambdaCdmRadiationUniverse.Plo@am__quote@
@@ -580,6 +593,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmoatrans.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmocalc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmodpc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmodpcfft.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmogrf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmomock.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cosmostack.Po@am__quote@
@@ -727,6 +741,13 @@ DistortedPowerCorrelation.lo: cosmo/DistortedPowerCorrelation.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o DistortedPowerCorrelation.lo `test -f 'cosmo/DistortedPowerCorrelation.cc' || echo '$(srcdir)/'`cosmo/DistortedPowerCorrelation.cc
 
+DistortedPowerCorrelationFft.lo: cosmo/DistortedPowerCorrelationFft.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT DistortedPowerCorrelationFft.lo -MD -MP -MF $(DEPDIR)/DistortedPowerCorrelationFft.Tpo -c -o DistortedPowerCorrelationFft.lo `test -f 'cosmo/DistortedPowerCorrelationFft.cc' || echo '$(srcdir)/'`cosmo/DistortedPowerCorrelationFft.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/DistortedPowerCorrelationFft.Tpo $(DEPDIR)/DistortedPowerCorrelationFft.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cosmo/DistortedPowerCorrelationFft.cc' object='DistortedPowerCorrelationFft.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o DistortedPowerCorrelationFft.lo `test -f 'cosmo/DistortedPowerCorrelationFft.cc' || echo '$(srcdir)/'`cosmo/DistortedPowerCorrelationFft.cc
+
 cosmo3d.o: src/cosmo3d.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmo3d.o -MD -MP -MF $(DEPDIR)/cosmo3d.Tpo -c -o cosmo3d.o `test -f 'src/cosmo3d.cc' || echo '$(srcdir)/'`src/cosmo3d.cc
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/cosmo3d.Tpo $(DEPDIR)/cosmo3d.Po
@@ -782,6 +803,20 @@ cosmodpc.obj: src/cosmodpc.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmodpc.cc' object='cosmodpc.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmodpc.obj `if test -f 'src/cosmodpc.cc'; then $(CYGPATH_W) 'src/cosmodpc.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmodpc.cc'; fi`
+
+cosmodpcfft.o: src/cosmodpcfft.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmodpcfft.o -MD -MP -MF $(DEPDIR)/cosmodpcfft.Tpo -c -o cosmodpcfft.o `test -f 'src/cosmodpcfft.cc' || echo '$(srcdir)/'`src/cosmodpcfft.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/cosmodpcfft.Tpo $(DEPDIR)/cosmodpcfft.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmodpcfft.cc' object='cosmodpcfft.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmodpcfft.o `test -f 'src/cosmodpcfft.cc' || echo '$(srcdir)/'`src/cosmodpcfft.cc
+
+cosmodpcfft.obj: src/cosmodpcfft.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmodpcfft.obj -MD -MP -MF $(DEPDIR)/cosmodpcfft.Tpo -c -o cosmodpcfft.obj `if test -f 'src/cosmodpcfft.cc'; then $(CYGPATH_W) 'src/cosmodpcfft.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmodpcfft.cc'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/cosmodpcfft.Tpo $(DEPDIR)/cosmodpcfft.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/cosmodpcfft.cc' object='cosmodpcfft.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o cosmodpcfft.obj `if test -f 'src/cosmodpcfft.cc'; then $(CYGPATH_W) 'src/cosmodpcfft.cc'; else $(CYGPATH_W) '$(srcdir)/src/cosmodpcfft.cc'; fi`
 
 cosmogrf.o: src/cosmogrf.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT cosmogrf.o -MD -MP -MF $(DEPDIR)/cosmogrf.Tpo -c -o cosmogrf.o `test -f 'src/cosmogrf.cc' || echo '$(srcdir)/'`src/cosmogrf.cc

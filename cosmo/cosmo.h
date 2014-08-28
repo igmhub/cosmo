@@ -20,6 +20,7 @@
 #include "cosmo/MultipoleTransform.h"
 #include "cosmo/AdaptiveMultipoleTransform.h"
 #include "cosmo/DistortedPowerCorrelation.h"
+#include "cosmo/DistortedPowerCorrelationFft.h"
 
 #include "cosmo/AbsGaussianRandomFieldGenerator.h"
 #include "cosmo/FftGaussianRandomFieldGenerator.h"
