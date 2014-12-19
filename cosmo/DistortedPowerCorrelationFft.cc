@@ -27,7 +27,7 @@ namespace cosmo {
 }
 
 local::DistortedPowerCorrelationFft::DistortedPowerCorrelationFft(likely::GenericFunctionPtr power,
-RMuFunctionCPtr distortion, double spacing, int nx, int ny, int nz)
+KMuPkFunctionCPtr distortion, double spacing, int nx, int ny, int nz)
 : _power(power), _distortion(distortion), _spacing(spacing), _nx(nx), _ny(ny), _nz(nz), _pimpl(new Implementation())
 {	
 	// Input parameter validation.
@@ -84,7 +84,7 @@ double local::DistortedPowerCorrelationFft::getPower(double k, double mu) const 
 	if(k < 0 ) {
 		throw RuntimeError("DistortedPowerCorrelationFft::getPower: expected k >= 0.");
 	}
-	return (*_power)(k)*(*_distortion)(k,mu);
+	return (*_power)(k)*(*_distortion)(k,mu,(*_power)(k));
 }
 
 double local::DistortedPowerCorrelationFft::getCorrelation(double r, double mu) const {
