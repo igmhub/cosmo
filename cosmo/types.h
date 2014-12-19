@@ -53,6 +53,10 @@ namespace cosmo {
     typedef boost::function<double (double,double)> RMuFunction;
     typedef boost::shared_ptr<const RMuFunction> RMuFunctionCPtr;
     
+    // Represents a function of (k,mu,Pk)
+    typedef boost::function<double (double,double,double)> KMuPkFunction;
+    typedef boost::shared_ptr<const KMuPkFunction> KMuPkFunctionCPtr;
+    
 } // cosmo
 
 #endif // COSMO_TYPES
