@@ -211,6 +211,8 @@ int main(int argc, char **argv) {
         std::cerr << "Missing input filename." << std::endl;
         return 1;
     }
+    // Calculate maximum r value to use for bicubic interpolation grid.
+    double rgridmax = rmax + rmax/(nrgrid-1.);
 
     try {
         cosmo::TabulatedPowerCPtr power =
@@ -229,7 +231,7 @@ int main(int argc, char **argv) {
         cosmo::KMuPkFunctionCPtr distPtr(new cosmo::KMuPkFunction(boost::bind(
             &LyaDistortion::operator(),rsd,_1,_2,_3)));
 
-    	cosmo::DistortedPowerCorrelationHybrid dpc(PkPtr,distPtr,kxmax,nx,spacing,ny,rmax,nrgrid,epsAbs);
+    	cosmo::DistortedPowerCorrelationHybrid dpc(PkPtr,distPtr,kxmax,nx,spacing,ny,rgridmax,nrgrid,epsAbs);
     	if(verbose) {
         	std::cout << "Memory size = "
             	<< boost::format("%.1f Mb") % (dpc.getMemorySize()/1048576.) << std::endl;
@@ -252,6 +254,35 @@ int main(int argc, char **argv) {
                 kout << std::endl;
             }
             kout.close();
+            // Write out values tabulated for linear-spaced kperp
+            std::string kperpfile = output + ".kperp.dat";
+            std::ofstream kperpout(kperpfile.c_str());
+            int nkperp(1000), nrpar(11);
+            for(int i = 0; i < nkperp; ++i) {
+                double kperp = i*2./(nkperp-1);
+                kperpout << boost::lexical_cast<std::string>(kperp);
+                for(int j = 0; j < nrpar; ++j) {
+                    double rpar = j*40./(nrpar-1);
+                    kperpout << ' ' << boost::lexical_cast<std::string>(dpc.getKTransform(rpar,kperp));
+                }
+                kperpout << std::endl;                
+            }
+            kperpout.close();
+            // Write out values tabulated for linear-spaced rpar
+            std::string rparfile = output + ".rpar.dat";
+            std::ofstream rparout(rparfile.c_str());
+            nrpar = 201;
+            nkperp = 11;
+            for(int i = 0; i < nrpar; ++i) {
+        	    double rpar = i*200./(nrpar-1);
+                rparout << boost::lexical_cast<std::string>(rpar);
+                for(int j = 0; j < nkperp; ++j) {
+                    double kperp = j*0.5/(nkperp-1);
+                    rparout << ' ' << boost::lexical_cast<std::string>(dpc.getKTransform(rpar,kperp));
+                }
+                rparout << std::endl;                
+            }
+            rparout.close();
             // Write out values tabulated for linear-spaced r
             double dr = (rmax-rmin)/(nr-1.);
             std::string rfile = output + ".r.dat";

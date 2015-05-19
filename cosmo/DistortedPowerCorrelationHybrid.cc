@@ -31,14 +31,14 @@ namespace cosmo {
 }
 
 local::DistortedPowerCorrelationHybrid::DistortedPowerCorrelationHybrid(likely::GenericFunctionPtr power,
-KMuPkFunctionCPtr distortion, double kmax, int nx, double spacing, int ny, double rmax, int nr,
+KMuPkFunctionCPtr distortion, double kxmax, int nx, double spacing, int ny, double rmax, int nr,
 double epsAbs)
-: _power(power), _distortion(distortion), _kmax(kmax), _nx(nx), _spacing(spacing), _ny(ny), _rmax(rmax),
+: _power(power), _distortion(distortion), _kxmax(kxmax), _nx(nx), _spacing(spacing), _ny(ny), _rmax(rmax),
 _nr(nr), _epsAbs(epsAbs), _pimpl(new Implementation())
 {	
 	// Input parameter validation.
-	if(kmax <= 0) {
-		throw RuntimeError("DistortedPowerCorrelationHybrid: expected kmax > 0.");
+	if(kxmax <= 0) {
+		throw RuntimeError("DistortedPowerCorrelationHybrid: expected kxmax > 0.");
 	}
 	if(spacing <= 0) {
 		throw RuntimeError("DistortedPowerCorrelationHybrid: invalid grid spacing.");
@@ -49,16 +49,19 @@ _nr(nr), _epsAbs(epsAbs), _pimpl(new Implementation())
 	if(rmax <= 0) {
 		throw RuntimeError("DistortedPowerCorrelationHybrid: expected rmax > 0.");
 	}
+	if(rmax > ny*spacing/2.) {
+		throw RuntimeError("DistortedPowerCorrelationHybrid: expected rmax < ny*spacing/2");
+	}
 #ifdef HAVE_LIBFFTW3F
 	// Allocate data array for 1D Fourier transform.
 	_pimpl->data = (FFTW(complex)*) FFTW(malloc)(sizeof(FFTW(complex)) * ny);
 #else
     throw RuntimeError("DistortedPowerCorrelationHybrid: package not built with FFTW3.");
 #endif
-	_twopi(8*std::atan(1));
+	_twopi = 8*std::atan(1);
     // Initialize the k-space grid that will be used for evaluating the power spectrum.
     // Note that the grid is centered on (0,0) and grid points wrap around in a specific order.
-    _dkx = kmax/(nx-1);
+    _dkx = kxmax/(nx-1);
     double dky(_twopi/(ny*spacing));
 	_kxgrid.reserve(nx);
 	_kygrid.reserve(ny);
@@ -115,6 +118,10 @@ double local::DistortedPowerCorrelationHybrid::getCorrelation(double r, double m
 	return (*_xiinterpolator)(rperp,rpar);
 }
 
+double local::DistortedPowerCorrelationHybrid::getKTransform(double rpar, double kperp) const {
+	return (*_ktfinterpolator)(rpar,kperp);
+}
+
 void local::DistortedPowerCorrelationHybrid::transform() {
     // Perform a series of 1D Fourier transforms
     ktransform();
@@ -127,7 +134,7 @@ void local::DistortedPowerCorrelationHybrid::transform() {
         for(int ix = 0; ix < _nr; ++ix){
             _rx = _rgrid[ix];
             std::size_t ind(ix+_nr*iy);
-            _xi[ind] = integrator.integrateSmooth(0,_kmax)/_twopi;
+            _xi[ind] = integrator.integrateSmooth(0,_kxmax)/_twopi;
         }
     }
     // Create the bicubic interpolator.
