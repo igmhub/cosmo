@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology distorted power correlation function");
     std::string input,delta,output;
-    int nx,ny,nrgrid,nr,nk,nmu;
+    int nx,ny,nr,nk,nmu;
     double kxmax,spacing,epsAbs,rmin,rmax,maxRelError,kmin,kmax;
     double bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
         snlPar,snlPerp,kc,kcAlt,pc,sigma8,qnl,kv,av,bv,kp,knl,pnl,kpp,pp,kv0,pv,kvi,pvi;
@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
             "optional filename of k,P(k) values to subtract from input")
         ("output,o", po::value<std::string>(&output)->default_value(""),
             "base name for saving results")
-        ("kxmax", po::value<double>(&kxmax)->default_value(2),
+        ("kxmax", po::value<double>(&kxmax)->default_value(4),
             "Maximum value along x-axis in h/Mpc.")
         ("nx", po::value<int>(&nx)->default_value(400),
             "Grid size along x-axis.")
@@ -120,8 +120,6 @@ int main(int argc, char **argv) {
             "Grid spacing along line-of-sight y-axis in Mpc/h.")
         ("ny", po::value<int>(&ny)->default_value(400),
             "Grid size along line-of-sight y-axis.")
-        ("nrgrid", po::value<int>(&nrgrid)->default_value(100),
-            "Grid size along x- and y-axis for r-space interpolation.")
         ("epsAbs", po::value<double>(&epsAbs)->default_value(1e-6),
             "maximum allowed absolute error for 1D integral")
         ("bias", po::value<double>(&bias)->default_value(-0.14),
@@ -212,7 +210,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     // Calculate maximum r value to use for bicubic interpolation grid.
-    double rgridmax = rmax + rmax/(nrgrid-1.);
+    double rgridmax = rmax + spacing;
 
     try {
         cosmo::TabulatedPowerCPtr power =
@@ -231,7 +229,8 @@ int main(int argc, char **argv) {
         cosmo::KMuPkFunctionCPtr distPtr(new cosmo::KMuPkFunction(boost::bind(
             &LyaDistortion::operator(),rsd,_1,_2,_3)));
 
-    	cosmo::DistortedPowerCorrelationHybrid dpc(PkPtr,distPtr,kxmax,nx,spacing,ny,rgridmax,nrgrid,epsAbs);
+        double kxmin = power->getKMin();
+    	cosmo::DistortedPowerCorrelationHybrid dpc(PkPtr,distPtr,kxmin,kxmax,nx,spacing,ny,rgridmax,epsAbs);
     	if(verbose) {
         	std::cout << "Memory size = "
             	<< boost::format("%.1f Mb") % (dpc.getMemorySize()/1048576.) << std::endl;
@@ -254,35 +253,6 @@ int main(int argc, char **argv) {
                 kout << std::endl;
             }
             kout.close();
-            // Write out values tabulated for linear-spaced kperp
-            std::string kperpfile = output + ".kperp.dat";
-            std::ofstream kperpout(kperpfile.c_str());
-            int nkperp(1000), nrpar(11);
-            for(int i = 0; i < nkperp; ++i) {
-                double kperp = i*2./(nkperp-1);
-                kperpout << boost::lexical_cast<std::string>(kperp);
-                for(int j = 0; j < nrpar; ++j) {
-                    double rpar = j*40./(nrpar-1);
-                    kperpout << ' ' << boost::lexical_cast<std::string>(dpc.getKTransform(rpar,kperp));
-                }
-                kperpout << std::endl;                
-            }
-            kperpout.close();
-            // Write out values tabulated for linear-spaced rpar
-            std::string rparfile = output + ".rpar.dat";
-            std::ofstream rparout(rparfile.c_str());
-            nrpar = 201;
-            nkperp = 11;
-            for(int i = 0; i < nrpar; ++i) {
-        	    double rpar = i*200./(nrpar-1);
-                rparout << boost::lexical_cast<std::string>(rpar);
-                for(int j = 0; j < nkperp; ++j) {
-                    double kperp = j*0.5/(nkperp-1);
-                    rparout << ' ' << boost::lexical_cast<std::string>(dpc.getKTransform(rpar,kperp));
-                }
-                rparout << std::endl;                
-            }
-            rparout.close();
             // Write out values tabulated for linear-spaced r
             double dr = (rmax-rmin)/(nr-1.);
             std::string rfile = output + ".r.dat";
