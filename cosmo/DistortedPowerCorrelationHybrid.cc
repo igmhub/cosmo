@@ -34,7 +34,7 @@ namespace cosmo {
 local::DistortedPowerCorrelationHybrid::DistortedPowerCorrelationHybrid(likely::GenericFunctionPtr power,
 KMuPkFunctionCPtr distortion, double kxmin, double kxmax, int nx, double spacing, int ny, double rmax,
 double epsAbs)
-: _power(power), _distortion(distortion), _kxmin(kxmin), _kxmax(kxmax), _nx(nx), _spacing(spacing), _ny(ny),
+: _power(power), _distortion(distortion), _kxmin(0), _kxmax(kxmax), _nx(nx), _spacing(spacing), _ny(ny),
 _rmax(rmax), _epsAbs(epsAbs), _pimpl(new Implementation())
 {	
 	// Input parameter validation.
@@ -66,12 +66,14 @@ _rmax(rmax), _epsAbs(epsAbs), _pimpl(new Implementation())
     // Initialize the k-space grid that will be used for evaluating the power spectrum.
     // Note that the grid is centered on (kxmin,0) and grid points for the y axis wrap around
     // in a specific order.
-    double dkx = std::pow(kxmax/kxmin,1./(nx-1.));
+    //double dkx = std::pow(kxmax/kxmin,1./(nx-1.));
+    double dkx = kxmax/(nx-1);
     double dky = _twopi/(ny*spacing);
 	_kxgrid.reserve(nx);
 	_kygrid.reserve(ny);
 	for(int ix = 0; ix < nx; ++ix){
-        double kx = kxmin*std::pow(dkx,ix);
+        //double kx = kxmin*std::pow(dkx,ix);
+        double kx = ix*dkx;
         _kxgrid.push_back(kx);
     }
     for(int iy = 0; iy < ny; ++iy){
