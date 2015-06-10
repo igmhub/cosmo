@@ -63,7 +63,6 @@ _rmax(rmax), _epsAbs(epsAbs), _pimpl(new Implementation())
     throw RuntimeError("DistortedPowerCorrelationHybrid: package not built with FFTW3.");
 #endif
 	_twopi = 8*std::atan(1);
-	_count = 0;
     // Initialize the k-space grid that will be used for evaluating the power spectrum.
     // Note that the grid is centered on (kxmin,0) and grid points for the y axis wrap around
     // in a specific order.
@@ -154,10 +153,9 @@ void local::DistortedPowerCorrelationHybrid::transform() {
             _rx = _rgrid[ix];
             std::size_t ind(ix+_nr*iy);
             _xi[ind] = integrator.integrateSmooth(_kxmin,_kxmax)/_twopi;
-            if(_count>0) std::cout << _rgrid[iy] << " " << _rx << " " << _xi[ind] << std::endl;
+            std::cout << _rgrid[iy] << " " << _rx << " " << _xi[ind] << std::endl;
         }
     }
-    _count++;
     // Create the bicubic interpolator.
 	_xiInterpolator = new likely::BiCubicInterpolator(likely::BiCubicInterpolator::DataPlane(_xi),_spacing,_nr);
 }

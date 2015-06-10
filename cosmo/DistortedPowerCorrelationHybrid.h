@@ -56,7 +56,7 @@ namespace cosmo {
 		std::vector<double> _kxgrid, _kygrid, _rgrid;
 		boost::shared_array<double> _ktf, _xi;
 		double _kxmin, _kxmax, _spacing, _rmax, _epsAbs, _twopi, _norm, _rx, _dkx;
-		int _nx, _ny, _nr, _count;
+		int _nx, _ny, _nr;
 		double _transverseIntegrand(double kx) const;
 		likely::BiCubicInterpolator *_xiInterpolator, *_ktransformInterpolator;
 		mutable likely::InterpolatorPtr _ktfInterpolator;
