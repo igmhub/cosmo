@@ -39,6 +39,8 @@ namespace cosmo {
 		double getPower(double k, double mu) const;
 		// Returns the correlation function xi(r,mu).
 		double getCorrelation(double r, double mu) const;
+		// Returns the k-space transform ktf(ry,kx).
+		double getKTransform(double ry, double kx) const;
 		// Transforms the k-space power spectrum to r-space.
 		void transform();
 		// Performs a series of 1D Fourier transforms of k-space power spectrum.
@@ -53,10 +55,10 @@ namespace cosmo {
 		KMuPkFunctionCPtr _distortion;
 		std::vector<double> _kxgrid, _kygrid, _rgrid;
 		boost::shared_array<double> _ktf, _xi;
-		double _kxmin, _kxmax, _spacing, _rmax, _epsAbs, _twopi, _norm, _rx;
-		int _nx, _ny, _nr;
+		double _kxmin, _kxmax, _spacing, _rmax, _epsAbs, _twopi, _norm, _rx, _dkx;
+		int _nx, _ny, _nr, _count;
 		double _transverseIntegrand(double kx) const;
-		likely::BiCubicInterpolator *_xiInterpolator;
+		likely::BiCubicInterpolator *_xiInterpolator, *_ktransformInterpolator;
 		mutable likely::InterpolatorPtr _ktfInterpolator;
 	}; // DistortedPowerCorrelationHybrid
 

@@ -63,17 +63,18 @@ _rmax(rmax), _epsAbs(epsAbs), _pimpl(new Implementation())
     throw RuntimeError("DistortedPowerCorrelationHybrid: package not built with FFTW3.");
 #endif
 	_twopi = 8*std::atan(1);
+	_count = 0;
     // Initialize the k-space grid that will be used for evaluating the power spectrum.
     // Note that the grid is centered on (kxmin,0) and grid points for the y axis wrap around
     // in a specific order.
     //double dkx = std::pow(kxmax/kxmin,1./(nx-1.));
-    double dkx = kxmax/(nx-1);
+    _dkx = kxmax/(nx-1);
     double dky = _twopi/(ny*spacing);
 	_kxgrid.reserve(nx);
 	_kygrid.reserve(ny);
 	for(int ix = 0; ix < nx; ++ix){
         //double kx = kxmin*std::pow(dkx,ix);
-        double kx = ix*dkx;
+        double kx = ix*_dkx;
         _kxgrid.push_back(kx);
     }
     for(int iy = 0; iy < ny; ++iy){
@@ -125,6 +126,16 @@ double local::DistortedPowerCorrelationHybrid::getCorrelation(double r, double m
 	return (*_xiInterpolator)(rperp,rpar);
 }
 
+double local::DistortedPowerCorrelationHybrid::getKTransform(double ry, double kx) const {
+	if(kx < _kxmin || kx > _kxmax) {
+		throw RuntimeError("DistortedPowerCorrelationHybrid::getKTransform: expected kxmin <= kx <= kxmax");
+	}
+	if(ry < 0 || ry > _rmax) {
+		throw RuntimeError("DistortedPowerCorrelationHybrid::getKTransform: expected 0 <= ry <= rmax");
+	}
+	return (*_ktransformInterpolator)(ry,kx);
+}
+
 void local::DistortedPowerCorrelationHybrid::transform() {
     // Perform a series of 1D Fourier transforms
     ktransform();
@@ -143,8 +154,10 @@ void local::DistortedPowerCorrelationHybrid::transform() {
             _rx = _rgrid[ix];
             std::size_t ind(ix+_nr*iy);
             _xi[ind] = integrator.integrateSmooth(_kxmin,_kxmax)/_twopi;
+            if(_count>0) std::cout << _rgrid[iy] << " " << _rx << " " << _xi[ind] << std::endl;
         }
     }
+    _count++;
     // Create the bicubic interpolator.
 	_xiInterpolator = new likely::BiCubicInterpolator(likely::BiCubicInterpolator::DataPlane(_xi),_spacing,_nr);
 }
@@ -184,6 +197,8 @@ void local::DistortedPowerCorrelationHybrid::ktransform() {
 	        _ktf[ind2] = (double)_pimpl->data[ind][0]/_norm;
 	    }
     }
+    // Create the bicubic interpolator.
+	_ktransformInterpolator = new likely::BiCubicInterpolator(likely::BiCubicInterpolator::DataPlane(_ktf),_spacing,_ny/2+1,_nx,_dkx);
 #endif
 }
 
