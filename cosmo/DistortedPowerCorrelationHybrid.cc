@@ -153,7 +153,7 @@ void local::DistortedPowerCorrelationHybrid::transform() {
             _rx = _rgrid[ix];
             std::size_t ind(ix+_nr*iy);
             _xi[ind] = integrator.integrateSmooth(_kxmin,_kxmax)/_twopi;
-            std::cout << _rgrid[iy] << " " << _rx << " " << _xi[ind] << std::endl;
+            //std::cout << _rgrid[iy] << " " << _rx << " " << _xi[ind] << std::endl;
         }
     }
     // Create the bicubic interpolator.
