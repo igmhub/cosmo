@@ -33,7 +33,7 @@ namespace cosmo {
 		// Creates a new distorted power correlation function using the specified
 		// isotropic power P(k) and distortion function D(k,mu).
 		DistortedPowerCorrelationHybrid(likely::GenericFunctionPtr power, KMuPkFunctionCPtr distortion,
-		    double kxmin, double kxmax, int nx, double spacing, int ny, double rmax, double epsAbs = 1e-7);
+		    double kxmin, double kxmax, int nx, double spacing, int ny, double rmax, double epsAbs = 1e-8);
 		virtual ~DistortedPowerCorrelationHybrid();
 		// Returns the value of P(k,mu) = P(k)*D(k,mu).
 		double getPower(double k, double mu) const;
