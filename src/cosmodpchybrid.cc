@@ -99,8 +99,8 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology distorted power correlation function");
     std::string input,delta,output;
-    int nx,ny,nr,nk,nmu;
-    double kxmax,spacing,epsAbs,rmin,rmax,maxRelError,kmin,kmax;
+    int nx,ny,nr,nk,nmu,nkx,nry;
+    double kxmax,spacing,epsAbs,epsRel,rmin,rmax,maxRelError,kmin,kmax;
     double bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
         snlPar,snlPerp,kc,kcAlt,pc,sigma8,qnl,kv,av,bv,kp,knl,pnl,kpp,pp,kv0,pv,kvi,pvi;
     cli.add_options()
@@ -120,8 +120,10 @@ int main(int argc, char **argv) {
             "Grid spacing along line-of-sight y-axis in Mpc/h.")
         ("ny", po::value<int>(&ny)->default_value(400),
             "Grid size along line-of-sight y-axis.")
-        ("epsAbs", po::value<double>(&epsAbs)->default_value(1e-6),
-            "maximum allowed absolute error for 1D integral")
+        ("epsAbs", po::value<double>(&epsAbs)->default_value(1e-8),
+            "Absolute error target for 1D integral")
+        ("epsRel", po::value<double>(&epsRel)->default_value(1e-5),
+            "Relative error target for 1D integral")
         ("bias", po::value<double>(&bias)->default_value(-0.14),
             "linear tracer bias")
         ("biasbeta", po::value<double>(&biasbeta)->default_value(-0.196),
@@ -188,6 +190,11 @@ int main(int argc, char **argv) {
             "number of points spanning [rmin,rmax] to use")
         ("nmu", po::value<int>(&nmu)->default_value(11),
             "number of equally spaced mu_k and mu_r values for saving results")
+        ("theta-angle", "use equally spaced theta angles for calculating mu_k and mu_r values.")
+        ("nkx", po::value<int>(&nkx)->default_value(0),
+            "number of linear-spaced k values along x-axis for saving results")
+        ("nry", po::value<int>(&nry)->default_value(0),
+            "number of linear-spaced r values along line-of-sight y-axis for saving results")
         ;
     // Do the command line parsing now
     po::variables_map vm;
@@ -203,7 +210,7 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose"));
+    bool verbose(vm.count("verbose")),thetaAngle(vm.count("theta-angle"));
 
     if(input.length() == 0) {
         std::cerr << "Missing input filename." << std::endl;
@@ -230,7 +237,7 @@ int main(int argc, char **argv) {
             &LyaDistortion::operator(),rsd,_1,_2,_3)));
 
         double kxmin = power->getKMin();
-    	cosmo::DistortedPowerCorrelationHybrid dpc(PkPtr,distPtr,kxmin,kxmax,nx,spacing,ny,rgridmax,epsAbs);
+    	cosmo::DistortedPowerCorrelationHybrid dpc(PkPtr,distPtr,kxmin,kxmax,nx,spacing,ny,rgridmax,epsAbs,epsRel);
     	if(verbose) {
         	std::cout << "Memory size = "
             	<< boost::format("%.1f Mb") % (dpc.getMemorySize()/1048576.) << std::endl;
@@ -238,7 +245,9 @@ int main(int argc, char **argv) {
     	// Transform
     	dpc.transform();
         if(output.length() > 0) {
+            double mu;
             double dmu = 1./(nmu-1.);
+            double dtheta = 2*std::atan(1)/(nmu-1.);
             // Write out values tabulated for log-spaced k
             double dk = std::pow(kmax/kmin,1./(nk-1.));
             std::string kfile = output + ".k.dat";
@@ -247,7 +256,8 @@ int main(int argc, char **argv) {
                 double k = kmin*std::pow(dk,i);
                 kout << boost::lexical_cast<std::string>(k);
                 for(int j = 0; j < nmu; ++j) {
-                    double mu = 1 - j*dmu;
+                    if(thetaAngle) mu = std::cos(j*dtheta);
+                    else mu = 1 - j*dmu;
                     kout << ' ' << boost::lexical_cast<std::string>(dpc.getPower(k,mu));
                 }
                 kout << std::endl;
@@ -261,12 +271,30 @@ int main(int argc, char **argv) {
                 double r = rmin + i*dr;
                 rout << boost::lexical_cast<std::string>(r);
                 for(int j = 0; j < nmu; ++j) {
-                    double mu = 1 - j*dmu;
+                    if(thetaAngle) mu = std::cos(j*dtheta);
+                    else mu = 1 - j*dmu;
                     rout << ' ' << boost::lexical_cast<std::string>(dpc.getCorrelation(r,mu));
                 }
                 rout << std::endl;                
             }
             rout.close();
+            // Write out values tabulated for linear-spaced kperp, if requested
+            if(nkx>0 && nry>0) {
+                double dkx = kxmax/(nkx-1.);
+                double dry = rmax/(nry-1.);
+                std::string ktffile = output + ".ktf.kperp.dat";
+                std::ofstream ktfout(ktffile.c_str());
+                for(int i = 0; i < nkx; ++i) {
+                    double kx = i*dkx;
+                    ktfout << boost::lexical_cast<std::string>(kx);
+                    for(int j = 0; j < nry; ++j) {
+                        double ry = j*dry;
+                        ktfout << ' ' << boost::lexical_cast<std::string>(dpc.getKTransform(ry,kx));
+                    }
+                    ktfout << std::endl;                
+                }
+                ktfout.close();
+            }
         }
     }
     catch(std::runtime_error const &e) {

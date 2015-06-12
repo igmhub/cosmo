@@ -33,9 +33,9 @@ namespace cosmo {
 
 local::DistortedPowerCorrelationHybrid::DistortedPowerCorrelationHybrid(likely::GenericFunctionPtr power,
 KMuPkFunctionCPtr distortion, double kxmin, double kxmax, int nx, double spacing, int ny, double rmax,
-double epsAbs)
+double epsAbs, double epsRel)
 : _power(power), _distortion(distortion), _kxmin(0), _kxmax(kxmax), _nx(nx), _spacing(spacing), _ny(ny),
-_rmax(rmax), _epsAbs(epsAbs), _pimpl(new Implementation())
+_rmax(rmax), _epsAbs(epsAbs), _epsRel(epsRel), _pimpl(new Implementation())
 {	
 	// Input parameter validation.
 	if(kxmax < kxmin) {
@@ -141,7 +141,7 @@ void local::DistortedPowerCorrelationHybrid::transform() {
     // Perform a series of 1D integrals.
     likely::Integrator::IntegrandPtr integrand(new likely::Integrator::Integrand(
         boost::bind(&DistortedPowerCorrelationHybrid::_transverseIntegrand,this,_1)));
-    likely::Integrator integrator(integrand,_epsAbs,0);
+    likely::Integrator integrator(integrand,_epsAbs,_epsRel);
     likely::Interpolator::CoordinateValues ktfrow(_nx);
     for(int iy = 0; iy < _nr; ++iy){
         for(int i = 0; i < _nx; ++i){
