@@ -152,7 +152,8 @@ void local::DistortedPowerCorrelationHybrid::transform() {
         for(int ix = 0; ix < _nr; ++ix){
             _rx = _rgrid[ix];
             std::size_t ind(ix+_nr*iy);
-            _xi[ind] = integrator.integrateSmooth(_kxmin,_kxmax)/_twopi;
+            _xi[ind] = integrator.integrateRobust(_kxmin,_kxmax)/_twopi;
+            //_xi[ind] = integrator.integrateSmooth(_kxmin,_kxmax)/_twopi;
             //std::cout << _rgrid[iy] << " " << _rx << " " << _xi[ind] << std::endl;
         }
     }
