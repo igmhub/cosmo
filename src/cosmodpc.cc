@@ -149,6 +149,7 @@ int main(int argc, char **argv) {
             "number of log-spaced k values for saving results")
         ("nmu", po::value<int>(&nmu)->default_value(10),
             "number of equally spaced mu_k and mu_r values for saving results")
+        ("theta-angle", "use equally spaced theta angles for calculating mu_k and mu_r values.")
         ;
     // do the command line parsing now
     po::variables_map vm;
@@ -166,7 +167,8 @@ int main(int argc, char **argv) {
     }
     bool verbose(vm.count("verbose")), symmetric(0==vm.count("asymmetric")),
         optimize(vm.count("optimize")), bypass(vm.count("bypass")),
-        directPowerMultipoles(vm.count("direct-power-multipoles"));
+        directPowerMultipoles(vm.count("direct-power-multipoles")),
+        thetaAngle(vm.count("theta-angle"));
 
     if(!symmetric) {
         std::cerr << "Odd multipoles not implemented yet." << std::endl;
@@ -218,7 +220,9 @@ int main(int argc, char **argv) {
         // save transform results
         if(output.length() > 0) {
             int dell = symmetric ? 2 : 1;
+            double mu;
             double dmu = symmetric ? 1./(nmu-1.) : 2./(nmu-1.);
+            double dtheta = symmetric ? 2*std::atan(1)/(nmu-1.) : 4*std::atan(1)/(nmu-1.);
             // Write out values tabulated for log-spaced k
             double dk = std::pow(kmax/kmin,1./(nk-1.));
             std::string kfile = output + ".k.dat";
@@ -227,7 +231,8 @@ int main(int argc, char **argv) {
                 double k = kmin*std::pow(dk,i);
                 kout << boost::lexical_cast<std::string>(k);
                 for(int j = 0; j < nmu; ++j) {
-                    double mu = 1 - j*dmu;
+                    if(thetaAngle) mu = std::cos(j*dtheta);
+                    else mu = 1 - j*dmu;
                     kout << ' ' << boost::lexical_cast<std::string>(dpc.getPower(k,mu));
                 }
                 for(int ell = 0; ell <= ellMax; ell += dell) {
@@ -246,7 +251,8 @@ int main(int argc, char **argv) {
                 double r = rmin + i*dr;
                 rout << boost::lexical_cast<std::string>(r);
                 for(int j = 0; j < nmu; ++j) {
-                    double mu = 1 - j*dmu;
+                    if(thetaAngle) mu = std::cos(j*dtheta);
+                    else mu = 1 - j*dmu;
                     rout << ' ' << boost::lexical_cast<std::string>(dpc.getCorrelation(r,mu));
                 }
                 for(int ell = 0; ell <= ellMax; ell += dell) {

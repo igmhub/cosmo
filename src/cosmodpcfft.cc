@@ -186,6 +186,7 @@ int main(int argc, char **argv) {
             "number of points spanning [rmin,rmax] to use")
         ("nmu", po::value<int>(&nmu)->default_value(11),
             "number of equally spaced mu_k and mu_r values for saving results")
+        ("theta-angle", "use equally spaced theta angles for calculating mu_k and mu_r values.")
         ;
     // Do the command line parsing now
     po::variables_map vm;
@@ -201,7 +202,7 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose"));
+    bool verbose(vm.count("verbose")),thetaAngle(vm.count("theta-angle"));
 
     if(input.length() == 0) {
         std::cerr << "Missing input filename." << std::endl;
@@ -237,7 +238,9 @@ int main(int argc, char **argv) {
     	// Transform
     	dpc.transform();
         if(output.length() > 0) {
+            double mu;
             double dmu = 1./(nmu-1.);
+            double dtheta = 2*std::atan(1)/(nmu-1.);
             // Write out values tabulated for log-spaced k
             double dk = std::pow(kmax/kmin,1./(nk-1.));
             std::string kfile = output + ".k.dat";
@@ -246,7 +249,8 @@ int main(int argc, char **argv) {
                 double k = kmin*std::pow(dk,i);
                 kout << boost::lexical_cast<std::string>(k);
                 for(int j = 0; j < nmu; ++j) {
-                    double mu = 1 - j*dmu;
+                    if(thetaAngle) mu = std::cos(j*dtheta);
+                    else mu = 1 - j*dmu;
                     kout << ' ' << boost::lexical_cast<std::string>(dpc.getPower(k,mu));
                 }
                 kout << std::endl;
@@ -260,7 +264,8 @@ int main(int argc, char **argv) {
                 double r = rmin + i*dr;
                 rout << boost::lexical_cast<std::string>(r);
                 for(int j = 0; j < nmu; ++j) {
-                    double mu = 1 - j*dmu;
+                    if(thetaAngle) mu = std::cos(j*dtheta);
+                    else mu = 1 - j*dmu;
                     rout << ' ' << boost::lexical_cast<std::string>(dpc.getCorrelation(r,mu));
                 }
                 rout << std::endl;                
