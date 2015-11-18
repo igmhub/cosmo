@@ -33,8 +33,8 @@ namespace cosmo {
 		// Creates a new distorted power correlation function using the specified
 		// isotropic power P(k) and distortion function D(k,mu).
 		DistortedPowerCorrelationHybrid(likely::GenericFunctionPtr power, KMuPkFunctionCPtr distortion,
-		    double kxmin, double kxmax, int nx, double spacing, int ny, double rmax, double epsAbs = 1e-8,
-		    double epsRel = 1e-5);
+		    double kxmin, double kxmax, int nx, double spacing, int ny, int gridscaling, double rmax,
+		    double epsAbs = 1e-8, double epsRel = 1e-5);
 		virtual ~DistortedPowerCorrelationHybrid();
 		// Returns the value of P(k,mu) = P(k)*D(k,mu).
 		double getPower(double k, double mu) const;
@@ -57,7 +57,7 @@ namespace cosmo {
 		std::vector<double> _kxgrid, _kygrid, _rgrid;
 		boost::shared_array<double> _ktf, _xi;
 		double _kxmin, _kxmax, _spacing, _rmax, _epsAbs, _epsRel, _twopi, _norm, _rx, _dkx;
-		int _nx, _ny, _nr;
+		int _nx, _ny, _nr, _gridscaling;
 		double _transverseIntegrand(double kx) const;
 		likely::BiCubicInterpolator *_xiInterpolator, *_ktransformInterpolator;
 		mutable likely::InterpolatorPtr _ktfInterpolator;

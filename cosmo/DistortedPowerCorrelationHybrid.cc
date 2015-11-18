@@ -32,10 +32,10 @@ namespace cosmo {
 }
 
 local::DistortedPowerCorrelationHybrid::DistortedPowerCorrelationHybrid(likely::GenericFunctionPtr power,
-KMuPkFunctionCPtr distortion, double kxmin, double kxmax, int nx, double spacing, int ny, double rmax,
-double epsAbs, double epsRel)
-: _power(power), _distortion(distortion), _kxmin(0), _kxmax(kxmax), _nx(nx), _spacing(spacing), _ny(ny),
-_rmax(rmax), _epsAbs(epsAbs), _epsRel(epsRel), _pimpl(new Implementation())
+KMuPkFunctionCPtr distortion, double kxmin, double kxmax, int nx, double spacing, int ny, int gridscaling,
+double rmax, double epsAbs, double epsRel)
+: _power(power), _distortion(distortion), _kxmin(0), _kxmax(kxmax), _nx(nx), _spacing(spacing),
+_gridscaling(gridscaling), _ny(ny), _rmax(rmax), _epsAbs(epsAbs), _epsRel(epsRel), _pimpl(new Implementation())
 {	
 	// Input parameter validation.
 	if(kxmax < kxmin) {
@@ -46,6 +46,9 @@ _rmax(rmax), _epsAbs(epsAbs), _epsRel(epsRel), _pimpl(new Implementation())
 	}
 	if(spacing <= 0) {
 		throw RuntimeError("DistortedPowerCorrelationHybrid: invalid grid spacing.");
+	}
+	if(gridscaling <= 0) {
+		throw RuntimeError("DistortedPowerCorrelationHybrid: expected gridscaling > 0.");
 	}
 	if(nx <= 0 || ny <= 0) {
 		throw RuntimeError("DistortedPowerCorrelationHybrid: invalid grid size.");
@@ -66,13 +69,13 @@ _rmax(rmax), _epsAbs(epsAbs), _epsRel(epsRel), _pimpl(new Implementation())
     // Initialize the k-space grid that will be used for evaluating the power spectrum.
     // Note that the grid is centered on (kxmin,0) and grid points for the y axis wrap around
     // in a specific order.
-    //double dkx = std::pow(kxmax/kxmin,1./(nx-1.));
+    //_dkx = std::pow(kxmax/kxmin,1./(nx-1.));
     _dkx = kxmax/(nx-1);
     double dky = _twopi/(ny*spacing);
 	_kxgrid.reserve(nx);
 	_kygrid.reserve(ny);
 	for(int ix = 0; ix < nx; ++ix){
-        //double kx = kxmin*std::pow(dkx,ix);
+        //double kx = kxmin*std::pow(_dkx,ix);
         double kx = ix*_dkx;
         _kxgrid.push_back(kx);
     }
@@ -85,10 +88,10 @@ _rmax(rmax), _epsAbs(epsAbs), _epsRel(epsRel), _pimpl(new Implementation())
     // Initialize the array that will be used to store the results of the 1D FFTs.
     _ktf.reset(new double[nx*(ny/2+1)]);
     // Initialize the r-space grid that will be used for evaluating the correlation function.
-    _nr = (int)std::ceil(rmax/spacing)+1;
+    _nr = (int)std::ceil(rmax/(spacing*gridscaling))+1;
     _rgrid.reserve(_nr);
 	for(int i = 0; i < _nr; ++i){
-        _rgrid.push_back(i*spacing);
+        _rgrid.push_back(i*spacing*gridscaling);
     }
     // Initialize the array that will be used for bicubic interpolation of the correlation function.
     _xi.reset(new double[_nr*_nr]);
@@ -136,7 +139,7 @@ double local::DistortedPowerCorrelationHybrid::getKTransform(double ry, double k
 }
 
 void local::DistortedPowerCorrelationHybrid::transform() {
-    // Perform a series of 1D Fourier transforms
+    // Perform a series of 1D Fourier transforms.
     ktransform();
     // Perform a series of 1D integrals.
     likely::Integrator::IntegrandPtr integrand(new likely::Integrator::Integrand(
@@ -145,7 +148,7 @@ void local::DistortedPowerCorrelationHybrid::transform() {
     likely::Interpolator::CoordinateValues ktfrow(_nx);
     for(int iy = 0; iy < _nr; ++iy){
         for(int i = 0; i < _nx; ++i){
-            std::size_t ind2(iy+(_ny/2+1)*i);
+            std::size_t ind2(iy*_gridscaling+(_ny/2+1)*i);
             ktfrow[i] = _ktf[ind2];
         }
         _ktfInterpolator.reset(new likely::Interpolator(_kxgrid,ktfrow,"cspline"));
@@ -154,11 +157,10 @@ void local::DistortedPowerCorrelationHybrid::transform() {
             std::size_t ind(ix+_nr*iy);
             _xi[ind] = integrator.integrateRobust(_kxmin,_kxmax)/_twopi;
             //_xi[ind] = integrator.integrateSmooth(_kxmin,_kxmax)/_twopi;
-            //std::cout << _rgrid[iy] << " " << _rx << " " << _xi[ind] << std::endl;
         }
     }
     // Create the bicubic interpolator.
-	_xiInterpolator = new likely::BiCubicInterpolator(likely::BiCubicInterpolator::DataPlane(_xi),_spacing,_nr);
+	_xiInterpolator = new likely::BiCubicInterpolator(likely::BiCubicInterpolator::DataPlane(_xi),_spacing*_gridscaling,_nr);
 }
 
 double local::DistortedPowerCorrelationHybrid::_transverseIntegrand(double kx) const {

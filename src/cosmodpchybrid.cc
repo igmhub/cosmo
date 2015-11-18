@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology distorted power correlation function");
     std::string input,delta,output;
-    int nx,ny,nr,nk,nmu,nkx,nry;
+    int nx,ny,gridscaling,nr,nk,nmu,nkx,nry;
     double kxmax,spacing,epsAbs,epsRel,rmin,rmax,maxRelError,kmin,kmax;
     double bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
         snlPar,snlPerp,kc,kcAlt,pc,sigma8,qnl,kv,av,bv,kp,knl,pnl,kpp,pp,kv0,pv,kvi,pvi;
@@ -113,13 +113,15 @@ int main(int argc, char **argv) {
         ("output,o", po::value<std::string>(&output)->default_value(""),
             "base name for saving results")
         ("kxmax", po::value<double>(&kxmax)->default_value(4),
-            "Maximum value along x-axis in h/Mpc.")
+            "Maximum k value along x-axis in h/Mpc.")
         ("nx", po::value<int>(&nx)->default_value(400),
             "Grid size along x-axis.")
-        ("spacing", po::value<double>(&spacing)->default_value(4),
-            "Grid spacing along line-of-sight y-axis in Mpc/h.")
-        ("ny", po::value<int>(&ny)->default_value(400),
-            "Grid size along line-of-sight y-axis.")
+        ("spacing", po::value<double>(&spacing)->default_value(1),
+            "Grid spacing for 1D FFTs along line-of-sight y-axis in Mpc/h.")
+        ("ny", po::value<int>(&ny)->default_value(1600),
+            "Grid size for 1D FFTs along line-of-sight y-axis.")
+        ("gridscaling", po::value<int>(&gridscaling)->default_value(4),
+            "Scaling factor from grid spacing to interpolation grid.")
         ("epsAbs", po::value<double>(&epsAbs)->default_value(1e-8),
             "Absolute error target for 1D integral")
         ("epsRel", po::value<double>(&epsRel)->default_value(1e-5),
@@ -237,7 +239,7 @@ int main(int argc, char **argv) {
             &LyaDistortion::operator(),rsd,_1,_2,_3)));
 
         double kxmin = power->getKMin();
-    	cosmo::DistortedPowerCorrelationHybrid dpc(PkPtr,distPtr,kxmin,kxmax,nx,spacing,ny,rgridmax,epsAbs,epsRel);
+    	cosmo::DistortedPowerCorrelationHybrid dpc(PkPtr,distPtr,kxmin,kxmax,nx,spacing,ny,gridscaling,rgridmax,epsAbs,epsRel);
     	if(verbose) {
         	std::cout << "Memory size = "
             	<< boost::format("%.1f Mb") % (dpc.getMemorySize()/1048576.) << std::endl;
