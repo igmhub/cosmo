@@ -99,8 +99,8 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology distorted power correlation function");
     std::string input,delta,output;
-    int nx,ny,gridscaling,nr,nk,nmu,nkx,nry;
-    double kxmax,spacing,epsAbs,epsRel,rmin,rmax,maxRelError,kmin,kmax;
+    int nx,ny,gridscaling,nr,nk,nmu,nrprt,nkx,nry;
+    double kxmax,spacing,epsAbs,epsRel,rmin,rmax,maxRelError,kmin,kmax,drprt;
     double bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
         snlPar,snlPerp,kc,kcAlt,pc,sigma8,qnl,kv,av,bv,kp,knl,pnl,kpp,pp,kv0,pv,kvi,pvi;
     cli.add_options()
@@ -193,6 +193,10 @@ int main(int argc, char **argv) {
         ("nmu", po::value<int>(&nmu)->default_value(11),
             "number of equally spaced mu_k and mu_r values for saving results")
         ("theta-angle", "use equally spaced theta angles for calculating mu_k and mu_r values.")
+        ("nrprt", po::value<int>(&nrprt)->default_value(0),
+            "number of points along rp and rt axes for saving results")
+        ("drprt", po::value<double>(&drprt)->default_value(4.),
+            "spacing for points along rp and rt axes for saving results")
         ("nkx", po::value<int>(&nkx)->default_value(0),
             "number of linear-spaced k values along x-axis for saving results")
         ("nry", po::value<int>(&nry)->default_value(0),
@@ -280,6 +284,23 @@ int main(int argc, char **argv) {
                 rout << std::endl;                
             }
             rout.close();
+            // Write out values tabulated for (rp,rt) grid
+            if(nrprt>0) {
+                std::string rprtfile = output + ".rprt.dat";
+                std::ofstream rprtout(rprtfile.c_str());
+                for(int i = 0; i < nrprt; ++i) {
+                    double rp = (0.5 + i)*drprt;
+                    for(int j = 0; j < nrprt; ++j) {
+                        double rt = (0.5 + j)*drprt;
+                        double r = std::sqrt(rp*rp + rt*rt);
+                        mu = rp/r;
+                        rprtout << boost::lexical_cast<std::string>(rp) << ' ' <<
+                        boost::lexical_cast<std::string>(rt) << ' ' << 
+                        boost::lexical_cast<std::string>(dpc.getCorrelation(r,mu)) << std::endl;
+                    }
+                }
+                rprtout.close();
+            }
             // Write out values tabulated for linear-spaced kperp, if requested
             if(nkx>0 && nry>0) {
                 double dkx = kxmax/(nkx-1.);

@@ -22,8 +22,8 @@ class LyaDistortion {
 // A simple distortion model for autocorrelations, including linear redshift space effects
 // (bias,beta), non-linear large-scale broadening (snlPar,snlPerp), radiation effects
 // (biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath), continuum fitting
-// broadband distortion (kc,pc), and non-linear correction (qnl,kv,av,bv,kp)
-// or alternative non-linear correction (knl,pnl,kpp,pp,kv0,pv,kvi,pvi).
+// broadband distortion (kc,pc), non-linear correction (qnl,kv,av,bv,kp) or
+// alternative non-linear correction (knl,pnl,kpp,pp,kv0,pv,kvi,pvi).
 public:
     LyaDistortion(double bias, double biasbeta,
         double biasGamma, double biasSourceAbsorber, double biasAbsorberResponse,
@@ -99,8 +99,8 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology distorted power correlation function");
     std::string input,delta,output;
-    int nx,ny,nz,nr,nk,nmu;
-    double spacing,rmin,rmax,maxRelError,kmin,kmax;
+    int nx,ny,nz,nr,nk,nmu,nrprt;
+    double spacing,rmin,rmax,maxRelError,kmin,kmax,drprt;
     double bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
         snlPar,snlPerp,kc,kcAlt,pc,sigma8,qnl,kv,av,bv,kp,knl,pnl,kpp,pp,kv0,pv,kvi,pvi;
     cli.add_options()
@@ -187,6 +187,10 @@ int main(int argc, char **argv) {
         ("nmu", po::value<int>(&nmu)->default_value(11),
             "number of equally spaced mu_k and mu_r values for saving results")
         ("theta-angle", "use equally spaced theta angles for calculating mu_k and mu_r values.")
+        ("nrprt", po::value<int>(&nrprt)->default_value(0),
+            "number of points along rp and rt axes for saving results")
+        ("drprt", po::value<double>(&drprt)->default_value(4.),
+            "spacing for points along rp and rt axes for saving results")
         ;
     // Do the command line parsing now
     po::variables_map vm;
@@ -208,7 +212,7 @@ int main(int argc, char **argv) {
         std::cerr << "Missing input filename." << std::endl;
         return 1;
     }
-
+    
 	// Fill in any missing grid dimensions.
     if(0 == ny) ny = nx;
     if(0 == nz) nz = ny;
@@ -271,6 +275,23 @@ int main(int argc, char **argv) {
                 rout << std::endl;                
             }
             rout.close();
+            // Write out values tabulated for (rp,rt) grid
+            if(nrprt>0) {
+                std::string rprtfile = output + ".rprt.dat";
+                std::ofstream rprtout(rprtfile.c_str());
+                for(int i = 0; i < nrprt; ++i) {
+                    double rp = (0.5 + i)*drprt;
+                    for(int j = 0; j < nrprt; ++j) {
+                        double rt = (0.5 + j)*drprt;
+                        double r = std::sqrt(rp*rp + rt*rt);
+                        mu = rp/r;
+                        rprtout << boost::lexical_cast<std::string>(rp) << ' ' <<
+                        boost::lexical_cast<std::string>(rt) << ' ' << 
+                        boost::lexical_cast<std::string>(dpc.getCorrelation(r,mu)) << std::endl;
+                    }
+                }
+                rprtout.close();
+            }
         }
     }
     catch(std::runtime_error const &e) {
