@@ -46,6 +46,8 @@ namespace cosmo {
 		void transform();
 		// Performs a series of 1D Fourier transforms of k-space power spectrum.
 		void ktransform();
+		// Performs double integral to evaluate xi(rpar,rperp).
+		double integrate(double r, double mu);
 		// Returns the memory size in bytes required for this transform or zero if this
         // information is not available.
         virtual std::size_t getMemorySize() const;
@@ -56,9 +58,10 @@ namespace cosmo {
 		KMuPkFunctionCPtr _distortion;
 		std::vector<double> _kxgrid, _kygrid, _rgrid;
 		boost::shared_array<double> _ktf, _xi;
-		double _kxmin, _kxmax, _spacing, _rmax, _epsAbs, _epsRel, _twopi, _norm, _rx, _dkx;
+		double _kxmin, _kxmax, _spacing, _rmax, _epsAbs, _epsRel, _twopi, _norm, _rx, _ry, _dkx, _kx;
 		int _nx, _ny, _nr, _gridscaling;
 		double _transverseIntegrand(double kx) const;
+		double _radialIntegrand(double ky) const;
 		likely::BiCubicInterpolator *_xiInterpolator, *_ktransformInterpolator;
 		mutable likely::InterpolatorPtr _ktfInterpolator;
 	}; // DistortedPowerCorrelationHybrid

@@ -69,13 +69,11 @@ _gridscaling(gridscaling), _ny(ny), _rmax(rmax), _epsAbs(epsAbs), _epsRel(epsRel
     // Initialize the k-space grid that will be used for evaluating the power spectrum.
     // Note that the grid is centered on (kxmin,0) and grid points for the y axis wrap around
     // in a specific order.
-    //_dkx = std::pow(kxmax/kxmin,1./(nx-1.));
     _dkx = kxmax/(nx-1);
     double dky = _twopi/(ny*spacing);
 	_kxgrid.reserve(nx);
 	_kygrid.reserve(ny);
 	for(int ix = 0; ix < nx; ++ix){
-        //double kx = kxmin*std::pow(_dkx,ix);
         double kx = ix*_dkx;
         _kxgrid.push_back(kx);
     }
@@ -156,11 +154,11 @@ void local::DistortedPowerCorrelationHybrid::transform() {
             _rx = _rgrid[ix];
             std::size_t ind(ix+_nr*iy);
             _xi[ind] = integrator.integrateRobust(_kxmin,_kxmax)/_twopi;
-            //_xi[ind] = integrator.integrateSmooth(_kxmin,_kxmax)/_twopi;
         }
     }
     // Create the bicubic interpolator.
 	_xiInterpolator = new likely::BiCubicInterpolator(likely::BiCubicInterpolator::DataPlane(_xi),_spacing*_gridscaling,_nr);
+	
 }
 
 double local::DistortedPowerCorrelationHybrid::_transverseIntegrand(double kx) const {
@@ -201,6 +199,35 @@ void local::DistortedPowerCorrelationHybrid::ktransform() {
     // Create the bicubic interpolator.
 	_ktransformInterpolator = new likely::BiCubicInterpolator(likely::BiCubicInterpolator::DataPlane(_ktf),_spacing,_ny/2+1,_nx,_dkx);
 #endif
+}
+
+double local::DistortedPowerCorrelationHybrid::integrate(double r, double mu) {
+    // Perform radial integrals.
+	likely::Integrator::IntegrandPtr radIntegrand(new likely::Integrator::Integrand(
+        boost::bind(&DistortedPowerCorrelationHybrid::_radialIntegrand,this,_1)));
+    likely::Integrator radIntegrator(radIntegrand,_epsAbs,_epsRel);
+    double kymin = 0.000001;
+    double kymax = 4;
+    _ry = r*std::fabs(mu);
+	_rx = r*std::sqrt(1-mu*mu);
+    likely::Interpolator::CoordinateValues radint(_nx);
+    for(int ix = 0; ix < _nx; ++ix){
+        _kx = _kxgrid[ix];
+        radint[ix] = 2.*radIntegrator.integrateSmooth(kymin,kymax)/_twopi;
+    }
+    // Perform transverse integral.
+    likely::Integrator::IntegrandPtr transIntegrand(new likely::Integrator::Integrand(
+        boost::bind(&DistortedPowerCorrelationHybrid::_transverseIntegrand,this,_1)));
+    likely::Integrator transIntegrator(transIntegrand,_epsAbs,_epsRel);
+    _ktfInterpolator.reset(new likely::Interpolator(_kxgrid,radint,"cspline"));
+    return transIntegrator.integrateRobust(_kxmin,_kxmax)/_twopi;
+}
+
+double local::DistortedPowerCorrelationHybrid::_radialIntegrand(double ky) const {
+    double ksq = _kx*_kx + ky*ky;
+    double k = std::sqrt(ksq);
+    double mu = ky/k;
+    return getPower(k,mu)*std::cos(ky*_ry);
 }
 
 std::size_t local::DistortedPowerCorrelationHybrid::getMemorySize() const {
