@@ -33,6 +33,10 @@ namespace cosmo {
     class DistortedPowerCorrelationFft;
     typedef boost::shared_ptr<DistortedPowerCorrelationFft> DistortedPowerCorrelationFftPtr;
     typedef boost::shared_ptr<const DistortedPowerCorrelationFft> DistortedPowerCorrelationFftCPtr;
+    
+    class DistortedPowerCorrelationHybrid;
+    typedef boost::shared_ptr<DistortedPowerCorrelationHybrid> DistortedPowerCorrelationHybridPtr;
+    typedef boost::shared_ptr<const DistortedPowerCorrelationHybrid> DistortedPowerCorrelationHybridCPtr;
 
     // Represents a function that returns a dimensionless transfer function value T(k)
     // given an input wavenumber k in 1/(Mpc/h).

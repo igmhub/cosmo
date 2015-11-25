@@ -7,7 +7,7 @@ AM_CPPFLAGS = $(BOOST_CPPFLAGS)
 # targets to build and install
 lib_LTLIBRARIES = libcosmo.la
 bin_PROGRAMS = cosmocalc cosmo3d cosmogrf cosmostack cosmoxi cosmomock \
-cosmotrans cosmoatrans cosmodpc cosmodpcfft
+cosmotrans cosmoatrans cosmodpc cosmodpcfft cosmodpchybrid
 
 # extra targets that should not be installed
 noinst_PROGRAMS = cosmotest
@@ -41,7 +41,8 @@ libcosmo_la_SOURCES = \
 	cosmo/MultipoleTransform.cc \
 	cosmo/AdaptiveMultipoleTransform.cc \
 	cosmo/DistortedPowerCorrelation.cc \
-	cosmo/DistortedPowerCorrelationFft.cc
+	cosmo/DistortedPowerCorrelationFft.cc \
+	cosmo/DistortedPowerCorrelationHybrid.cc
 
 # library headers to install (nobase prefix preserves any subdirectories)
 # Anything that includes config.h should *not* be listed here.
@@ -67,7 +68,8 @@ nobase_include_HEADERS = \
 	cosmo/MultipoleTransform.h \
 	cosmo/AdaptiveMultipoleTransform.h \
 	cosmo/DistortedPowerCorrelation.h \
-	cosmo/DistortedPowerCorrelationFft.h
+	cosmo/DistortedPowerCorrelationFft.h \
+	cosmo/DistortedPowerCorrelationHybrid.h
 
 # instructions for building each program
 
@@ -114,3 +116,7 @@ cosmodpc_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OP
 cosmodpcfft_SOURCES = src/cosmodpcfft.cc
 cosmodpcfft_DEPENDENCIES = $(lib_LIBRARIES)
 cosmodpcfft_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)
+
+cosmodpchybrid_SOURCES = src/cosmodpchybrid.cc
+cosmodpchybrid_DEPENDENCIES = $(lib_LIBRARIES)
+cosmodpchybrid_LDADD = libcosmo.la $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LIBS)

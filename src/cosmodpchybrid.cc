@@ -1,24 +1,13 @@
-// Created 22-Jan-2014 by David Kirkby (University of California, Irvine) <dkirkby@uci.edu>
-// A driver and test program for the DistortedPowerCorrelation class.
+// Created 11-May-2015 by Michael Blomqvist (University of California, Irvine) <cblomqvi@uci.edu>
+// A driver and test program for the DistortedPowerCorrelationHybrid class.
 // Calculates the 3D correlation function corresponding to a distorted power spectrum.
-
-// Sample timing results on OS 10.8 laptop using:
-//
-// ./cosmodpc -i ../../baofit/models/PlanckWPBestFitLCDM_matterpower.dat OPTIONS
-//
-//   TIME  OPTIONS
-//  127.3s --repeat 10000 --direct-power-multipoles
-//  126.5s --repeat 10000 --direct-power-multipoles --optimize
-//   83.2s --repeat 10000 --direct-power-multipoles --bypass
-//   53.2s --repeat 10000
-//   53.4s --repeat 10000 --optimize
-//   53.2s --repeat 10000 --bypass
 
 #include "cosmo/cosmo.h"
 #include "likely/likely.h"
 #include "likely/function_impl.h"
 
 #include "boost/program_options.hpp"
+#include "boost/format.hpp"
 #include "boost/bind.hpp"
 #include "boost/lexical_cast.hpp"
 
@@ -33,24 +22,25 @@ class LyaDistortion {
 // A simple distortion model for autocorrelations, including linear redshift space effects
 // (bias,beta), non-linear large-scale broadening (snlPar,snlPerp), radiation effects
 // (biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath), continuum fitting
-// broadband distortion (kc,pc), non-linear correction (knl,pnl,kpp,pp,kv0,pv,kvi,pvi)
-// and parallel pixelization smoothing.
+// broadband distortion (kc,pc), and non-linear correction (qnl,kv,av,bv,kp)
+// or alternative non-linear correction (knl,pnl,kpp,pp,kv0,pv,kvi,pvi).
 public:
     LyaDistortion(double bias, double biasbeta,
         double biasGamma, double biasSourceAbsorber, double biasAbsorberResponse,
         double meanFreePath, double snlPar, double snlPerp, double kc, double kcAlt,
-        double pc, double knl, double pnl, double kpp, double pp, double kv0, double pv,
-        double kvi, double pvi, double pixPar) :
+        double pc, double sigma8, double qnl, double kv, double av, double bv, double kp,
+        double knl, double pnl, double kpp, double pp, double kv0, double pv,
+        double kvi, double pvi) :
         _bias(bias), _biasbeta(biasbeta),
         _biasGamma(biasGamma), _biasSourceAbsorber(biasSourceAbsorber),
         _biasAbsorberResponse(biasAbsorberResponse), _meanFreePath(meanFreePath),
-        _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp),
-        _kc(kc), _kcAlt(kcAlt), _pc(pc), _knl(knl), _pnl(pnl),
-        _kpp(kpp), _pp(pp), _kv0(kv0), _pv(pv), _kvi(kvi), _pvi(pvi), _pixPar(pixPar)
+        _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp), _kc(kc), _kcAlt(kcAlt), _pc(pc),
+        _sigma8(sigma8), _qnl(qnl), _kv(kv), _av(av), _bv(bv), _kp(kp), _knl(knl), _pnl(pnl),
+        _kpp(kpp), _pp(pp), _kv0(kv0), _pv(pv), _kvi(kvi), _pvi(pvi)
     {
         _radStrength = biasGamma*biasSourceAbsorber;
     }
-    double operator()(double k, double mu) const {
+    double operator()(double k, double mu, double pk) const {
         // Calculate the k-dependent effective bias
         double bias(_bias);
         if(_radStrength != 0) {
@@ -76,8 +66,19 @@ public:
         if(_kcAlt != 0) {
         	contdistortion = std::tanh(std::pow(kpar/_kcAlt,_pc));
         }
-        // Calculate non-linear correction (McDonald 2003)
+        // Calculate non-linear correction
         double growth, pecvelocity, pressure, nlcorrection(1);
+        if(_qnl != 0) {
+        	double sigma8Sim(0.8338);
+        	double pi(4*std::atan(1));
+        	pk = pk*(sigma8Sim/_sigma8)*(sigma8Sim/_sigma8);
+        	double dk = k*k*k*pk/(2*pi*pi);
+        	growth = _qnl*dk;
+        	pecvelocity = std::pow(k/_kv,_av)*std::pow(std::fabs(mu),_bv);
+        	pressure = (k/_kp)*(k/_kp);
+        	nlcorrection = std::exp(growth*(1-pecvelocity)-pressure);
+        }
+        // Calculate alternative non-linear correction (McDonald 2003)
         if(_knl != 0) {
         	double kvel = _kv0*std::pow(1+k/_kvi,_pvi);
         	growth = std::pow(k/_knl,_pnl);
@@ -85,18 +86,12 @@ public:
         	pecvelocity = std::pow(kpar/kvel,_pv);
         	nlcorrection = std::exp(growth-pressure-pecvelocity);
         }
-        // Parallel pixelization smoothing
-        double pixelization(1);
-        if(_pixPar != 0) {
-            double pix = std::sin(_pixPar*kpar)/(_pixPar*kpar);
-            pixelization = pix*pix;
-        }
-        return contdistortion*nonlinear*nlcorrection*linear*linear*pixelization;
+        return contdistortion*nonlinear*nlcorrection*linear*linear;
     }
 private:
     double _bias,_biasbeta,_biasGamma,_biasSourceAbsorber,_biasAbsorberResponse,
-        _meanFreePath,_snlPar2,_snlPerp2,_kc,_kcAlt,_pc,
-        _knl,_pnl,_kpp,_pp,_kv0,_pv,_kvi,_pvi,_pixPar,_radStrength;
+    	_meanFreePath, _snlPar2,_snlPerp2,_kc,_kcAlt,_pc,_sigma8,_qnl,_kv,_av,_bv,_kp,
+    	_knl,_pnl,_kpp,_pp,_kv0,_pv,_kvi,_pvi,_radStrength;
 };
 
 int main(int argc, char **argv) {
@@ -104,10 +99,10 @@ int main(int argc, char **argv) {
     // Configure command-line option processing
     po::options_description cli("Cosmology distorted power correlation function");
     std::string input,delta,output;
-    int ellMax,nr,repeat,nk,nmu,samplesPerDecade,nrprt;
-    double rmin,rmax,relerr,abserr,abspow,maxRelError,kmin,kmax,margin,vepsMin,vepsMax,drprt;
+    int nx,ny,gridscaling,nr,nk,nmu,nrprt,nkx,nry;
+    double kxmax,spacing,epsAbs,epsRel,rmin,rmax,maxRelError,kmin,kmax,drprt;
     double bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
-        snlPar,snlPerp,kc,kcAlt,pc,knl,pnl,kpp,pp,kv0,pv,kvi,pvi,pixPar;
+        snlPar,snlPerp,kc,kcAlt,pc,sigma8,qnl,kv,av,bv,kp,knl,pnl,kpp,pp,kv0,pv,kvi,pvi;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
@@ -117,21 +112,26 @@ int main(int argc, char **argv) {
             "optional filename of k,P(k) values to subtract from input")
         ("output,o", po::value<std::string>(&output)->default_value(""),
             "base name for saving results")
-        ("rmin", po::value<double>(&rmin)->default_value(10.),
-            "minimum value of comoving separation to use")
-        ("rmax", po::value<double>(&rmax)->default_value(200.),
-            "maximum value of comoving separation to use")
-        ("nr", po::value<int>(&nr)->default_value(191),
-            "number of points spanning [rmin,rmax] to use")
-        ("ell-max", po::value<int>(&ellMax)->default_value(4),
-            "maximum multipole to use for transforms")
-        ("asymmetric", "distortion is asymmetric in mu (uses odd ell values)")
-        ("bias", po::value<double>(&bias)->default_value(-0.17),
+        ("kxmax", po::value<double>(&kxmax)->default_value(4),
+            "Maximum k value along x-axis in h/Mpc.")
+        ("nx", po::value<int>(&nx)->default_value(400),
+            "Grid size along x-axis.")
+        ("spacing", po::value<double>(&spacing)->default_value(1),
+            "Grid spacing for 1D FFTs along line-of-sight y-axis in Mpc/h.")
+        ("ny", po::value<int>(&ny)->default_value(1600),
+            "Grid size for 1D FFTs along line-of-sight y-axis.")
+        ("gridscaling", po::value<int>(&gridscaling)->default_value(4),
+            "Scaling factor from grid spacing to interpolation grid.")
+        ("epsAbs", po::value<double>(&epsAbs)->default_value(1e-8),
+            "Absolute error target for 1D integral")
+        ("epsRel", po::value<double>(&epsRel)->default_value(1e-5),
+            "Relative error target for 1D integral")
+        ("bias", po::value<double>(&bias)->default_value(-0.14),
             "linear tracer bias")
-        ("biasbeta", po::value<double>(&biasbeta)->default_value(-0.17),
+        ("biasbeta", po::value<double>(&biasbeta)->default_value(-0.196),
             "product of bias and linear redshift-space distortion parameter beta")
         ("bias-gamma", po::value<double>(&biasGamma)->default_value(0),
-            "Lyman-alpha photoionization bias")
+            "Lyman-alpha photoionization bias (nominally 0.13; zero for no UV fluctuations)")
         ("bias-source-absorber", po::value<double>(&biasSourceAbsorber)->default_value(1.0),
             "Lyman-alpha source - absorber bias difference")
         ("bias-absorber-response", po::value<double>(&biasAbsorberResponse)->default_value(-2./3.),
@@ -148,6 +148,18 @@ int main(int argc, char **argv) {
             "parameter for alternative broadband distortion model in h/Mpc (or zero for no distortion)")
         ("pc", po::value<double>(&pc)->default_value(1.),
             "exponent for broadband distortion model (ignored when kc = 0 and kcAlt = 0)")
+        ("sigma8", po::value<double>(&sigma8)->default_value(0.8338),
+            "Amplitude of the linear matter power spectrum on the scale of 8 Mpc/h")
+        ("qnl", po::value<double>(&qnl)->default_value(0.),
+            "strength of non-linear growth correction (nominally 0.867; zero for no non-linear correction)")
+        ("kv", po::value<double>(&kv)->default_value(1.05),
+            "scale for non-linear peculiar velocity correction in h/Mpc (ignored when qnl = 0)")
+        ("av", po::value<double>(&av)->default_value(0.514),
+            "exponent for non-linear peculiar velocity correction (ignored when qnl = 0)")
+        ("bv", po::value<double>(&bv)->default_value(1.60),
+            "exponent for angular dependence of non-linear peculiar velocity correction (ignored when qnl = 0)")
+        ("kp", po::value<double>(&kp)->default_value(19.3),
+            "scale for non-linear pressure correction in h/Mpc (ignored when qnl = 0)")
         ("knl", po::value<double>(&knl)->default_value(0.),
             "scale for alternative non-linear growth correction in h/Mpc (nominally 6.4; zero for no non-linear correction)")
         ("pnl", po::value<double>(&pnl)->default_value(0.569),
@@ -164,45 +176,33 @@ int main(int argc, char **argv) {
             "scale for alternative isotropic non-linear peculiar velocity correction in h/Mpc (ignored when knl = 0)")
         ("pvi", po::value<double>(&pvi)->default_value(0.451),
             "exponent for alternative isotropic non-linear peculiar velocity correction (ignored when knl = 0)")
-        ("pix-par", po::value<double>(&pixPar)->default_value(0.),
-            "scale for parallel pixelization in Mpc/h (ignored when pix-par = 0)")
-        ("relerr", po::value<double>(&relerr)->default_value(1e-3),
-            "relative error termination goal")
-        ("abserr", po::value<double>(&abserr)->default_value(1e-5),
-            "absolute error termination goal")
-        ("abspow", po::value<double>(&abspow)->default_value(0.),
-            "absolute error weighting power")
-        ("margin", po::value<double>(&margin)->default_value(2.),
-            "termination criteria margin to use for initialization")
-        ("veps-max", po::value<double>(&vepsMax)->default_value(0.01),
-            "maximum value of veps value to use")
-        ("veps-min", po::value<double>(&vepsMin)->default_value(1e-6),
-            "minimum value of veps value to use")
-        ("samples-per-decade", po::value<int>(&samplesPerDecade)->default_value(40),
-            "number of samples per decade to use for transform interpolation in k")
         ("max-rel-error", po::value<double>(&maxRelError)->default_value(1e-3),
             "maximum allowed relative error for power-law extrapolation of input P(k)")
-        ("direct-power-multipoles",
-            "use direct calculation of P(k) multipoles instead of interpolation")
-        ("optimize", "optimizes transform FFTs")
-        ("bypass", "bypasses the termination test for transforms")
-        ("repeat", po::value<int>(&repeat)->default_value(1),
-            "number of times to repeat identical transform")
-        ("kmin", po::value<double>(&kmin)->default_value(0.005),
+        ("kmin", po::value<double>(&kmin)->default_value(0.0001),
             "minimum value of comoving separation to use")
-        ("kmax", po::value<double>(&kmax)->default_value(0.35),
+        ("kmax", po::value<double>(&kmax)->default_value(1152.5),
             "maximum value of comoving separation to use")
-        ("nk", po::value<int>(&nk)->default_value(100),
+        ("nk", po::value<int>(&nk)->default_value(814),
             "number of log-spaced k values for saving results")
-        ("nmu", po::value<int>(&nmu)->default_value(10),
+        ("rmin", po::value<double>(&rmin)->default_value(10.),
+            "minimum value of comoving separation to use")
+        ("rmax", po::value<double>(&rmax)->default_value(200.),
+            "maximum value of comoving separation to use")
+        ("nr", po::value<int>(&nr)->default_value(191),
+            "number of points spanning [rmin,rmax] to use")
+        ("nmu", po::value<int>(&nmu)->default_value(11),
             "number of equally spaced mu_k and mu_r values for saving results")
-        ("theta-angle", "use equally spaced theta angles for calculating mu_k and mu_r values")
+        ("theta-angle", "use equally spaced theta angles for calculating mu_k and mu_r values.")
         ("nrprt", po::value<int>(&nrprt)->default_value(0),
             "number of points along rp and rt axes for saving results")
         ("drprt", po::value<double>(&drprt)->default_value(4.),
             "spacing for points along rp and rt axes for saving results")
+        ("nkx", po::value<int>(&nkx)->default_value(0),
+            "number of linear-spaced k values along x-axis for saving results")
+        ("nry", po::value<int>(&nry)->default_value(0),
+            "number of linear-spaced r values along line-of-sight y-axis for saving results")
         ;
-    // do the command line parsing now
+    // Do the command line parsing now
     po::variables_map vm;
     try {
         po::store(po::parse_command_line(argc, argv, cli), vm);
@@ -216,22 +216,14 @@ int main(int argc, char **argv) {
         std::cout << cli << std::endl;
         return 1;
     }
-    bool verbose(vm.count("verbose")), symmetric(0==vm.count("asymmetric")),
-        optimize(vm.count("optimize")), bypass(vm.count("bypass")),
-        directPowerMultipoles(vm.count("direct-power-multipoles")),
-        thetaAngle(vm.count("theta-angle"));
-
-    if(!symmetric) {
-        std::cerr << "Odd multipoles not implemented yet." << std::endl;
-        return 1;
-    }
+    bool verbose(vm.count("verbose")),thetaAngle(vm.count("theta-angle"));
 
     if(input.length() == 0) {
         std::cerr << "Missing input filename." << std::endl;
         return 1;
     }
-
-    int dell(symmetric ? 2:1);
+    // Calculate maximum r value to use for bicubic interpolation grid.
+    double rgridmax = rmax + spacing;
 
     try {
         cosmo::TabulatedPowerCPtr power =
@@ -246,34 +238,22 @@ int main(int argc, char **argv) {
 
         boost::shared_ptr<LyaDistortion> rsd(new LyaDistortion(
             bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
-            snlPar,snlPerp,kc,kcAlt,pc,knl,pnl,kpp,pp,kv0,pv,kvi,pvi,pixPar));
-        cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(
-            &LyaDistortion::operator(),rsd,_1,_2)));
+            snlPar,snlPerp,kc,kcAlt,pc,sigma8,qnl,kv,av,bv,kp,knl,pnl,kpp,pp,kv0,pv,kvi,pvi));
+        cosmo::KMuPkFunctionCPtr distPtr(new cosmo::KMuPkFunction(boost::bind(
+            &LyaDistortion::operator(),rsd,_1,_2,_3)));
 
-        // Use the limits of the input tabulated power for tabulating the
-        // power multipoles (the kmin,kmax cmd-line args are for output only)
-        double klo = power->getKMin(), khi = power->getKMax();
-        int nkint = std::ceil(std::log10(khi/klo)*samplesPerDecade);
-    	cosmo::DistortedPowerCorrelation dpc(PkPtr,distPtr,
-            klo,khi,nkint,rmin,rmax,nr,ellMax,
-            symmetric,relerr,abserr,abspow);
-        // initialize
-        dpc.initialize(nmu,margin,vepsMax,vepsMin,optimize);
-        if(verbose) dpc.printToStream(std::cout);
-        // transform (with repeats, if requested)
-        bool ok;
-        for(int i = 0; i < repeat; ++i) {
-            ok = dpc.transform(!directPowerMultipoles,bypass);
-        }
-        if(!ok) {
-            std::cerr << "Transform fails termination test." << std::endl;
-        }
-        // save transform results
+        double kxmin = power->getKMin();
+    	cosmo::DistortedPowerCorrelationHybrid dpc(PkPtr,distPtr,kxmin,kxmax,nx,spacing,ny,gridscaling,rgridmax,epsAbs,epsRel);
+    	if(verbose) {
+        	std::cout << "Memory size = "
+            	<< boost::format("%.1f Mb") % (dpc.getMemorySize()/1048576.) << std::endl;
+    	}
+    	// Transform
+    	dpc.transform();
         if(output.length() > 0) {
-            int dell = symmetric ? 2 : 1;
             double mu;
-            double dmu = symmetric ? 1./(nmu-1.) : 2./(nmu-1.);
-            double dtheta = symmetric ? 2*std::atan(1)/(nmu-1.) : 4*std::atan(1)/(nmu-1.);
+            double dmu = 1./(nmu-1.);
+            double dtheta = 2*std::atan(1)/(nmu-1.);
             // Write out values tabulated for log-spaced k
             double dk = std::pow(kmax/kmin,1./(nk-1.));
             std::string kfile = output + ".k.dat";
@@ -285,11 +265,6 @@ int main(int argc, char **argv) {
                     if(thetaAngle) mu = std::cos(j*dtheta);
                     else mu = 1 - j*dmu;
                     kout << ' ' << boost::lexical_cast<std::string>(dpc.getPower(k,mu));
-                }
-                for(int ell = 0; ell <= ellMax; ell += dell) {
-                    double pk = (directPowerMultipoles) ?
-                        dpc.getPowerMultipole(k,ell) : dpc.getSavedPowerMultipole(k,ell);
-                    kout << ' ' << boost::lexical_cast<std::string>(pk);
                 }
                 kout << std::endl;
             }
@@ -305,9 +280,6 @@ int main(int argc, char **argv) {
                     if(thetaAngle) mu = std::cos(j*dtheta);
                     else mu = 1 - j*dmu;
                     rout << ' ' << boost::lexical_cast<std::string>(dpc.getCorrelation(r,mu));
-                }
-                for(int ell = 0; ell <= ellMax; ell += dell) {
-                    rout << ' ' << boost::lexical_cast<std::string>(dpc.getCorrelationMultipole(r,ell));
                 }
                 rout << std::endl;                
             }
@@ -328,6 +300,23 @@ int main(int argc, char **argv) {
                     }
                 }
                 rprtout.close();
+            }
+            // Write out values tabulated for linear-spaced kperp, if requested
+            if(nkx>0 && nry>0) {
+                double dkx = kxmax/(nkx-1.);
+                double dry = rmax/(nry-1.);
+                std::string ktffile = output + ".ktf.kperp.dat";
+                std::ofstream ktfout(ktffile.c_str());
+                for(int i = 0; i < nkx; ++i) {
+                    double kx = i*dkx;
+                    ktfout << boost::lexical_cast<std::string>(kx);
+                    for(int j = 0; j < nry; ++j) {
+                        double ry = j*dry;
+                        ktfout << ' ' << boost::lexical_cast<std::string>(dpc.getKTransform(ry,kx));
+                    }
+                    ktfout << std::endl;                
+                }
+                ktfout.close();
             }
         }
     }
