@@ -18,7 +18,7 @@
 namespace local = cosmo;
 
 local::DistortedPowerCorrelation::DistortedPowerCorrelation(likely::GenericFunctionPtr power,
-RMuFunctionCPtr distortion, double klo, double khi, int nk, double rmin, double rmax, int nr,
+KMuPkFunctionCPtr distortion, double klo, double khi, int nk, double rmin, double rmax, int nr,
 int ellMax, bool symmetric, double relerr, double abserr, double abspow)
 : _power(power), _distortion(distortion), _ellMax(ellMax), _symmetric(symmetric),
 _relerr(relerr), _abserr(abserr), _abspow(abspow), _initialized(false)
@@ -91,7 +91,7 @@ double local::DistortedPowerCorrelation::getPower(double k, double mu) const {
 	if(mu < -1 || mu > 1) {
 		throw RuntimeError("DistortedPowerCorrelation::getPower: expected -1 <= mu <= 1.");
 	}
-	return (*_power)(k)*(*_distortion)(k,mu);
+	return (*_power)(k)*(*_distortion)(k,mu,(*_power)(k));
 }
 
 double local::DistortedPowerCorrelation::getPowerMultipole(double k, int ell) const {
@@ -100,7 +100,7 @@ double local::DistortedPowerCorrelation::getPowerMultipole(double k, int ell) co
 	}
 	// Do mu integral of D(k,mu) with fixed k, then multiply result by P(k)
 	likely::GenericFunctionPtr fOfMuPtr(
-		new likely::GenericFunction(boost::bind(*_distortion,k,_1)));
+		new likely::GenericFunction(boost::bind(*_distortion,k,_1,(*_power)(k))));
 	return (*_power)(k)*getMultipole(fOfMuPtr, ell);
 }
 

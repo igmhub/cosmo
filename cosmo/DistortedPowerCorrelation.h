@@ -41,7 +41,7 @@ namespace cosmo {
 		// The desired accuracy is specified by relerr, abserr, and abspow, such that
 		// the difference between the true and estimated xi(r,mu) satisfies:
 		// |true-est| < max(abserr*r^abspow,true*true)
-		DistortedPowerCorrelation(likely::GenericFunctionPtr power, RMuFunctionCPtr distortion,
+		DistortedPowerCorrelation(likely::GenericFunctionPtr power, KMuPkFunctionCPtr distortion,
 			double klo, double khi, int nk, double rmin, double rmax, int nr,
 			int ellMax, bool symmetric = true,
 			double relerr = 1e-2, double abserr = 1e-3, double abspow = 0);
@@ -95,7 +95,7 @@ namespace cosmo {
 		void printToStream(std::ostream &out) const;
 	private:
 		likely::GenericFunctionPtr _power;
-		RMuFunctionCPtr _distortion;
+		KMuPkFunctionCPtr _distortion;
 		double _relerr,_abserr,_abspow;
 		int _ellMax, _minSamplesPerDecade;
 		bool _symmetric, _initialized;
