@@ -39,18 +39,19 @@ public:
     LyaDistortion(double bias, double biasbeta,
         double biasGamma, double biasSourceAbsorber, double biasAbsorberResponse,
         double meanFreePath, double snlPar, double snlPerp, double kc, double kcAlt,
-        double pc, double knl, double pnl, double kpp, double pp, double kv0, double pv,
+        double pc, double sigma8, double qnl, double kv, double av, double bv, double kp,
+        double knl, double pnl, double kpp, double pp, double kv0, double pv,
         double kvi, double pvi, double pixPar) :
         _bias(bias), _biasbeta(biasbeta),
         _biasGamma(biasGamma), _biasSourceAbsorber(biasSourceAbsorber),
         _biasAbsorberResponse(biasAbsorberResponse), _meanFreePath(meanFreePath),
-        _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp),
-        _kc(kc), _kcAlt(kcAlt), _pc(pc), _knl(knl), _pnl(pnl),
+        _snlPar2(snlPar*snlPar), _snlPerp2(snlPerp*snlPerp), _kc(kc), _kcAlt(kcAlt), _pc(pc),
+        _sigma8(sigma8), _qnl(qnl), _kv(kv), _av(av), _bv(bv), _kp(kp), _knl(knl), _pnl(pnl),
         _kpp(kpp), _pp(pp), _kv0(kv0), _pv(pv), _kvi(kvi), _pvi(pvi), _pixPar(pixPar)
     {
         _radStrength = biasGamma*biasSourceAbsorber;
     }
-    double operator()(double k, double mu) const {
+    double operator()(double k, double mu, double pk) const {
         // Calculate the k-dependent effective bias
         double bias(_bias);
         if(_radStrength != 0) {
@@ -76,8 +77,19 @@ public:
         if(_kcAlt != 0) {
         	contdistortion = std::tanh(std::pow(kpar/_kcAlt,_pc));
         }
-        // Calculate non-linear correction (McDonald 2003)
+        // Calculate non-linear correction
         double growth, pecvelocity, pressure, nlcorrection(1);
+        if(_qnl != 0) {
+        	double sigma8Sim(0.8338);
+        	double pi(4*std::atan(1));
+        	pk = pk*(sigma8Sim/_sigma8)*(sigma8Sim/_sigma8);
+        	double dk = k*k*k*pk/(2*pi*pi);
+        	growth = _qnl*dk;
+        	pecvelocity = std::pow(k/_kv,_av)*std::pow(std::fabs(mu),_bv);
+        	pressure = (k/_kp)*(k/_kp);
+        	nlcorrection = std::exp(growth*(1-pecvelocity)-pressure);
+        }
+        // Calculate alternative non-linear correction (McDonald 2003)
         if(_knl != 0) {
         	double kvel = _kv0*std::pow(1+k/_kvi,_pvi);
         	growth = std::pow(k/_knl,_pnl);
@@ -95,7 +107,7 @@ public:
     }
 private:
     double _bias,_biasbeta,_biasGamma,_biasSourceAbsorber,_biasAbsorberResponse,
-        _meanFreePath,_snlPar2,_snlPerp2,_kc,_kcAlt,_pc,
+        _meanFreePath,_snlPar2,_snlPerp2,_kc,_kcAlt,_pc,_sigma8,_qnl,_kv,_av,_bv,_kp,
         _knl,_pnl,_kpp,_pp,_kv0,_pv,_kvi,_pvi,_pixPar,_radStrength;
 };
 
@@ -107,7 +119,7 @@ int main(int argc, char **argv) {
     int ellMax,nr,repeat,nk,nmu,samplesPerDecade,nrprt;
     double rmin,rmax,relerr,abserr,abspow,maxRelError,kmin,kmax,margin,vepsMin,vepsMax,drprt;
     double bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
-        snlPar,snlPerp,kc,kcAlt,pc,knl,pnl,kpp,pp,kv0,pv,kvi,pvi,pixPar;
+        snlPar,snlPerp,kc,kcAlt,pc,sigma8,qnl,kv,av,bv,kp,knl,pnl,kpp,pp,kv0,pv,kvi,pvi,pixPar;
     cli.add_options()
         ("help,h", "prints this info and exits.")
         ("verbose", "prints additional information.")
@@ -148,6 +160,18 @@ int main(int argc, char **argv) {
             "parameter for alternative broadband distortion model in h/Mpc (or zero for no distortion)")
         ("pc", po::value<double>(&pc)->default_value(1.),
             "exponent for broadband distortion model (ignored when kc = 0 and kcAlt = 0)")
+        ("sigma8", po::value<double>(&sigma8)->default_value(0.8338),
+            "Amplitude of the linear matter power spectrum on the scale of 8 Mpc/h")
+        ("qnl", po::value<double>(&qnl)->default_value(0.),
+            "strength of non-linear growth correction (nominally 0.867; zero for no non-linear correction)")
+        ("kv", po::value<double>(&kv)->default_value(1.05),
+            "scale for non-linear peculiar velocity correction in h/Mpc (ignored when qnl = 0)")
+        ("av", po::value<double>(&av)->default_value(0.514),
+            "exponent for non-linear peculiar velocity correction (ignored when qnl = 0)")
+        ("bv", po::value<double>(&bv)->default_value(1.60),
+            "exponent for angular dependence of non-linear peculiar velocity correction (ignored when qnl = 0)")
+        ("kp", po::value<double>(&kp)->default_value(19.3),
+            "scale for non-linear pressure correction in h/Mpc (ignored when qnl = 0)")
         ("knl", po::value<double>(&knl)->default_value(0.),
             "scale for alternative non-linear growth correction in h/Mpc (nominally 6.4; zero for no non-linear correction)")
         ("pnl", po::value<double>(&pnl)->default_value(0.569),
@@ -246,9 +270,9 @@ int main(int argc, char **argv) {
 
         boost::shared_ptr<LyaDistortion> rsd(new LyaDistortion(
             bias,biasbeta,biasGamma,biasSourceAbsorber,biasAbsorberResponse,meanFreePath,
-            snlPar,snlPerp,kc,kcAlt,pc,knl,pnl,kpp,pp,kv0,pv,kvi,pvi,pixPar));
-        cosmo::RMuFunctionCPtr distPtr(new cosmo::RMuFunction(boost::bind(
-            &LyaDistortion::operator(),rsd,_1,_2)));
+            snlPar,snlPerp,kc,kcAlt,pc,sigma8,qnl,kv,av,bv,kp,knl,pnl,kpp,pp,kv0,pv,kvi,pvi,pixPar));
+        cosmo::KMuPkFunctionCPtr distPtr(new cosmo::KMuPkFunction(boost::bind(
+            &LyaDistortion::operator(),rsd,_1,_2,_3)));
 
         // Use the limits of the input tabulated power for tabulating the
         // power multipoles (the kmin,kmax cmd-line args are for output only)
